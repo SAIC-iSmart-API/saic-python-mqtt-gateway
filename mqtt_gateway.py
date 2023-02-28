@@ -265,7 +265,9 @@ def process_arguments() -> Configuration:
     config = Configuration()
     parser = argparse.ArgumentParser(prog='MQTT Gateway')
     try:
-        parser.add_argument('-m', '--mqtt-uri', help='The URI to the MQTT Server.", "Environment Variable: MQTT_URI',
+        parser.add_argument('-m', '--mqtt-uri', help='The URI to the MQTT Server. Environment Variable: MQTT_URI,'
+                                                     + 'TCP: tcp://mqtt.eclipseprojects.io:1883 '
+                                                     + 'WebSocket: ws://mqtt.eclipseprojects.io:9001',
                             default=os.getenv('MQTT_URI'), dest='mqtt_uri', required=True)
         parser.add_argument('--mqtt-user', help='The MQTT user name. Environment Variable: MQTT_USER',
                             default=os.getenv('MQTT_USER'), dest='mqtt_user', required=False)
