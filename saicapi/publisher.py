@@ -98,4 +98,4 @@ class Publisher:
             result = self.anonymize(no_binary_strings)
         else:
             result = no_binary_strings
-        return json.dumps(result)
+        return json.dumps(result, indent=2)

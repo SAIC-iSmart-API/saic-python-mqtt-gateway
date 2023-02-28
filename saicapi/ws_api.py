@@ -137,7 +137,7 @@ class SaicApi:
                                 alarm_switch_response_message.get_data())
 
         if alarm_switch_response_message.body.error_message is not None:
-            raise ValueError(alarm_switch_response_message.body.error_message)
+            raise ValueError(alarm_switch_response_message.body.error_message.decode())
 
     def get_vehicle_status(self, uid: str, token: str, vin_info: VinInfo,
                            event_id: str = None) -> MessageV2:
@@ -158,6 +158,13 @@ class SaicApi:
         self.publish_raw_value(application_id, application_data_protocol_version, vehicle_status_rsp_hex)
         vehicle_status_rsp_msg = MessageV2(MessageBodyV2(), OtaRvmVehicleStatusResp25857())
         self.message_V2_1_coder.decode_response(vehicle_status_rsp_hex, vehicle_status_rsp_msg)
+        app_data = cast(OtaRvmVehicleStatusResp25857, vehicle_status_rsp_msg.application_data)
+        if(
+                app_data.status_time is None
+                and app_data.basic_vehicle_status is None
+                and app_data.gps_position is None
+        ):
+            vehicle_status_rsp_msg.application_data = None
         self.publish_json_value(application_id, application_data_protocol_version, vehicle_status_rsp_msg.get_data())
         return vehicle_status_rsp_msg
 

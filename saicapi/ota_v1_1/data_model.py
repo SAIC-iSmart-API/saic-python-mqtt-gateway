@@ -169,7 +169,7 @@ class MpUserLoggingInRsp(ApplicationData):
             data[FIELD_VIN_LIST] = vin_list
         self.add_optional_field_to_data(data, FIELD_USER_PHOTO, self.user_photo)
         if self.language_type is not None:
-            data[FIELD_LANGUAGE_TYPE] = self.language_type.get_data()
+            data[FIELD_LANGUAGE_TYPE] = self.language_type
         return data
 
     def init_from_dict(self, data: dict):

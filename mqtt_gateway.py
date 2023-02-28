@@ -5,7 +5,7 @@ import os
 import time
 from typing import cast
 
-from log_publisher import Logger
+from mqtt_publisher import MqttClient
 from saicapi.publisher import Publisher
 from saicapi.common_model import Configuration
 from saicapi.ota_v1_1.data_model import MpUserLoggingInRsp, VinInfo, MessageListResp, Message
@@ -64,17 +64,18 @@ class MqttGateway:
     def __init__(self, config: Configuration):
         self.configuration = config
         self.vehicle_handler = {}
-        self.publisher = Logger(config)
+        self.publisher = MqttClient(self.configuration)
         self.saic_api = SaicApi(config, self.publisher)
+        self.publisher.connect()
         
     def run(self):
         login_response_message = self.saic_api.login()
         uid = login_response_message.body.uid
-        token = login_response_message.body.token
+        user_logging_in_response = cast(MpUserLoggingInRsp, login_response_message.application_data)
+        token = user_logging_in_response.token
 
         self.saic_api.set_alarm_switches(uid, token)
 
-        user_logging_in_response = cast(MpUserLoggingInRsp, login_response_message.application_data)
         for info in user_logging_in_response.vin_list:
             vehicle_handler = VehicleHandler(
                 self.configuration,  # Gateway pointer
@@ -199,7 +200,6 @@ class VehicleHandler:
 
     def update_charge_status(self) -> OtaChrgMangDataResp:
         chrg_mgmt_data_rsp_msg = self.saic_api.get_charging_status(self.uid, self.token, self.vin_info)
-        # TODO MQTT anonymized JSON output
         while chrg_mgmt_data_rsp_msg.application_data is None:
             chrg_mgmt_body = cast(MessageBodyV30, chrg_mgmt_data_rsp_msg.body)
             if chrg_mgmt_body.error_message_present():

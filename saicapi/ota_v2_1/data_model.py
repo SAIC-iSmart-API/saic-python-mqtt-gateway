@@ -367,14 +367,21 @@ class OtaRvmVehicleStatusResp25857(ApplicationData):
         self.extended_vehicle_status = None
 
     def get_data(self) -> dict:
-        data = {
-            FIELD_STATUS_TIME: self.status_time,
-            FIELD_GPS_POSITION: self.gps_position.get_data(),
-            FIELD_BASIC_VEHICLE_STATUS: self.basic_vehicle_status.get_data()
-        }
-        if FIELD_EXTENDED_VEHICLE_STATUS in data:
-            data[FIELD_EXTENDED_VEHICLE_STATUS] = self.extended_vehicle_status.get_data()
-        return data
+        if (
+                self.status_time is not None
+                and self.gps_position is not None
+                and self.basic_vehicle_status is not None
+        ):
+            data = {
+                FIELD_STATUS_TIME: self.status_time,
+                FIELD_GPS_POSITION: self.gps_position.get_data(),
+                FIELD_BASIC_VEHICLE_STATUS: self.basic_vehicle_status.get_data()
+            }
+            if FIELD_EXTENDED_VEHICLE_STATUS in data:
+                data[FIELD_EXTENDED_VEHICLE_STATUS] = self.extended_vehicle_status.get_data()
+            return data
+        else:
+            return {}
 
     def init_from_dict(self, data: dict):
         self.status_time = data.get(FIELD_STATUS_TIME)

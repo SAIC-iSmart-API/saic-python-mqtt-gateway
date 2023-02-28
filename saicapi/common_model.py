@@ -243,7 +243,10 @@ class AbstractMessage:
 
     def get_data(self) -> dict:
         app_data = None
-        if self.application_data is not None:
+        if (
+                self.application_data is not None
+                and self.application_data.get_data()
+        ):
             app_data = self.application_data.get_data()
         return {
             'applicationData': app_data,
