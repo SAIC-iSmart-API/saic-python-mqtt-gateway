@@ -32,6 +32,7 @@ class MqttClient(Publisher):
             else:
                 self.client.username_pw_set(username=self.configuration.mqtt_user)
         self.client.connect(host=self.host, port=self.port)
+        self.client.loop_start()
 
     def on_connect(self, client, userdata, flags, rc) -> None:
         if rc == 0:
@@ -43,7 +44,7 @@ class MqttClient(Publisher):
         print(f'{msg.topic} {msg.payload}')
 
     def publish(self, msg: mqtt.MQTTMessage) -> None:
-        if not self.connected:
+        if self.connected:
             self.client.publish(msg.topic, msg.payload, retain=True)
         else:
             raise SystemExit('MQTT connection lost')

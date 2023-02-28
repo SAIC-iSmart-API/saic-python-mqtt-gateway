@@ -85,12 +85,10 @@ class MqttGateway:
                 token,
                 info)
             self.vehicle_handler[info.vin] = vehicle_handler
-            # TODO remove method call
-            vehicle_handler.handle_vehicle()
 
-        # message_handler = MessageHandler(self, self.saic_api, self.configuration.saic_uri,
-        #                                 login_response_message.body.uid, login_response_message.body.token)
-        # asyncio.run(main(self.vehicle_handler, message_handler))
+        message_handler = MessageHandler(self, self.saic_api, self.configuration.saic_uri,
+                                         login_response_message.body.uid, login_response_message.body.token)
+        asyncio.run(main(self.vehicle_handler, message_handler, self.configuration.query_messages_interval * 60))
 
     def notify_message(self, message: SaicMessage):
         self.publisher.publish_json(f'{message.message_id}', message.get_data())
@@ -112,8 +110,7 @@ class VehicleHandler:
         self.force_last_activity_update = True
         self.abrp_api = AbrpApi(configuration, vin_info)
 
-    # TODO async
-    def handle_vehicle(self) -> None:
+    async def handle_vehicle(self) -> None:
         self.publisher.publish_str(f'{self.vin_info.vin}/configuration/raw', self.vin_info.model_configuration_json_str)
         for c in self.vin_info.model_configuration_json_str.split(';'):
             property_map = {}
@@ -134,7 +131,7 @@ class VehicleHandler:
                 self.notify_car_activity(datetime.datetime.now())
             else:
                 # car not active, wait a second
-                print(f'sleeping {datetime.datetime.now()}')
+                print(f'sleeping {datetime.datetime.now()}, last car activity: {self.last_car_activity}')
                 time.sleep(float(1))
 
     def notify_car_activity(self, last_activity_time: datetime):
@@ -143,7 +140,8 @@ class VehicleHandler:
                 or self.last_car_activity < last_activity_time
         ):
             self.last_car_activity = last_activity_time
-            self.publisher.publish_int(f'{self.vin_info.vin}/last_activity', self.last_car_activity)
+            self.publisher.publish_str(f'{self.vin_info.vin}/last_activity',
+                                       self.last_car_activity.strftime("%Y-%m-%d, %H:%M:%S"))
 
     def notify_message(self, message: SaicMessage):
         self.publisher.publish_json(f'{self.vin_info.vin}/message', message.get_data())
@@ -211,22 +209,22 @@ class VehicleHandler:
 
             chrg_mgmt_data_rsp_msg = self.saic_api.get_charging_status(self.uid, self.token, self.vin_info,
                                                                        chrg_mgmt_body.event_id)
-            charge_mgmt_data = cast(OtaChrgMangDataResp, chrg_mgmt_data_rsp_msg.application_data)
-            self.publisher.publish_str(f'{self.vin_info.vin}/current', str(charge_mgmt_data.get_current()))
-            self.publisher.publish_str(f'{self.vin_info.vin}/voltage', str(charge_mgmt_data.get_voltage()))
-            self.publisher.publish_str(f'{self.vin_info.vin}/power', str(charge_mgmt_data.get_power()))
-            charge_status = cast(RvsChargingStatus, charge_mgmt_data.chargeStatus)
-            self.publisher.publish_int(f'{self.vin_info.vin}/charge/type', charge_status.charging_type)
-            self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsChrgCtrlDspCmd', charge_mgmt_data.bmsChrgCtrlDspCmd)
-            self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsChrgOtptCrntReq',
-                                       charge_mgmt_data.bmsChrgOtptCrntReq)
-            self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsChrgSts', charge_mgmt_data.bmsChrgSts)
-            self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsPackCrnt', charge_mgmt_data.bmsPackCrnt)
-            self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsPackVol', charge_mgmt_data.bmsPackVol)
-            self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsPTCHeatReqDspCmd',
-                                       charge_mgmt_data.bmsPTCHeatReqDspCmd)
-            self.publisher.publish_str(f'{self.vin_info.vin}/soc', str(charge_mgmt_data.bmsPackSOCDsp / 10.0))
-            return charge_mgmt_data
+        charge_mgmt_data = cast(OtaChrgMangDataResp, chrg_mgmt_data_rsp_msg.application_data)
+        self.publisher.publish_str(f'{self.vin_info.vin}/current', str(charge_mgmt_data.get_current()))
+        self.publisher.publish_str(f'{self.vin_info.vin}/voltage', str(charge_mgmt_data.get_voltage()))
+        self.publisher.publish_str(f'{self.vin_info.vin}/power', str(charge_mgmt_data.get_power()))
+        charge_status = cast(RvsChargingStatus, charge_mgmt_data.chargeStatus)
+        self.publisher.publish_int(f'{self.vin_info.vin}/charge/type', charge_status.charging_type)
+        self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsChrgCtrlDspCmd', charge_mgmt_data.bmsChrgCtrlDspCmd)
+        self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsChrgOtptCrntReq',
+                                   charge_mgmt_data.bmsChrgOtptCrntReq)
+        self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsChrgSts', charge_mgmt_data.bmsChrgSts)
+        self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsPackCrnt', charge_mgmt_data.bmsPackCrnt)
+        self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsPackVol', charge_mgmt_data.bmsPackVol)
+        self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsPTCHeatReqDspCmd',
+                                   charge_mgmt_data.bmsPTCHeatReqDspCmd)
+        self.publisher.publish_str(f'{self.vin_info.vin}/soc', str(charge_mgmt_data.bmsPackSOCDsp / 10.0))
+        return charge_mgmt_data
 
 
 class MessageHandler:
@@ -246,15 +244,15 @@ class MessageHandler:
                 self.gateway.notify_message(convert(message))
 
 
-async def main(vh_map: dict, message_handler: MessageHandler):
+async def main(vh_map: dict, message_handler: MessageHandler, query_messages_interval: int):
     tasks = []
     for key in vh_map:
         print(f'{key}')
-        # vh = cast(VehicleHandler, vh_map[key])
-        # task = asyncio.create_task(vh.handle_vehicle())
-        # tasks.append(task)
+        vh = cast(VehicleHandler, vh_map[key])
+        task = asyncio.create_task(vh.handle_vehicle())
+        tasks.append(task)
 
-    tasks.append(asyncio.create_task(every(1, message_handler.polling())))
+    tasks.append(asyncio.create_task(every(float(query_messages_interval), message_handler.polling())))
 
     for task in tasks:
         # make sure we wait on all futures before exiting

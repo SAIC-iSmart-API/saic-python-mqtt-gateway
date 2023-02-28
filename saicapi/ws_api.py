@@ -156,9 +156,9 @@ class SaicApi:
                                                    urllib.parse.urljoin(self.configuration.saic_uri,
                                                                         '/TAP.Web/ota.mpv21'))
         self.publish_raw_value(application_id, application_data_protocol_version, vehicle_status_rsp_hex)
-        vehicle_status_rsp_msg = MessageV2(MessageBodyV2(), OtaRvmVehicleStatusResp25857())
+        app_data = OtaRvmVehicleStatusResp25857()
+        vehicle_status_rsp_msg = MessageV2(MessageBodyV2(), app_data)
         self.message_V2_1_coder.decode_response(vehicle_status_rsp_hex, vehicle_status_rsp_msg)
-        app_data = cast(OtaRvmVehicleStatusResp25857, vehicle_status_rsp_msg.application_data)
         if(
                 app_data.status_time is None
                 and app_data.basic_vehicle_status is None
@@ -182,8 +182,14 @@ class SaicApi:
                                                    urllib.parse.urljoin(self.configuration.saic_uri,
                                                                         '/TAP.Web/ota.mpv30'))
         self.publish_raw_value(application_id, application_data_protocol_version, chrg_mgmt_data_rsp_hex)
-        chrg_mgmt_data_rsp_msg = MessageV30(MessageBodyV30(), OtaChrgMangDataResp())
+        app_data = OtaChrgMangDataResp()
+        chrg_mgmt_data_rsp_msg = MessageV30(MessageBodyV30(), app_data)
         self.message_V3_0_coder.decode_response(chrg_mgmt_data_rsp_hex, chrg_mgmt_data_rsp_msg)
+        if (
+            app_data.bmsReserCtrlDspCmd is None
+            and app_data.bmsChrgSts is None
+        ):
+            chrg_mgmt_data_rsp_msg.application_data = None
         self.publish_json_value(application_id, application_data_protocol_version, chrg_mgmt_data_rsp_msg.get_data())
         return chrg_mgmt_data_rsp_msg
 
