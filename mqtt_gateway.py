@@ -5,7 +5,8 @@ import os
 import time
 from typing import cast
 
-from mqtt import Logger, Publisher
+from log_publisher import Logger
+from saicapi.publisher import Publisher
 from saicapi.common_model import Configuration
 from saicapi.ota_v1_1.data_model import MpUserLoggingInRsp, VinInfo, MessageListResp, Message
 from saicapi.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857, RvsPosition
@@ -60,11 +61,11 @@ def convert(message: Message) -> SaicMessage:
 
 
 class MqttGateway:
-    def __init__(self, config: Configuration, saic_url: str):
+    def __init__(self, config: Configuration):
+        self.configuration = config
         self.vehicle_handler = {}
         self.publisher = Logger(config)
         self.saic_api = SaicApi(config, self.publisher)
-        self.saic_url = saic_url
         
     def run(self):
         login_response_message = self.saic_api.login()
@@ -76,10 +77,9 @@ class MqttGateway:
         user_logging_in_response = cast(MpUserLoggingInRsp, login_response_message.application_data)
         for info in user_logging_in_response.vin_list:
             vehicle_handler = VehicleHandler(
-                configuration,  # Gateway pointer
+                self.configuration,  # Gateway pointer
                 self.saic_api,
                 self.publisher,
-                self.saic_url,  # SAIC URI
                 uid,
                 token,
                 info)
@@ -87,7 +87,8 @@ class MqttGateway:
             # TODO remove method call
             vehicle_handler.handle_vehicle()
 
-        # message_handler = MessageHandler(self, self.saic_api, self.saic_url, login_response_message.body.uid, login_response_message.body.token, self.mqtt_client)
+        # message_handler = MessageHandler(self, self.saic_api, self.configuration.saic_uri,
+        #                                 login_response_message.body.uid, login_response_message.body.token)
         # asyncio.run(main(self.vehicle_handler, message_handler))
 
     def notify_message(self, message: SaicMessage):
@@ -98,12 +99,11 @@ class MqttGateway:
 
 
 class VehicleHandler:
-    def __init__(self, config: Configuration, saicapi: SaicApi, publisher: Publisher, saic_uri, uid: str, token: str,
+    def __init__(self, config: Configuration, saicapi: SaicApi, publisher: Publisher, uid: str, token: str,
                  vin_info: VinInfo):
         self.configuration = config
         self.saic_api = saicapi
         self.publisher = publisher
-        self.saic_uri = saic_uri
         self.uid = uid
         self.token = token
         self.vin_info = vin_info
@@ -314,5 +314,5 @@ def process_arguments() -> Configuration:
 
 configuration = process_arguments()
 
-mqtt_gateway = MqttGateway(configuration, '')
+mqtt_gateway = MqttGateway(configuration)
 mqtt_gateway.run()

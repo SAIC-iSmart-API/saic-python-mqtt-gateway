@@ -4,7 +4,7 @@ from typing import cast
 
 import requests as requests
 
-from mqtt import Publisher
+from saicapi.publisher import Publisher
 from saicapi.common_model import Configuration, MessageV2, MessageBodyV2, Header
 from saicapi.ota_v1_1.Message import MessageCoderV11
 from saicapi.ota_v1_1.data_model import VinInfo, MpUserLoggingInReq, MpUserLoggingInRsp, AlarmSwitchReq, \

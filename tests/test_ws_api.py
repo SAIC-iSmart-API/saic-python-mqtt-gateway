@@ -4,7 +4,7 @@ from unittest.mock import patch, PropertyMock
 
 import requests
 
-from mqtt import Logger
+from saicapi.publisher import Logger
 from saicapi.common_model import Configuration, Header, MessageV2, MessageBodyV2
 from saicapi.ota_v1_1.Message import MessageCoderV11
 from saicapi.ota_v1_1.data_model import MessageV11, MpUserLoggingInRsp, MessageBodyV11, VinInfo
