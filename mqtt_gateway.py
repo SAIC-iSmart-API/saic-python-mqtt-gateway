@@ -108,7 +108,7 @@ class VehicleHandler:
         self.token = token
         self.vin_info = vin_info
         self.last_car_activity = None
-        self.force_last_activity_update = True
+        self.force_update = True
         self.abrp_api = AbrpApi(configuration, vin_info)
 
     async def handle_vehicle(self) -> None:
@@ -122,10 +122,10 @@ class VehicleHandler:
         while True:
             if (
                 self.last_car_activity is None
-                or self.force_last_activity_update
+                or self.force_update
                 or self.last_car_activity < (datetime.datetime.now() - datetime.timedelta(minutes=self.configuration.query_vehicle_status_interval))
             ):
-                self.force_last_activity_update = False
+                self.force_update = False
                 vehicle_status = self.update_vehicle_status()
                 charge_status = self.update_charge_status()
                 self.abrp_api.update_abrp(vehicle_status, charge_status)
@@ -168,7 +168,7 @@ class VehicleHandler:
         engine_running = vehicle_status_response.is_engine_running()
         is_charging = vehicle_status_response.is_charging()
         if is_charging or engine_running:
-            self.force_last_activity_update = True
+            self.force_update = True
 
         self.publisher.publish_bool(f'{self.vin_info.vin}/running', engine_running)
         self.publisher.publish_bool(f'{self.vin_info.vin}/charging', is_charging)
@@ -192,7 +192,7 @@ class VehicleHandler:
         remote_rear_window_heater = basic_vehicle_status.rmt_htd_rr_wnd_st
         self.publisher.publish_int(f'{self.vin_info.vin}/remoteRearWindowHeater', remote_rear_window_heater)
         mileage = basic_vehicle_status.mileage / 10.0
-        self.publisher.publish_float(f'{self.vin_info.vin}/milage', mileage)
+        self.publisher.publish_float(f'{self.vin_info.vin}/mileage', mileage)
         electric_range = basic_vehicle_status.fuel_range_elec / 10.0
         self.publisher.publish_float(f'{self.vin_info.vin}/range/electric', electric_range)
         return vehicle_status_response
