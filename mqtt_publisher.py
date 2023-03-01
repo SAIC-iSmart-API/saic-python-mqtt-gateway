@@ -1,4 +1,4 @@
-import urllib.parse
+import threading
 import uuid
 import paho.mqtt.client as mqtt
 
@@ -12,16 +12,15 @@ class MqttClient(Publisher):
         self.publisher_id = uuid.uuid4()
         self.configuration = configuration
         self.topic_root = configuration.mqtt_topic
-        self.connected = False
+        self.is_connected = threading.Event()
         self.client = None
-        self.host = ''
-        self.port = -1
-        self.transport_protocol = ''
+        self.host = self.configuration.mqtt_host
+        self.port = self.configuration.mqtt_port
+        self.transport_protocol = self.configuration.mqtt_transport_protocol
 
-        self.init_mqtt_connection_data(self.configuration.mqtt_uri)
         mqtt_client = mqtt.Client(str(self.publisher_id), transport=self.transport_protocol)
-        mqtt_client.on_connect = self.on_connect
-        mqtt_client.on_message = self.on_message
+        mqtt_client.on_connect = self.__on_connect
+        mqtt_client.on_message = self.__on_message
         self.client = mqtt_client
 
     def connect(self):
@@ -33,21 +32,20 @@ class MqttClient(Publisher):
                 self.client.username_pw_set(username=self.configuration.mqtt_user)
         self.client.connect(host=self.host, port=self.port)
         self.client.loop_start()
+        # wait until we've connected
+        self.is_connected.wait()
 
-    def on_connect(self, client, userdata, flags, rc) -> None:
-        if rc == 0:
-            self.connected = True
+    def __on_connect(self, client, userdata, flags, rc) -> None:
+        if rc == mqtt.CONNACK_ACCEPTED:
+            self.is_connected.set()
         else:
             SystemExit(f'Unable to connect to MQTT brocker. Return code: {rc}')
 
-    def on_message(self, client, userdata, msg: mqtt.MQTTMessage) -> None:
+    def __on_message(self, client, userdata, msg: mqtt.MQTTMessage) -> None:
         print(f'{msg.topic} {msg.payload}')
 
     def publish(self, msg: mqtt.MQTTMessage) -> None:
-        if self.connected:
-            self.client.publish(msg.topic, msg.payload, retain=True)
-        else:
-            raise SystemExit('MQTT connection lost')
+        self.client.publish(msg.topic, msg.payload, retain=True)
 
     def get_topic(self, key: str) -> bytes:
         return bytes(f'{self.topic_root}/{key}', encoding='utf8')
@@ -76,20 +74,3 @@ class MqttClient(Publisher):
         msg = mqtt.MQTTMessage(topic=self.get_topic(key))
         msg.payload = value
         self.publish(msg)
-
-    def init_mqtt_connection_data(self, mqtt_uri: str):
-        parse_result = urllib.parse.urlparse(mqtt_uri)
-        if parse_result.scheme == 'tcp':
-            self.transport_protocol = 'tcp'
-        elif parse_result.scheme == 'ws':
-            self.transport_protocol = 'websockets'
-        else:
-            raise SystemExit(f'Invalid MQTT URI scheme: {parse_result.scheme}, use tcp or ws')
-
-        if not parse_result.port:
-            if self.transport_protocol == 'tcp':
-                self.port = 1883
-            else:
-                self.port = 9001
-
-        self.host = str(parse_result.hostname)

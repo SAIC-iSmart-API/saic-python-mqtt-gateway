@@ -3,6 +3,7 @@ import asyncio
 import datetime
 import os
 import time
+import urllib.parse
 from typing import cast
 
 from mqtt_publisher import MqttClient
@@ -271,6 +272,9 @@ def process_arguments() -> Configuration:
                             default=os.getenv('MQTT_USER'), dest='mqtt_user', required=False)
         parser.add_argument('--mqtt-password', help='The MQTT password. Environment Variable: MQTT_PASSWORD',
                             default=os.getenv('MQTT_PASSWORD'), dest='mqtt_password', required=False)
+        parser.add_argument('--mqtt-topic-prefix', help='MQTT topic prefix. Environment Variable: MQTT_TOPIC'
+                                                        + 'Default is saic/vehicle',
+                            default=os.getenv('MQTT_TOPIC', 'saic/vehicle'), dest='mqtt_topic', required=False)
         parser.add_argument('-s', '--saic-uri', help='The SAIC uri. Environment Variable: SAIC_URI Default is the'
                                                      + ' European Production Endpoint: https://tap-eu.soimt.com',
                             default=os.getenv('SAIC_URI', 'https://tap-eu.soimt.com'), dest='saic_uri', required=False)
@@ -291,9 +295,9 @@ def process_arguments() -> Configuration:
                                                       + ' Environment Variable: ABRP_USER_TOKEN',
                             default=os.getenv('ABRP_USER_TOKEN'), dest='abrp_user_token', required=False)
         args = parser.parse_args()
-        config.mqtt_uri = args.mqtt_uri
         config.mqtt_user = args.mqtt_user
         config.mqtt_password = args.mqtt_password
+        config.mqtt_topic = args.mqtt_topic
         config.saic_uri = args.saic_uri
         config.saic_user = args.saic_user
         config.saic_password = args.saic_password
@@ -306,6 +310,25 @@ def process_arguments() -> Configuration:
                 value = key_value_pair[1]
                 config.abrp_token_map[key] = value
         config.saic_password = args.saic_password
+
+        parse_result = urllib.parse.urlparse(args.mqtt_uri)
+        if parse_result.scheme == 'tcp':
+            config.mqtt_transport_protocol = 'tcp'
+        elif parse_result.scheme == 'ws':
+            config.mqtt_transport_protocol = 'websockets'
+        else:
+            raise SystemExit(f'Invalid MQTT URI scheme: {parse_result.scheme}, use tcp or ws')
+
+        if not parse_result.port:
+            if config.mqtt_transport_protocol == 'tcp':
+                config.mqtt_port = 1883
+            else:
+                config.mqtt_port = 9001
+        else:
+            config.mqtt_port = parse_result.port
+
+        config.mqtt_host = str(parse_result.hostname)
+
         return config
     except argparse.ArgumentError as err:
         parser.print_help()

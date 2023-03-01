@@ -50,10 +50,12 @@ class Configuration:
         self.saic_uri = ''
         self.abrp_token_map = {}
         self.abrp_api_key = ''
-        self.mqtt_uri = ''
+        self.mqtt_host = ''
+        self.mqtt_port = -1
+        self.mqtt_transport_protocol = ''
         self.mqtt_user = ''
         self.mqtt_password = ''
-        self.mqtt_topic = 'saic/vehicle'
+        self.mqtt_topic = ''
         self.anonymized_publishing = False
         self.query_vehicle_status_interval = 15  # in minutes
         self.query_messages_interval = 5  # in minutes
@@ -357,6 +359,8 @@ class MessageCoderV1(AbstractMessageCoder):
             application_data_dict = self.asn1_tool_uper.decode(decoded_message.application_data.asn_type,
                                                                application_data_bytes)
             decoded_message.application_data.init_from_dict(application_data_dict)
+        else:
+            decoded_message.application_data = None
 
     def initialize_message(self, uid: str, token: str, vin: str, application_id: str,
                            application_data_protocol_version: int, message_id: int, message: MessageV1):
@@ -438,6 +442,8 @@ class MessageCoderV2(AbstractMessageCoder):
             application_data_dict = self.asn1_tool_uper.decode(decoded_message.application_data.asn_type,
                                                                application_data_bytes)
             decoded_message.application_data.init_from_dict(application_data_dict)
+        else:
+            decoded_message.application_data = None
 
     def initialize_message(self, uid: str, token: str, vin: str, application_id: str,
                            application_data_protocol_version: int, message_id: int, message: MessageV2) -> None:
