@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import datetime
+import logging
 import os
 import time
 import urllib.parse
@@ -24,6 +25,8 @@ async def every(__seconds: float, func, *args, **kwargs):
     while True:
         func(*args, **kwargs)
         await asyncio.sleep(__seconds)
+
+logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
 
 class SaicMessage:
@@ -130,10 +133,13 @@ class VehicleHandler:
                 charge_status = self.update_charge_status()
                 self.abrp_api.update_abrp(vehicle_status, charge_status)
                 self.notify_car_activity(datetime.datetime.now())
+                if vehicle_status.is_charging() or vehicle_status.is_engine_running():
+                    self.force_update = True
+                    time.sleep(60.0)
             else:
                 # car not active, wait a second
-                print(f'sleeping {datetime.datetime.now()}, last car activity: {self.last_car_activity}')
-                time.sleep(float(1))
+                logging.debug(f'sleeping {datetime.datetime.now()}, last car activity: {self.last_car_activity}')
+                time.sleep(1.0)
 
     def notify_car_activity(self, last_activity_time: datetime):
         if (
@@ -141,8 +147,9 @@ class VehicleHandler:
                 or self.last_car_activity < last_activity_time
         ):
             self.last_car_activity = last_activity_time
-            self.publisher.publish_str(f'{self.vin_info.vin}/last_activity',
-                                       self.last_car_activity.strftime("%Y-%m-%d, %H:%M:%S"))
+            last_activity = self.last_car_activity.strftime("%Y-%m-%d, %H:%M:%S")
+            self.publisher.publish_str(f'{self.vin_info.vin}/last_activity', last_activity)
+            logging.info(f'last acitvity: {last_activity}')
 
     def notify_message(self, message: SaicMessage):
         self.publisher.publish_json(f'{self.vin_info.vin}/message', message.get_data())
@@ -165,13 +172,8 @@ class VehicleHandler:
 
         vehicle_status_response = cast(OtaRvmVehicleStatusResp25857, vehicle_status_rsp_msg.application_data)
         basic_vehicle_status = vehicle_status_response.get_basic_vehicle_status()
-        engine_running = vehicle_status_response.is_engine_running()
-        is_charging = vehicle_status_response.is_charging()
-        if is_charging or engine_running:
-            self.force_update = True
-
-        self.publisher.publish_bool(f'{self.vin_info.vin}/running', engine_running)
-        self.publisher.publish_bool(f'{self.vin_info.vin}/charging', is_charging)
+        self.publisher.publish_bool(f'{self.vin_info.vin}/running', vehicle_status_response.is_engine_running())
+        self.publisher.publish_bool(f'{self.vin_info.vin}/charging', vehicle_status_response.is_charging())
 
         interior_temperature = basic_vehicle_status.interior_temperature
         if interior_temperature > -128:
