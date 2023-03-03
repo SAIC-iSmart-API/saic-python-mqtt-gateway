@@ -1,9 +1,10 @@
+import datetime
 from enum import Enum
 
 from saicapi.common_model import Asn1Type, ApplicationData, MessageBodyV1, MessageV1, Header
 
+FIELD_SECONDS = 'seconds'
 FIELD_MESSAGE_TIME = 'messageTime'
-
 FIELD_FUNCTION_SWITCH = 'functionSwitch'
 FIELD_ALARM_SWITCH = 'alarmSwitch'
 FIELD_ALARM_SETTING_TYPE = 'alarmSettingType'
@@ -175,7 +176,9 @@ class MpUserLoggingInRsp(ApplicationData):
     def init_from_dict(self, data: dict):
         self.token = data.get(FIELD_TOKEN)
         self.refresh_token = data.get(FIELD_REFRESH_TOKEN)
-        self.token_expiration = data.get(FIELD_TOKEN_EXPIRATION)
+        if FIELD_TOKEN_EXPIRATION in data:
+            self.token_expiration = Timestamp()
+            self.token_expiration = data.get(FIELD_TOKEN_EXPIRATION)
         if FIELD_VIN_LIST in data:
             vin_list = data.get(FIELD_VIN_LIST)
             for item in vin_list:
@@ -185,6 +188,23 @@ class MpUserLoggingInRsp(ApplicationData):
         self.user_photo = data.get(FIELD_USER_PHOTO)
         self.user_name = data.get(FIELD_USER_NAME)
         self.language_type = data.get(FIELD_LANGUAGE_TYPE)
+
+
+class Timestamp(Asn1Type):
+    def __init__(self):
+        super().__init__('Timestamp')
+        self.seconds = -1
+
+    def get_data(self) -> dict:
+        return {
+            FIELD_SECONDS: self.seconds
+        }
+
+    def init_from_dict(self, data: dict):
+        self.seconds = data.get(FIELD_SECONDS)
+
+    def get_timestamp(self) -> datetime:
+        return datetime.datetime.fromtimestamp(self.seconds)
 
 
 class AppUpgradeInfoReq(Asn1Type):

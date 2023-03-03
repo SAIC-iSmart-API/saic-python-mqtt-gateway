@@ -74,24 +74,19 @@ class MqttGateway:
         
     def run(self):
         login_response_message = self.saic_api.login()
-        uid = login_response_message.body.uid
         user_logging_in_response = cast(MpUserLoggingInRsp, login_response_message.application_data)
-        token = user_logging_in_response.token
 
-        self.saic_api.set_alarm_switches(uid, token)
+        self.saic_api.set_alarm_switches()
 
         for info in user_logging_in_response.vin_list:
             vehicle_handler = VehicleHandler(
                 self.configuration,  # Gateway pointer
                 self.saic_api,
                 self.publisher,
-                uid,
-                token,
                 info)
             self.vehicle_handler[info.vin] = vehicle_handler
 
-        message_handler = MessageHandler(self, self.saic_api, self.configuration.saic_uri,
-                                         login_response_message.body.uid, login_response_message.body.token)
+        message_handler = MessageHandler(self, self.saic_api)
         asyncio.run(main(self.vehicle_handler, message_handler, self.configuration.query_messages_interval * 60))
 
     def notify_message(self, message: SaicMessage):
@@ -102,13 +97,10 @@ class MqttGateway:
 
 
 class VehicleHandler:
-    def __init__(self, config: Configuration, saicapi: SaicApi, publisher: Publisher, uid: str, token: str,
-                 vin_info: VinInfo):
+    def __init__(self, config: Configuration, saicapi: SaicApi, publisher: Publisher, vin_info: VinInfo):
         self.configuration = config
         self.saic_api = saicapi
         self.publisher = publisher
-        self.uid = uid
-        self.token = token
         self.vin_info = vin_info
         self.last_car_activity = None
         self.force_update = True
@@ -157,7 +149,7 @@ class VehicleHandler:
         self.notify_car_activity(message.message_time)
 
     def update_vehicle_status(self) -> OtaRvmVehicleStatusResp25857:
-        vehicle_status_rsp_msg = self.saic_api.get_vehicle_status(self.uid, self.token, self.vin_info)
+        vehicle_status_rsp_msg = self.saic_api.get_vehicle_status(self.vin_info)
         while vehicle_status_rsp_msg.application_data is None:
             if vehicle_status_rsp_msg.body.error_message is not None:
                 if vehicle_status_rsp_msg.body.result == 2:
@@ -167,7 +159,7 @@ class VehicleHandler:
                 return cast(OtaRvmVehicleStatusResp25857, None)
 
             # we have received an eventId back...
-            vehicle_status_rsp_msg = self.saic_api.get_vehicle_status(self.uid, self.token, self.vin_info,
+            vehicle_status_rsp_msg = self.saic_api.get_vehicle_status(self.vin_info,
                                                                       vehicle_status_rsp_msg.body.event_id)
 
         vehicle_status_response = cast(OtaRvmVehicleStatusResp25857, vehicle_status_rsp_msg.application_data)
@@ -200,7 +192,7 @@ class VehicleHandler:
         return vehicle_status_response
 
     def update_charge_status(self) -> OtaChrgMangDataResp:
-        chrg_mgmt_data_rsp_msg = self.saic_api.get_charging_status(self.uid, self.token, self.vin_info)
+        chrg_mgmt_data_rsp_msg = self.saic_api.get_charging_status(self.vin_info)
         while chrg_mgmt_data_rsp_msg.application_data is None:
             chrg_mgmt_body = cast(MessageBodyV30, chrg_mgmt_data_rsp_msg.body)
             if chrg_mgmt_body.error_message_present():
@@ -210,8 +202,7 @@ class VehicleHandler:
                 # try again next time
                 return cast(OtaChrgMangDataResp, None)
 
-            chrg_mgmt_data_rsp_msg = self.saic_api.get_charging_status(self.uid, self.token, self.vin_info,
-                                                                       chrg_mgmt_body.event_id)
+            chrg_mgmt_data_rsp_msg = self.saic_api.get_charging_status(self.vin_info, chrg_mgmt_body.event_id)
         charge_mgmt_data = cast(OtaChrgMangDataResp, chrg_mgmt_data_rsp_msg.application_data)
         self.publisher.publish_str(f'{self.vin_info.vin}/current', str(charge_mgmt_data.get_current()))
         self.publisher.publish_str(f'{self.vin_info.vin}/voltage', str(charge_mgmt_data.get_voltage()))
@@ -231,15 +222,12 @@ class VehicleHandler:
 
 
 class MessageHandler:
-    def __init__(self, gateway: MqttGateway, saicapi: SaicApi, saic_url: str, uid: str, token: str):
+    def __init__(self, gateway: MqttGateway, saicapi: SaicApi):
         self.gateway = gateway
         self.saicapi = saicapi
-        self.saic_url = saic_url
-        self.uid = uid
-        self.token = token
 
     def polling(self):
-        message_list_rsp_msg = self.saicapi.get_message_list(self.uid, self.token)
+        message_list_rsp_msg = self.saicapi.get_message_list()
 
         if message_list_rsp_msg.application_data is not None:
             message_list_rsp = cast(MessageListResp, message_list_rsp_msg.application_data)

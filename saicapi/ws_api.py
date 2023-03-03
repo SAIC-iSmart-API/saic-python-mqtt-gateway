@@ -1,3 +1,4 @@
+import datetime
 import hashlib
 import urllib.parse
 from typing import cast
@@ -8,7 +9,8 @@ from saicapi.publisher import Publisher
 from saicapi.common_model import Configuration, MessageV2, MessageBodyV2, Header
 from saicapi.ota_v1_1.Message import MessageCoderV11
 from saicapi.ota_v1_1.data_model import VinInfo, MpUserLoggingInReq, MpUserLoggingInRsp, AlarmSwitchReq, \
-    MpAlarmSettingType, AlarmSwitch, MessageBodyV11, MessageV11, MessageListReq, StartEndNumber, MessageListResp
+    MpAlarmSettingType, AlarmSwitch, MessageBodyV11, MessageV11, MessageListReq, StartEndNumber, MessageListResp, \
+    Timestamp
 from saicapi.ota_v2_1.Message import MessageCoderV21
 from saicapi.ota_v2_1.data_model import OtaRvmVehicleStatusReq, OtaRvmVehicleStatusResp25857
 from saicapi.ota_v3_0.Message import MessageCoderV30, MessageV30, MessageBodyV30
@@ -77,6 +79,9 @@ class SaicApi:
         self.message_V2_1_coder = MessageCoderV21()
         self.message_V3_0_coder = MessageCoderV30()
         self.cookies = None
+        self.uid = ''
+        self.token = ''
+        self.token_expiration = None
 
     def login(self) -> MessageV11:
         application_data = MpUserLoggingInReq()
@@ -86,8 +91,9 @@ class SaicApi:
         login_request_message = MessageV11(header, MessageBodyV11(), application_data)
         application_id = '501'
         application_data_protocol_version = 513
+        self.uid = UID_INIT[len(self.configuration.saic_user):] + self.configuration.saic_user
         self.message_v1_1_coder.initialize_message(
-            UID_INIT[len(self.configuration.saic_user):] + self.configuration.saic_user,
+            self.uid,
             cast(str, None),
             application_id,
             application_data_protocol_version,
@@ -99,14 +105,19 @@ class SaicApi:
         login_response_hex = self.send_request(login_request_hex,
                                                urllib.parse.urljoin(self.configuration.saic_uri, '/TAP.Web/ota.mp'))
         self.publish_raw_value(application_id, application_data_protocol_version, login_response_hex)
-        login_response_message = MessageV11(header, MessageBodyV11(), MpUserLoggingInRsp())
+        logging_in_rsp = MpUserLoggingInRsp()
+        login_response_message = MessageV11(header, MessageBodyV11(), logging_in_rsp)
         self.message_v1_1_coder.decode_response(login_response_hex, login_response_message)
         self.publish_json_value(application_id, application_data_protocol_version, login_response_message.get_data())
         if login_response_message.body.error_message is not None:
             raise SystemExit(login_response_message.body.error_message.decode())
+        else:
+            self.token = logging_in_rsp.token
+            if logging_in_rsp.token_expiration is not None:
+                self.token_expiration = logging_in_rsp.token_expiration
         return login_response_message
 
-    def set_alarm_switches(self, uid: str, token: str) -> None:
+    def set_alarm_switches(self) -> None:
         alarm_switch_req = AlarmSwitchReq()
         for setting_type in MpAlarmSettingType:
             alarm_switch_req.alarm_switch_list.append(create_alarm_switch(setting_type))
@@ -118,8 +129,8 @@ class SaicApi:
         application_id = '521'
         application_data_protocol_version = 513
         self.message_v1_1_coder.initialize_message(
-            uid,
-            token,
+            self.uid,
+            self.get_token(),
             application_id,
             application_data_protocol_version,
             1,
@@ -139,14 +150,14 @@ class SaicApi:
         if alarm_switch_response_message.body.error_message is not None:
             raise ValueError(alarm_switch_response_message.body.error_message.decode())
 
-    def get_vehicle_status(self, uid: str, token: str, vin_info: VinInfo,
-                           event_id: str = None) -> MessageV2:
+    def get_vehicle_status(self, vin_info: VinInfo, event_id: str = None) -> MessageV2:
         vehicle_status_req = OtaRvmVehicleStatusReq()
         vehicle_status_req.veh_status_req_type = 2
         vehicle_status_req_msg = MessageV2(MessageBodyV2(), vehicle_status_req)
         application_id = '511'
         application_data_protocol_version = 25857
-        self.message_V2_1_coder.initialize_message(uid, token, vin_info.vin, "511", 25857, 1, vehicle_status_req_msg)
+        self.message_V2_1_coder.initialize_message(self.uid, self.get_token(), vin_info.vin, "511", 25857, 1,
+                                                   vehicle_status_req_msg)
         if event_id is not None:
             vehicle_status_req_msg.body.event_id = event_id
         self.publish_json_value(application_id, application_data_protocol_version, vehicle_status_req_msg.get_data())
@@ -161,11 +172,12 @@ class SaicApi:
         self.publish_json_value(application_id, application_data_protocol_version, vehicle_status_rsp_msg.get_data())
         return vehicle_status_rsp_msg
 
-    def get_charging_status(self, uid: str, token: str, vin_info: VinInfo, event_id: str = None) -> MessageV30:
+    def get_charging_status(self, vin_info: VinInfo, event_id: str = None) -> MessageV30:
         chrg_mgmt_data_req_msg = MessageV30(MessageBodyV30())
         application_id = '516'
         application_data_protocol_version = 768
-        self.message_V3_0_coder.initialize_message(uid, token, vin_info.vin, '516', 768, 5, chrg_mgmt_data_req_msg)
+        self.message_V3_0_coder.initialize_message(self.uid, self.get_token(), vin_info.vin, '516', 768, 5,
+                                                   chrg_mgmt_data_req_msg)
         if event_id is not None:
             chrg_mgmt_data_req_msg.body.event_id = event_id
         self.publish_json_value(application_id, application_data_protocol_version, chrg_mgmt_data_req_msg.get_data())
@@ -180,7 +192,7 @@ class SaicApi:
         self.publish_json_value(application_id, application_data_protocol_version, chrg_mgmt_data_rsp_msg.get_data())
         return chrg_mgmt_data_rsp_msg
 
-    def get_message_list(self, uid: str, token: str) -> MessageV11:
+    def get_message_list(self) -> MessageV11:
         message_list_request = MessageListReq()
         message_list_request.start_end_number = StartEndNumber()
         message_list_request.start_end_number.start_number = 1
@@ -193,7 +205,7 @@ class SaicApi:
         message_list_req_msg = MessageV11(header, message_body, message_list_request)
         application_id = '513'
         application_data_protocol_version = 513
-        self.message_v1_1_coder.initialize_message(uid, token, '513', 513, 1, message_list_req_msg)
+        self.message_v1_1_coder.initialize_message(self.uid, self.get_token(), '513', 513, 1, message_list_req_msg)
         self.publish_json_value(application_id, application_data_protocol_version, message_list_req_msg.get_data())
         message_list_req_hex = self.message_v1_1_coder.encode_request(message_list_req_msg)
         self.publish_raw_value(application_id, application_data_protocol_version, message_list_req_hex)
@@ -228,6 +240,13 @@ class SaicApi:
             return response.content.decode()
         except requests.exceptions.RequestException as e:
             raise SystemExit(e)
+
+    def get_token(self):
+        if self.token_expiration is not None:
+            token_expiration = cast(Timestamp, self.token_expiration)
+            if token_expiration.get_timestamp() < datetime.datetime.now():
+                self.login()
+        return self.token
 
 
 def hash_md5(password: str) -> str:

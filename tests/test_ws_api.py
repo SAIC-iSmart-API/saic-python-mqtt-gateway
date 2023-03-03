@@ -228,7 +228,7 @@ class TestSaicApi(TestCase):
         mock_response(mocked_post, mock_alarm_switch_response_hex(self.message_coder_v1_1))
 
         try:
-            self.saic_api.set_alarm_switches(UID, TOKEN)
+            self.saic_api.set_alarm_switches()
         except Exception:
             self.fail()
 
@@ -237,7 +237,7 @@ class TestSaicApi(TestCase):
         vin_info = create_vin_info(VIN)
         mock_response(mocked_post, mock_vehicle_status_response(self.message_coder_v2_1, UID, TOKEN, vin_info))
 
-        vehicle_status_rsp_msg = self.saic_api.get_vehicle_status(UID, TOKEN, vin_info)
+        vehicle_status_rsp_msg = self.saic_api.get_vehicle_status(vin_info)
         app_data = cast(OtaRvmVehicleStatusResp25857, vehicle_status_rsp_msg.application_data)
         self.assertEqual(1000000000, app_data.status_time)
 
@@ -246,6 +246,6 @@ class TestSaicApi(TestCase):
         vin_info = create_vin_info(VIN)
         mock_response(mocked_post, mock_chrg_mgmt_data_rsp(self.message_coder_v3_0, UID, TOKEN, vin_info))
 
-        chrg_mgmt_data_rsp_msg = self.saic_api.get_charging_status(UID, TOKEN, vin_info)
+        chrg_mgmt_data_rsp_msg = self.saic_api.get_charging_status(vin_info)
         app_data = cast(OtaChrgMangDataResp, chrg_mgmt_data_rsp_msg.application_data)
         self.assertEqual(1023, app_data.bmsChrgOtptCrntReq)
