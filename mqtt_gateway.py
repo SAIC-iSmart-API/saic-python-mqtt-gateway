@@ -209,7 +209,31 @@ class VehicleHandler:
         self.publisher.publish_int(f'{location_prefix}/heading', way_point.heading)
 
         doors_prefix = f'{self.vehicle_prefix}/doors'
+        self.publisher.publish_bool(f'{doors_prefix}/driver', basic_vehicle_status.driver_window)
+        self.publisher.publish_bool(f'{doors_prefix}/passenger', basic_vehicle_status.passenger_window)
+        self.publisher.publish_bool(f'{doors_prefix}/rearLeft', basic_vehicle_status.rear_left_window)
+        self.publisher.publish_bool(f'{doors_prefix}/rearRight', basic_vehicle_status.rear_right_window)
+        self.publisher.publish_bool(f'{doors_prefix}/sunRoof', basic_vehicle_status.sun_roof_status)
+
+        doors_prefix = f'{self.vehicle_prefix}/doors'
         self.publisher.publish_bool(f'{doors_prefix}/locked', basic_vehicle_status.lock_status)
+        self.publisher.publish_bool(f'{doors_prefix}/driver', basic_vehicle_status.driver_door)
+        self.publisher.publish_bool(f'{doors_prefix}/passenger', basic_vehicle_status.passenger_door)
+        self.publisher.publish_bool(f'{doors_prefix}/rearLeft', basic_vehicle_status.rear_left_door)
+        self.publisher.publish_bool(f'{doors_prefix}/rearRight', basic_vehicle_status.rear_right_door)
+        self.publisher.publish_bool(f'{doors_prefix}/bonnet', basic_vehicle_status.bonnet_status)
+        self.publisher.publish_bool(f'{doors_prefix}/boot', basic_vehicle_status.boot_status)
+
+        tyres_prefix = f'{self.vehicle_prefix}/tyres'
+        self.publisher.publish_int(f'f{tyres_prefix}/frontLeftPressure', basic_vehicle_status.front_left_tyre_pressure)
+        self.publisher.publish_int(f'f{tyres_prefix}/frontRightPressure',
+                                   basic_vehicle_status.front_right_tyre_pressure)
+        self.publisher.publish_int(f'f{tyres_prefix}/rearLeftPressure', basic_vehicle_status.rear_left_tyre_pressure)
+        self.publisher.publish_int(f'f{tyres_prefix}/rearRightPressure', basic_vehicle_status.rear_right_tyre_pressure)
+
+        lights_prefix = f'{self.vehicle_prefix}/lights'
+        self.publisher.publish_bool(f'{lights_prefix}/mainBeam', basic_vehicle_status.main_beam_status)
+        self.publisher.publish_bool(f'{lights_prefix}/dippedBeam', basic_vehicle_status.dipped_beam_status)
 
         return vehicle_status_response
 
@@ -226,20 +250,22 @@ class VehicleHandler:
 
             chrg_mgmt_data_rsp_msg = self.saic_api.get_charging_status(self.vin_info, chrg_mgmt_body.event_id)
         charge_mgmt_data = cast(OtaChrgMangDataResp, chrg_mgmt_data_rsp_msg.application_data)
-        self.publisher.publish_str(f'{self.vin_info.vin}/current', str(charge_mgmt_data.get_current()))
-        self.publisher.publish_str(f'{self.vin_info.vin}/voltage', str(charge_mgmt_data.get_voltage()))
-        self.publisher.publish_str(f'{self.vin_info.vin}/power', str(charge_mgmt_data.get_power()))
+        drivetrain_prefix = f'{self.vehicle_prefix}/drivetrain'
+        self.publisher.publish_float(f'{drivetrain_prefix}/current', charge_mgmt_data.get_current())
+        self.publisher.publish_float(f'{drivetrain_prefix}/voltage', charge_mgmt_data.get_voltage())
+        self.publisher.publish_float(f'{drivetrain_prefix}/power', charge_mgmt_data.get_power())
+        self.publisher.publish_float(f'{drivetrain_prefix}/soc', charge_mgmt_data.bmsPackSOCDsp / 10.0)
         charge_status = cast(RvsChargingStatus, charge_mgmt_data.chargeStatus)
-        self.publisher.publish_int(f'{self.vin_info.vin}/charge/type', charge_status.charging_type)
+        self.publisher.publish_int(f'{drivetrain_prefix}/chargingType', charge_status.charging_type)
+        self.publisher.publish_bool(f'{drivetrain_prefix}/chargerConnected', charge_status.charging_gun_state)
+
         self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsChrgCtrlDspCmd', charge_mgmt_data.bmsChrgCtrlDspCmd)
         self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsChrgOtptCrntReq',
                                    charge_mgmt_data.bmsChrgOtptCrntReq)
         self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsChrgSts', charge_mgmt_data.bmsChrgSts)
-        self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsPackCrnt', charge_mgmt_data.bmsPackCrnt)
         self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsPackVol', charge_mgmt_data.bmsPackVol)
         self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsPTCHeatReqDspCmd',
                                    charge_mgmt_data.bmsPTCHeatReqDspCmd)
-        self.publisher.publish_str(f'{self.vin_info.vin}/soc', str(charge_mgmt_data.bmsPackSOCDsp / 10.0))
         return charge_mgmt_data
 
 

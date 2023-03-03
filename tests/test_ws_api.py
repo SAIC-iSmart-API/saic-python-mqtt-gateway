@@ -107,7 +107,7 @@ def mock_vehicle_status_response(message_v2_1_coder: MessageCoderV21, uid: str, 
     vehicle_status_response.basic_vehicle_status.driver_door = False
     vehicle_status_response.basic_vehicle_status.passenger_door = False
     vehicle_status_response.basic_vehicle_status.rear_left_door = False
-    vehicle_status_response.basic_vehicle_status.rear_right_Door = False
+    vehicle_status_response.basic_vehicle_status.rear_right_door = False
     vehicle_status_response.basic_vehicle_status.boot_status = True
     vehicle_status_response.basic_vehicle_status.bonnet_status = False
     vehicle_status_response.basic_vehicle_status.lock_status = True

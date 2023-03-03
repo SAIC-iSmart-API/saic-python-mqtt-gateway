@@ -135,7 +135,7 @@ class RvsBasicStatus25857(Asn1Type):
         self.driver_door = None  # BOOLEAN
         self.passenger_door = None  # BOOLEAN
         self.rear_left_door = None  # BOOLEAN
-        self.rear_right_Door = None  # BOOLEAN
+        self.rear_right_door = None  # BOOLEAN
         self.boot_status = None  # BOOLEAN
         self.bonnet_status = None  # BOOLEAN
         self.lock_status = None  # BOOLEAN
@@ -182,7 +182,7 @@ class RvsBasicStatus25857(Asn1Type):
             'driverDoor': self.driver_door,
             'passengerDoor': self.passenger_door,
             'rearLeftDoor': self.rear_left_door,
-            'rearRightDoor': self.rear_right_Door,
+            'rearRightDoor': self.rear_right_door,
             'bootStatus': self.boot_status,
             'bonnetStatus': self.bonnet_status,
             'lockStatus': self.lock_status,
@@ -230,7 +230,7 @@ class RvsBasicStatus25857(Asn1Type):
         self.driver_door = data.get('driverDoor')
         self.passenger_door = data.get('passengerDoor')
         self.rear_left_door = data.get('rearLeftDoor')
-        self.rear_right_Door = data.get('rearRightDoor')
+        self.rear_right_door = data.get('rearRightDoor')
         self.boot_status = data.get('bootStatus')
         self.bonnet_status = data.get('bonnetStatus')
         self.lock_status = data.get('lockStatus')
