@@ -11,7 +11,7 @@ from mqtt_publisher import MqttClient
 from saicapi.publisher import Publisher
 from saicapi.common_model import Configuration
 from saicapi.ota_v1_1.data_model import MpUserLoggingInRsp, VinInfo, MessageListResp, Message
-from saicapi.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857, RvsPosition
+from saicapi.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857, RvsPosition, RvsWayPoint
 from saicapi.ota_v3_0.Message import MessageBodyV30
 from saicapi.ota_v3_0.data_model import OtaChrgMangDataResp, RvsChargingStatus
 from saicapi.ws_api import AbrpApi, SaicApi
@@ -41,17 +41,13 @@ class SaicMessage:
         self.read_status = read_status
         self.vin = vin
 
-    def get_data(self) -> dict:
-        return {
-            'messageId': self.message_id,
-            'messageType': self.message_type,
-            'title': self.title,
-            'messageTime': self.message_time,
-            'sender': self.sender,
-            'content': self.content,
-            'readStatus': self.read_status,
-            'vin': self.vin
-        }
+    def get_read_status_str(self) -> str:
+        if self.read_status is None:
+            return 'unknown'
+        elif self.read_status == 0:
+            return 'unread'
+        else:
+            return 'read'
 
 
 def convert(message: Message) -> SaicMessage:
@@ -79,6 +75,14 @@ class MqttGateway:
         self.saic_api.set_alarm_switches()
 
         for info in user_logging_in_response.vin_list:
+            vin_info = cast(VinInfo, info)
+            info_prefix = f'{self.configuration.mqtt_user}/vehicles/{vin_info.vin}/info'
+            self.publisher.publish_str(f'{info_prefix}/brand', vin_info.brand_name.decode())
+            self.publisher.publish_str(f'{info_prefix}/model', vin_info.model_name.decode())
+            self.publisher.publish_str(f'{info_prefix}/year', vin_info.model_year)
+            self.publisher.publish_str(f'{info_prefix}/series', vin_info.series)
+            self.publisher.publish_str(f'{info_prefix}/color', vin_info.color_name.decode())
+
             vehicle_handler = VehicleHandler(
                 self.configuration,  # Gateway pointer
                 self.saic_api,
@@ -90,7 +94,15 @@ class MqttGateway:
         asyncio.run(main(self.vehicle_handler, message_handler, self.configuration.query_messages_interval * 60))
 
     def notify_message(self, message: SaicMessage):
-        self.publisher.publish_json(f'{message.message_id}', message.get_data())
+        message_prefix = f'{self.configuration.mqtt_user}/vehicles/{message.vin}/info/lastMessage'
+        self.publisher.publish_int(f'{message_prefix}/messageId', message.message_id)
+        self.publisher.publish_str(f'{message_prefix}/messageType', message.message_type)
+        self.publisher.publish_str(f'{message_prefix}/title', message.title)
+        self.publisher.publish_str(f'{message_prefix}/messageTime', message.message_time.strftime("%Y-%m-%d, %H:%M:%S"))
+        self.publisher.publish_str(f'{message_prefix}/sender', message.sender)
+        self.publisher.publish_str(f'{message_prefix}/content', message.content)
+        self.publisher.publish_str(f'{message_prefix}/status', message.get_read_status_str())
+        self.publisher.publish_str(f'{message_prefix}/vin', message.vin)
         if message.vin is not None:
             handler = cast(VehicleHandler, self.vehicle_handler[message.vin])
             handler.notify_message(message)
@@ -105,15 +117,18 @@ class VehicleHandler:
         self.last_car_activity = None
         self.force_update = True
         self.abrp_api = AbrpApi(configuration, vin_info)
+        self.vehicle_prefix = f'{self.configuration.saic_user}/vehicles/{self.vin_info.vin}'
 
     async def handle_vehicle(self) -> None:
-        self.publisher.publish_str(f'{self.vin_info.vin}/configuration/raw', self.vin_info.model_configuration_json_str)
+        self.publisher.publish_str(f'{self.vehicle_prefix}/configuration/raw',
+                                   self.vin_info.model_configuration_json_str)
+        configuration_prefix = f'{self.vehicle_prefix}/configuration'
         for c in self.vin_info.model_configuration_json_str.split(';'):
             property_map = {}
             for e in c.split(','):
                 key_value_pair = e.split(":")
                 property_map[key_value_pair[0]] = key_value_pair[1]
-            self.publisher.publish_str(f'{self.vin_info.vin}/configuration/{property_map["code"]}', property_map["value"])
+            self.publisher.publish_str(f'{configuration_prefix}/{property_map["code"]}', property_map["value"])
         while True:
             if (
                 self.last_car_activity is None
@@ -141,10 +156,9 @@ class VehicleHandler:
             self.last_car_activity = last_activity_time
             last_activity = self.last_car_activity.strftime("%Y-%m-%d, %H:%M:%S")
             self.publisher.publish_str(f'{self.vin_info.vin}/last_activity', last_activity)
-            logging.info(f'last acitvity: {last_activity}')
+            logging.info(f'last activity: {last_activity}')
 
     def notify_message(self, message: SaicMessage):
-        self.publisher.publish_json(f'{self.vin_info.vin}/message', message.get_data())
         # something happened, better check the vehicle state
         self.notify_car_activity(message.message_time)
 
@@ -164,31 +178,39 @@ class VehicleHandler:
 
         vehicle_status_response = cast(OtaRvmVehicleStatusResp25857, vehicle_status_rsp_msg.application_data)
         basic_vehicle_status = vehicle_status_response.get_basic_vehicle_status()
-        self.publisher.publish_bool(f'{self.vin_info.vin}/running', vehicle_status_response.is_engine_running())
-        self.publisher.publish_bool(f'{self.vin_info.vin}/charging', vehicle_status_response.is_charging())
+        drivetrain_prefix = f'{self.vehicle_prefix}/drivetrain'
+        self.publisher.publish_bool(f'{drivetrain_prefix}/running', vehicle_status_response.is_engine_running())
+        self.publisher.publish_bool(f'{drivetrain_prefix}/charging', vehicle_status_response.is_charging())
+        battery_voltage = basic_vehicle_status.battery_voltage / 10.0
+        self.publisher.publish_float(f'{drivetrain_prefix}/auxiliaryBatteryVoltage', battery_voltage)
+        mileage = basic_vehicle_status.mileage / 10.0
+        self.publisher.publish_float(f'{drivetrain_prefix}/mileage', mileage)
+        electric_range = basic_vehicle_status.fuel_range_elec / 10.0
+        self.publisher.publish_float(f'{drivetrain_prefix}/range', electric_range)
 
+        climate_prefix = f'{self.vehicle_prefix}/climate'
         interior_temperature = basic_vehicle_status.interior_temperature
         if interior_temperature > -128:
-            self.publisher.publish_int(f'{self.vin_info.vin}/temperature/interior', interior_temperature)
+            self.publisher.publish_int(f'{climate_prefix}/interiorTemperature', interior_temperature)
         exterior_temperature = basic_vehicle_status.exterior_temperature
         if exterior_temperature > -128:
-            self.publisher.publish_int(f'{self.vin_info.vin}/temperature/exterior', exterior_temperature)
-        battery_voltage = basic_vehicle_status.battery_voltage / 10.0
-        self.publisher.publish_float(f'{self.vin_info.vin}/auxillary_battery', battery_voltage)
+            self.publisher.publish_int(f'{climate_prefix}/exteriorTemperature', exterior_temperature)
+        self.publisher.publish_int(f'{self.vin_info.vin}/remoteClimateState',
+                                   basic_vehicle_status.remote_climate_status)
+        remote_rear_window_defroster_state = basic_vehicle_status.rmt_htd_rr_wnd_st
+        self.publisher.publish_int(f'{climate_prefix}/rearWindowDefrosterHeating', remote_rear_window_defroster_state)
+
+        location_prefix = f'{self.vehicle_prefix}/location'
         gps_position = cast(RvsPosition, vehicle_status_response.gps_position)
-        self.publisher.publish_json(f'{self.vin_info.vin}/gps/json', gps_position.get_data())
-        speed = gps_position.way_point.speed / 10.0
-        self.publisher.publish_float(f'{self.vin_info.vin}/speed', speed)
-        lock_status = basic_vehicle_status.lock_status
-        self.publisher.publish_bool(f'{self.vin_info.vin}/locked', lock_status)
-        remote_climate = basic_vehicle_status.remote_climate_status
-        self.publisher.publish_int(f'{self.vin_info.vin}/remoteClimate', remote_climate)
-        remote_rear_window_heater = basic_vehicle_status.rmt_htd_rr_wnd_st
-        self.publisher.publish_int(f'{self.vin_info.vin}/remoteRearWindowHeater', remote_rear_window_heater)
-        mileage = basic_vehicle_status.mileage / 10.0
-        self.publisher.publish_float(f'{self.vin_info.vin}/mileage', mileage)
-        electric_range = basic_vehicle_status.fuel_range_elec / 10.0
-        self.publisher.publish_float(f'{self.vin_info.vin}/range/electric', electric_range)
+        self.publisher.publish_json(f'{location_prefix}/position', gps_position.get_data())
+        way_point = cast(RvsWayPoint, gps_position.way_point)
+        speed = way_point.speed / 10.0
+        self.publisher.publish_float(f'{location_prefix}/speed', speed)
+        self.publisher.publish_int(f'{location_prefix}/heading', way_point.heading)
+
+        doors_prefix = f'{self.vehicle_prefix}/doors'
+        self.publisher.publish_bool(f'{doors_prefix}/locked', basic_vehicle_status.lock_status)
+
         return vehicle_status_response
 
     def update_charge_status(self) -> OtaChrgMangDataResp:
@@ -263,8 +285,8 @@ def process_arguments() -> Configuration:
         parser.add_argument('--mqtt-password', help='The MQTT password. Environment Variable: MQTT_PASSWORD',
                             default=os.getenv('MQTT_PASSWORD'), dest='mqtt_password', required=False)
         parser.add_argument('--mqtt-topic-prefix', help='MQTT topic prefix. Environment Variable: MQTT_TOPIC'
-                                                        + 'Default is saic/vehicle',
-                            default=os.getenv('MQTT_TOPIC', 'saic/vehicle'), dest='mqtt_topic', required=False)
+                                                        + 'Default is saic',
+                            default=os.getenv('MQTT_TOPIC', 'saic'), dest='mqtt_topic', required=False)
         parser.add_argument('-s', '--saic-uri', help='The SAIC uri. Environment Variable: SAIC_URI Default is the'
                                                      + ' European Production Endpoint: https://tap-eu.soimt.com',
                             default=os.getenv('SAIC_URI', 'https://tap-eu.soimt.com'), dest='saic_uri', required=False)
