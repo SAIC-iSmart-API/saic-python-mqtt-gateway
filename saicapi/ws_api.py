@@ -91,9 +91,8 @@ class SaicApi:
         login_request_message = MessageV11(header, MessageBodyV11(), application_data)
         application_id = '501'
         application_data_protocol_version = 513
-        self.uid = UID_INIT[len(self.configuration.saic_user):] + self.configuration.saic_user
         self.message_v1_1_coder.initialize_message(
-            self.uid,
+            UID_INIT[len(self.configuration.saic_user):] + self.configuration.saic_user,
             cast(str, None),
             application_id,
             application_data_protocol_version,
@@ -112,6 +111,7 @@ class SaicApi:
         if login_response_message.body.error_message is not None:
             raise SystemExit(login_response_message.body.error_message.decode())
         else:
+            self.uid = login_response_message.body.uid
             self.token = logging_in_rsp.token
             if logging_in_rsp.token_expiration is not None:
                 self.token_expiration = logging_in_rsp.token_expiration

@@ -62,12 +62,12 @@ class MqttClient(Publisher):
 
     def publish_int(self, key: str, value: int) -> None:
         msg = mqtt.MQTTMessage(topic=self.get_topic(key))
-        msg.payload = bytes(value)
+        msg.payload = value
         self.publish(msg)
 
     def publish_bool(self, key: str, value: bool) -> None:
         msg = mqtt.MQTTMessage(topic=self.get_topic(key))
-        msg.payload = bytes(value)
+        msg.payload = value
         self.publish(msg)
 
     def publish_float(self, key: str, value: float) -> None:

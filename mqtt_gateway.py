@@ -9,7 +9,7 @@ from typing import cast
 
 from mqtt_publisher import MqttClient
 from saicapi.publisher import Publisher
-from saicapi.common_model import Configuration
+from saicapi.common_model import Configuration, AbstractMessageBody
 from saicapi.ota_v1_1.data_model import MpUserLoggingInRsp, VinInfo, MessageListResp, Message
 from saicapi.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857, RvsPosition, RvsWayPoint
 from saicapi.ota_v3_0.Message import MessageBodyV30
@@ -164,13 +164,15 @@ class VehicleHandler:
 
     def update_vehicle_status(self) -> OtaRvmVehicleStatusResp25857:
         vehicle_status_rsp_msg = self.saic_api.get_vehicle_status(self.vin_info)
+        iteration = 0
         while vehicle_status_rsp_msg.application_data is None:
             if vehicle_status_rsp_msg.body.error_message is not None:
-                if vehicle_status_rsp_msg.body.result == 2:
-                    print('you have to login again\n')
-                    # TODO re-login
-                # try again next time
-                return cast(OtaRvmVehicleStatusResp25857, None)
+                self.handle_error(vehicle_status_rsp_msg.body, iteration)
+            else:
+                waiting_time = iteration * 1
+                logging.debug(f'Update vehicle status request returned no application data. Waiting {waiting_time} seconds')
+                time.sleep(float(waiting_time))
+                iteration += 1
 
             # we have received an eventId back...
             vehicle_status_rsp_msg = self.saic_api.get_vehicle_status(self.vin_info,
@@ -239,14 +241,17 @@ class VehicleHandler:
 
     def update_charge_status(self) -> OtaChrgMangDataResp:
         chrg_mgmt_data_rsp_msg = self.saic_api.get_charging_status(self.vin_info)
+        iteration = 0
         while chrg_mgmt_data_rsp_msg.application_data is None:
             chrg_mgmt_body = cast(MessageBodyV30, chrg_mgmt_data_rsp_msg.body)
             if chrg_mgmt_body.error_message_present():
-                if chrg_mgmt_body.result == 2:
-                    print('you have to login again\n')
-                    # TODO re-login
-                # try again next time
-                return cast(OtaChrgMangDataResp, None)
+                self.handle_error(chrg_mgmt_body, iteration)
+            else:
+                waiting_time = iteration * 1
+                logging.debug(
+                    f'Update charge status request returned no application data. Waiting {waiting_time} seconds')
+                time.sleep(float(waiting_time))
+                iteration += 1
 
             chrg_mgmt_data_rsp_msg = self.saic_api.get_charging_status(self.vin_info, chrg_mgmt_body.event_id)
         charge_mgmt_data = cast(OtaChrgMangDataResp, chrg_mgmt_data_rsp_msg.application_data)
@@ -267,6 +272,19 @@ class VehicleHandler:
         self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsPTCHeatReqDspCmd',
                                    charge_mgmt_data.bmsPTCHeatReqDspCmd)
         return charge_mgmt_data
+
+    def handle_error(self, message_body: AbstractMessageBody, iteration: int):
+        logging.error(message_body.error_message.decode())
+        if message_body.result == 2:
+            # re-login
+            self.saic_api.login()
+        elif message_body.result == 4:
+            # please try again later
+            waiting_time = iteration * 60
+            time.sleep(float(waiting_time))
+        # try again next time
+        else:
+            SystemExit(f'Error: {message_body.error_message.decode()}, code: {message_body.result}')
 
 
 class MessageHandler:

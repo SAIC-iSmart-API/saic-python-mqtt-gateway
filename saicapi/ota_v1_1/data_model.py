@@ -162,7 +162,8 @@ class MpUserLoggingInRsp(ApplicationData):
         }
         self.add_optional_field_to_data(data, FIELD_TOKEN, self.token)
         self.add_optional_field_to_data(data, FIELD_REFRESH_TOKEN, self.refresh_token)
-        self.add_optional_field_to_data(data, FIELD_TOKEN_EXPIRATION, self.token_expiration)
+        if self.token_expiration is not None:
+            data[FIELD_TOKEN_EXPIRATION] = self.token_expiration.get_data()
         if self.vin_list is not None:
             vin_list = []
             for item in self.vin_list:
@@ -178,7 +179,7 @@ class MpUserLoggingInRsp(ApplicationData):
         self.refresh_token = data.get(FIELD_REFRESH_TOKEN)
         if FIELD_TOKEN_EXPIRATION in data:
             self.token_expiration = Timestamp()
-            self.token_expiration = data.get(FIELD_TOKEN_EXPIRATION)
+            self.token_expiration.init_from_dict(data.get(FIELD_TOKEN_EXPIRATION))
         if FIELD_VIN_LIST in data:
             vin_list = data.get(FIELD_VIN_LIST)
             for item in vin_list:
