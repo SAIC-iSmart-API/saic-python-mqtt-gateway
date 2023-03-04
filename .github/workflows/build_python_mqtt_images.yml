@@ -53,8 +53,8 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           builder: ${{ steps.buildx.outputs.name }}
-          context: .
-          file: ./Dockerfile
+          context: ./saic-python-mqtt-gateway
+          file: ./saic-python-mqtt-gateway/Dockerfile
           platforms: linux/amd64,linux/arm/v7
           push: true
           tags: ${{ steps.prep.outputs.tags}}
