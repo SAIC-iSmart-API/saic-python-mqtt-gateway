@@ -1,0 +1,12 @@
+version: "3.1"
+
+services:
+  saic-mqtt-gateway:
+    image: "saic-mqtt-gateway:latest"
+    container_name: "saic-mqtt-gateway"
+    environment:
+      - MQTT_URI=${MQTT_BROKER_URI}
+      - MQTT_USER=${MQTT_USERNAME}
+      - MQTT_PASSWORD=${MQTT_PWD}
+      - SAIC_USER=${SAIC_USERNAME}
+      - SAIC_PASSWORD=${SAIC_PWD}
