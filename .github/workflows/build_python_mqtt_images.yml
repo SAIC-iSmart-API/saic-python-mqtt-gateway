@@ -9,8 +9,8 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - name: Prepare
-        id: Prepare
+      - name: Docker meta
+        id: meta
         run: |
           DOCKER_IMAGE=${{secrets.DOCKER_USERNAME}}/${GITHUB_REPOSITORY#*/}
           VERSION=latest
@@ -57,4 +57,4 @@ jobs:
           file: ./saic-python-mqtt-gateway/Dockerfile
           platforms: linux/amd64,linux/arm/v7
           push: true
-          tags: ${{ steps.prep.outputs.tags}}
+          tags: ${{ steps.meta.outputs.tags}}
