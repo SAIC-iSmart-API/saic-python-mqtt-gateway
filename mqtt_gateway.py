@@ -76,7 +76,7 @@ class MqttGateway:
 
         for info in user_logging_in_response.vin_list:
             vin_info = cast(VinInfo, info)
-            info_prefix = f'{self.configuration.mqtt_user}/vehicles/{vin_info.vin}/info'
+            info_prefix = f'{self.configuration.saic_user}/vehicles/{vin_info.vin}/info'
             self.publisher.publish_str(f'{info_prefix}/brand', vin_info.brand_name.decode())
             self.publisher.publish_str(f'{info_prefix}/model', vin_info.model_name.decode())
             self.publisher.publish_str(f'{info_prefix}/year', vin_info.model_year)
