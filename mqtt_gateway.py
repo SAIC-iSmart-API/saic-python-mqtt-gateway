@@ -301,6 +301,19 @@ class MessageHandler:
                 self.gateway.notify_message(convert(message))
 
 
+class EnvDefault(argparse.Action):
+    def __init__(self, envvar, required=True, default=None, **kwargs):
+        if not default and envvar:
+            if envvar in os.environ:
+                default = os.environ[envvar]
+        if required and default:
+            required = False
+        super(EnvDefault, self).__init__(default=default, required=required, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, values)
+
+
 async def main(vh_map: dict, message_handler: MessageHandler, query_messages_interval: int):
     tasks = []
     for key in vh_map:
@@ -323,33 +336,34 @@ def process_arguments() -> Configuration:
         parser.add_argument('-m', '--mqtt-uri', help='The URI to the MQTT Server. Environment Variable: MQTT_URI,'
                                                      + 'TCP: tcp://mqtt.eclipseprojects.io:1883 '
                                                      + 'WebSocket: ws://mqtt.eclipseprojects.io:9001',
-                            default=os.getenv('MQTT_URI'), dest='mqtt_uri', required=True)
+                            dest='mqtt_uri', required=True, action=EnvDefault, envvar='MQTT_URI')
         parser.add_argument('--mqtt-user', help='The MQTT user name. Environment Variable: MQTT_USER',
-                            default=os.getenv('MQTT_USER'), dest='mqtt_user', required=False)
+                            dest='mqtt_user', required=False, action=EnvDefault, envvar='MQTT_USER')
         parser.add_argument('--mqtt-password', help='The MQTT password. Environment Variable: MQTT_PASSWORD',
-                            default=os.getenv('MQTT_PASSWORD'), dest='mqtt_password', required=False)
+                            dest='mqtt_password', required=False, action=EnvDefault, envvar='MQTT_PASSWORD')
         parser.add_argument('--mqtt-topic-prefix', help='MQTT topic prefix. Environment Variable: MQTT_TOPIC'
-                                                        + 'Default is saic',
-                            default=os.getenv('MQTT_TOPIC', 'saic'), dest='mqtt_topic', required=False)
+                                                        + 'Default is saic', default='saic', dest='mqtt_topic',
+                            required=False, action=EnvDefault, envvar='MQTT_TOPIC')
         parser.add_argument('-s', '--saic-uri', help='The SAIC uri. Environment Variable: SAIC_URI Default is the'
                                                      + ' European Production Endpoint: https://tap-eu.soimt.com',
-                            default=os.getenv('SAIC_URI', 'https://tap-eu.soimt.com'), dest='saic_uri', required=False)
+                            default='https://tap-eu.soimt.com', dest='saic_uri', required=False, action=EnvDefault,
+                            envvar='SAIC_URI')
         parser.add_argument('-u', '--saic-user',
-                            help='The SAIC user name. Environment Variable: SAIC_USER', default=os.getenv('SAIC_USER'),
-                            dest='saic_user', required=True)
+                            help='The SAIC user name. Environment Variable: SAIC_USER', dest='saic_user', required=True,
+                            action=EnvDefault, envvar='SAIC_USER')
         parser.add_argument('-p', '--saic-password', help='The SAIC password. Environment Variable: SAIC_PASSWORD',
-                            default=os.getenv('SAIC_PASSWORD'), dest='saic_password', required=True)
+                            dest='saic_password', required=True, action=EnvDefault, envvar='SAIC_PASSWORD')
         parser.add_argument('--abrp-api-key', help='The API key for the A Better Route Planer telemetry API.'
                                                    + ' Default is the open source telemetry'
                                                    + ' API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.'
                                                    + ' Environment Variable: ABRP_API_KEY',
-                            default=os.getenv('ABRP_API_KEY', '8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d'),
-                            dest='abrp_api_key', required=False)
+                            default='8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d', dest='abrp_api_key', required=False,
+                            action=EnvDefault, envvar='ABRP_API_KEY')
         parser.add_argument('--abrp-user-token', help='The mapping of VIN to ABRP User Token.'
                                                       + ' Multiple mappings can be provided seperated by ,'
                                                       + ' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl,'
                                                       + ' Environment Variable: ABRP_USER_TOKEN',
-                            default=os.getenv('ABRP_USER_TOKEN'), dest='abrp_user_token', required=False)
+                            dest='abrp_user_token', required=False, action=EnvDefault, envvar='ABRP_USER_TOKEN')
         args = parser.parse_args()
         config.mqtt_user = args.mqtt_user
         config.mqtt_password = args.mqtt_password
