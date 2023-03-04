@@ -28,6 +28,6 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: ./saic-python-mqtt-gateway
-          file: ./saic-python-mqtt-gateway/Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: tosate/saic-mqtt-gateway:latest
