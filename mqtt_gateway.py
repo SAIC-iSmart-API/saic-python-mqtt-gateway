@@ -372,8 +372,8 @@ def process_arguments() -> Configuration:
                                                       + ' Environment Variable: ABRP_USER_TOKEN',
                             dest='abrp_user_token', required=False, action=EnvDefault, envvar='ABRP_USER_TOKEN')
         parser.add_argument('--openwb-soc-topic', help='Topic for publishing SoC top openWB.'
-                                                       +' Environment Variable: OPENWB_TOPIC.'
-                                                       +' Default: openWB/set/lp/1/%Soc', dest='openwb_topic',
+                                                       + ' Environment Variable: OPENWB_TOPIC.'
+                                                       + ' Default: openWB/set/lp/1/%Soc', dest='openwb_topic',
                             default='openWB/set/lp/1/%Soc', required=False, action=EnvDefault, envvar='OPENWB_TOPIC')
         args = parser.parse_args()
         config.mqtt_user = args.mqtt_user
