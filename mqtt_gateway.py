@@ -11,7 +11,7 @@ from mqtt_publisher import MqttClient
 from saicapi.publisher import Publisher
 from saicapi.common_model import Configuration, AbstractMessageBody
 from saicapi.ota_v1_1.data_model import MpUserLoggingInRsp, VinInfo, MessageListResp, Message
-from saicapi.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857, RvsPosition, RvsWayPoint
+from saicapi.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857, RvsPosition, RvsWayPoint, RvsWgs84Point
 from saicapi.ota_v3_0.Message import MessageBodyV30
 from saicapi.ota_v3_0.data_model import OtaChrgMangDataResp, RvsChargingStatus
 from saicapi.ws_api import AbrpApi, SaicApi
@@ -204,18 +204,21 @@ class VehicleHandler:
 
         location_prefix = f'{self.vehicle_prefix}/location'
         gps_position = cast(RvsPosition, vehicle_status_response.gps_position)
-        self.publisher.publish_json(f'{location_prefix}/position', gps_position.get_data())
         way_point = cast(RvsWayPoint, gps_position.way_point)
         speed = way_point.speed / 10.0
         self.publisher.publish_float(f'{location_prefix}/speed', speed)
         self.publisher.publish_int(f'{location_prefix}/heading', way_point.heading)
+        position = cast(RvsWgs84Point, way_point.position)
+        self.publisher.publish_int(f'{location_prefix}/latitude', position.latitude)
+        self.publisher.publish_int(f'{location_prefix}/longitude', position.longitude)
+        self.publisher.publish_int(f'{location_prefix}/elevation', position.altitude)
 
-        doors_prefix = f'{self.vehicle_prefix}/doors'
-        self.publisher.publish_bool(f'{doors_prefix}/driver', basic_vehicle_status.driver_window)
-        self.publisher.publish_bool(f'{doors_prefix}/passenger', basic_vehicle_status.passenger_window)
-        self.publisher.publish_bool(f'{doors_prefix}/rearLeft', basic_vehicle_status.rear_left_window)
-        self.publisher.publish_bool(f'{doors_prefix}/rearRight', basic_vehicle_status.rear_right_window)
-        self.publisher.publish_bool(f'{doors_prefix}/sunRoof', basic_vehicle_status.sun_roof_status)
+        windows_prefix = f'{self.vehicle_prefix}/windows'
+        self.publisher.publish_bool(f'{windows_prefix}/driver', basic_vehicle_status.driver_window)
+        self.publisher.publish_bool(f'{windows_prefix}/passenger', basic_vehicle_status.passenger_window)
+        self.publisher.publish_bool(f'{windows_prefix}/rearLeft', basic_vehicle_status.rear_left_window)
+        self.publisher.publish_bool(f'{windows_prefix}/rearRight', basic_vehicle_status.rear_right_window)
+        self.publisher.publish_bool(f'{windows_prefix}/sunRoof', basic_vehicle_status.sun_roof_status)
 
         doors_prefix = f'{self.vehicle_prefix}/doors'
         self.publisher.publish_bool(f'{doors_prefix}/locked', basic_vehicle_status.lock_status)
