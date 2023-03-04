@@ -209,9 +209,9 @@ class VehicleHandler:
         self.publisher.publish_float(f'{location_prefix}/speed', speed)
         self.publisher.publish_int(f'{location_prefix}/heading', way_point.heading)
         position = cast(RvsWgs84Point, way_point.position)
-        latitude = position.latitude / 10.0
+        latitude = position.latitude / 1000000.0
         self.publisher.publish_float(f'{location_prefix}/latitude', latitude)
-        longitude = position.longitude / 10.0
+        longitude = position.longitude / 1000000.0
         self.publisher.publish_float(f'{location_prefix}/longitude', longitude)
         self.publisher.publish_int(f'{location_prefix}/elevation', position.altitude)
 
