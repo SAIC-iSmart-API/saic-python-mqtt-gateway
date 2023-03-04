@@ -56,6 +56,7 @@ class Configuration:
         self.mqtt_user = ''
         self.mqtt_password = ''
         self.mqtt_topic = ''
+        self.openwb_topic = ''
         self.anonymized_publishing = False
         self.query_vehicle_status_interval = 15  # in minutes
         self.query_messages_interval = 5  # in minutes

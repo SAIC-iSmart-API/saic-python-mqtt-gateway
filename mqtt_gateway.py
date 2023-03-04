@@ -209,8 +209,10 @@ class VehicleHandler:
         self.publisher.publish_float(f'{location_prefix}/speed', speed)
         self.publisher.publish_int(f'{location_prefix}/heading', way_point.heading)
         position = cast(RvsWgs84Point, way_point.position)
-        self.publisher.publish_int(f'{location_prefix}/latitude', position.latitude)
-        self.publisher.publish_int(f'{location_prefix}/longitude', position.longitude)
+        latitude = position.latitude / 10.0
+        self.publisher.publish_float(f'{location_prefix}/latitude', latitude)
+        longitude = position.longitude / 10.0
+        self.publisher.publish_float(f'{location_prefix}/longitude', longitude)
         self.publisher.publish_int(f'{location_prefix}/elevation', position.altitude)
 
         windows_prefix = f'{self.vehicle_prefix}/windows'
@@ -262,7 +264,9 @@ class VehicleHandler:
         self.publisher.publish_float(f'{drivetrain_prefix}/current', charge_mgmt_data.get_current())
         self.publisher.publish_float(f'{drivetrain_prefix}/voltage', charge_mgmt_data.get_voltage())
         self.publisher.publish_float(f'{drivetrain_prefix}/power', charge_mgmt_data.get_power())
-        self.publisher.publish_float(f'{drivetrain_prefix}/soc', charge_mgmt_data.bmsPackSOCDsp / 10.0)
+        soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
+        self.publisher.publish_float(f'{drivetrain_prefix}/soc', soc)
+        self.publisher.publish_int(self.configuration.openwb_topic, int(soc))
         charge_status = cast(RvsChargingStatus, charge_mgmt_data.chargeStatus)
         self.publisher.publish_int(f'{drivetrain_prefix}/chargingType', charge_status.charging_type)
         self.publisher.publish_bool(f'{drivetrain_prefix}/chargerConnected', charge_status.charging_gun_state)
@@ -367,6 +371,10 @@ def process_arguments() -> Configuration:
                                                       + ' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl,'
                                                       + ' Environment Variable: ABRP_USER_TOKEN',
                             dest='abrp_user_token', required=False, action=EnvDefault, envvar='ABRP_USER_TOKEN')
+        parser.add_argument('--openwb-soc-topic', help='Topic for publishing SoC top openWB.'
+                                                       +' Environment Variable: OPENWB_TOPIC.'
+                                                       +' Default: openWB/set/lp/1/%Soc', dest='openwb_topic',
+                            default='openWB/set/lp/1/%Soc', required=False, action=EnvDefault, envvar='OPENWB_TOPIC')
         args = parser.parse_args()
         config.mqtt_user = args.mqtt_user
         config.mqtt_password = args.mqtt_password
@@ -375,6 +383,7 @@ def process_arguments() -> Configuration:
         config.saic_user = args.saic_user
         config.saic_password = args.saic_password
         config.abrp_api_key = args.abrp_api_key
+        config.openwb_topic = args.openwb_topic
         if args.abrp_user_token:
             map_entries = args.abrp_user_token.split(',')
             for entry in map_entries:
