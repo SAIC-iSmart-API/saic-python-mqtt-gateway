@@ -2,7 +2,7 @@ version: "3.1"
 
 services:
   saic-mqtt-gateway:
-    image: "saic-mqtt-gateway:latest"
+    image: "tosate/saic-mqtt-gateway:latest"
     container_name: "saic-mqtt-gateway"
     environment:
       - MQTT_URI=${MQTT_BROKER_URI}
