@@ -107,7 +107,7 @@ class MqttGateway:
         asyncio.run(main(self.vehicle_handler, message_handler, self.configuration.query_messages_interval * 60))
 
     def notify_message(self, message: SaicMessage):
-        message_prefix = f'{self.configuration.mqtt_user}/vehicles/{message.vin}/info/lastMessage'
+        message_prefix = f'{self.configuration.saic_user}/vehicles/{message.vin}/info/lastMessage'
         self.publisher.publish_int(f'{message_prefix}/messageId', message.message_id)
         self.publisher.publish_str(f'{message_prefix}/messageType', message.message_type)
         self.publisher.publish_str(f'{message_prefix}/title', message.title)
