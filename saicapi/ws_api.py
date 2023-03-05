@@ -203,7 +203,7 @@ class SaicApi:
         header.protocol_version = 18
         message_body = MessageBodyV11()
         message_list_req_msg = MessageV11(header, message_body, message_list_request)
-        application_id = '513'
+        application_id = '531'
         application_data_protocol_version = 513
         self.message_v1_1_coder.initialize_message(self.uid, self.get_token(), '513', 513, 1, message_list_req_msg)
         self.publish_json_value(application_id, application_data_protocol_version, message_list_req_msg.get_data())
