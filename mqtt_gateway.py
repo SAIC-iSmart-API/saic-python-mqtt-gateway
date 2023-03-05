@@ -318,7 +318,16 @@ class MessageHandler:
             message_list_rsp_msg = self.saicapi.get_message_list(message_list_rsp_msg.body.event_id)
 
         message_list_rsp = cast(MessageListResp, message_list_rsp_msg.application_data)
+        latest_message = None
+        latest_timestamp = None
         for message in message_list_rsp.messages:
+            if latest_timestamp is None:
+                latest_timestamp = message.message_time.get_timestamp()
+                latest_message = message
+            elif latest_timestamp < message.message_time.get_timestamp():
+                latest_timestamp = message.message_time.get_timestamp()
+                latest_message = message
+        if latest_message is not None:
             self.gateway.notify_message(convert(message))
 
 
