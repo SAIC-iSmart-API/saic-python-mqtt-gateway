@@ -199,8 +199,9 @@ class VehicleHandler:
         self.publisher.publish_bool(f'{drivetrain_prefix}/charging', vehicle_status_response.is_charging())
         battery_voltage = basic_vehicle_status.battery_voltage / 10.0
         self.publisher.publish_float(f'{drivetrain_prefix}/auxiliaryBatteryVoltage', battery_voltage)
-        mileage = basic_vehicle_status.mileage / 10.0
-        self.publisher.publish_float(f'{drivetrain_prefix}/mileage', mileage)
+        if basic_vehicle_status.mileage > 0:
+            mileage = basic_vehicle_status.mileage / 10.0
+            self.publisher.publish_float(f'{drivetrain_prefix}/mileage', mileage)
         electric_range = basic_vehicle_status.fuel_range_elec / 10.0
         self.publisher.publish_float(f'{drivetrain_prefix}/range', electric_range)
 
@@ -223,10 +224,12 @@ class VehicleHandler:
         self.publisher.publish_float(f'{location_prefix}/speed', speed)
         self.publisher.publish_int(f'{location_prefix}/heading', way_point.heading)
         position = cast(RvsWgs84Point, way_point.position)
-        latitude = position.latitude / 1000000.0
-        self.publisher.publish_float(f'{location_prefix}/latitude', latitude)
-        longitude = position.longitude / 1000000.0
-        self.publisher.publish_float(f'{location_prefix}/longitude', longitude)
+        if position.latitude > 0:
+            latitude = position.latitude / 1000000.0
+            self.publisher.publish_float(f'{location_prefix}/latitude', latitude)
+        if position.longitude > 0:
+            longitude = position.longitude / 1000000.0
+            self.publisher.publish_float(f'{location_prefix}/longitude', longitude)
         self.publisher.publish_int(f'{location_prefix}/elevation', position.altitude)
 
         windows_prefix = f'{self.vehicle_prefix}/windows'
