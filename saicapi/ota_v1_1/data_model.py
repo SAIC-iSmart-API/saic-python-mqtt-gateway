@@ -355,7 +355,7 @@ class Message(Asn1Type):
         self.title = data.get(FIELD_TITLE)
         self.message_time = Timestamp()
         self.message_time.init_from_dict(data.get(FIELD_MESSAGE_TIME))
-        self.sender = FIELD_SENDER
+        self.sender = data.get(FIELD_SENDER)
         if FIELD_CONTENT_ID in data:
             self.content_id_list = []
             for item in data.get(FIELD_CONTENT_ID):
