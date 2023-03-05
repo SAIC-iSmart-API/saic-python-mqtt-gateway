@@ -328,7 +328,7 @@ class MessageHandler:
                 latest_timestamp = message.message_time.get_timestamp()
                 latest_message = message
         if latest_message is not None:
-            self.gateway.notify_message(convert(message))
+            self.gateway.notify_message(convert(latest_message))
 
 
 class EnvDefault(argparse.Action):
