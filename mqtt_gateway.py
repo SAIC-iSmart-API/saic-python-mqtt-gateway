@@ -30,8 +30,8 @@ logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
 
 class SaicMessage:
-    def __init__(self, message_id: int, message_type: str, title: str, message_time, sender: str, content: str,
-                 read_status: int, vin: str):
+    def __init__(self, message_id: int, message_type: str, title: str, message_time: datetime, sender: str,
+                 content: str, read_status: int, vin: str):
         self.message_id = message_id
         self.message_type = message_type
         self.title = title
@@ -56,8 +56,7 @@ def convert(message: Message) -> SaicMessage:
     else:
         content = None
     return SaicMessage(message.message_id, message.message_type, message.title.decode(),
-                       datetime.datetime.fromtimestamp(message.message_time), message.sender.decode(), content,
-                       message.read_status, message.vin)
+                       message.message_time.get_timestamp(), message.sender, content, message.read_status, message.vin)
 
 
 def handle_error(saic_api: SaicApi, message_body: AbstractMessageBody, iteration: int):
@@ -114,7 +113,8 @@ class MqttGateway:
         self.publisher.publish_str(f'{message_prefix}/title', message.title)
         self.publisher.publish_str(f'{message_prefix}/messageTime', message.message_time.strftime("%Y-%m-%d, %H:%M:%S"))
         self.publisher.publish_str(f'{message_prefix}/sender', message.sender)
-        self.publisher.publish_str(f'{message_prefix}/content', message.content)
+        if message.content is not None:
+            self.publisher.publish_str(f'{message_prefix}/content', message.content)
         self.publisher.publish_str(f'{message_prefix}/status', message.get_read_status_str())
         self.publisher.publish_str(f'{message_prefix}/vin', message.vin)
         if message.vin is not None:
