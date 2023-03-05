@@ -156,8 +156,8 @@ class SaicApi:
         vehicle_status_req_msg = MessageV2(MessageBodyV2(), vehicle_status_req)
         application_id = '511'
         application_data_protocol_version = 25857
-        self.message_V2_1_coder.initialize_message(self.uid, self.get_token(), vin_info.vin, "511", 25857, 1,
-                                                   vehicle_status_req_msg)
+        self.message_V2_1_coder.initialize_message(self.uid, self.get_token(), vin_info.vin, application_id,
+                                                   application_data_protocol_version, 1, vehicle_status_req_msg)
         if event_id is not None:
             vehicle_status_req_msg.body.event_id = event_id
         self.publish_json_value(application_id, application_data_protocol_version, vehicle_status_req_msg.get_data())
@@ -176,8 +176,8 @@ class SaicApi:
         chrg_mgmt_data_req_msg = MessageV30(MessageBodyV30())
         application_id = '516'
         application_data_protocol_version = 768
-        self.message_V3_0_coder.initialize_message(self.uid, self.get_token(), vin_info.vin, '516', 768, 5,
-                                                   chrg_mgmt_data_req_msg)
+        self.message_V3_0_coder.initialize_message(self.uid, self.get_token(), vin_info.vin, application_id,
+                                                   application_data_protocol_version, 5, chrg_mgmt_data_req_msg)
         if event_id is not None:
             chrg_mgmt_data_req_msg.body.event_id = event_id
         self.publish_json_value(application_id, application_data_protocol_version, chrg_mgmt_data_req_msg.get_data())
@@ -192,7 +192,7 @@ class SaicApi:
         self.publish_json_value(application_id, application_data_protocol_version, chrg_mgmt_data_rsp_msg.get_data())
         return chrg_mgmt_data_rsp_msg
 
-    def get_message_list(self) -> MessageV11:
+    def get_message_list(self, event_id: str = None) -> MessageV11:
         message_list_request = MessageListReq()
         message_list_request.start_end_number = StartEndNumber()
         message_list_request.start_end_number.start_number = 1
@@ -205,7 +205,11 @@ class SaicApi:
         message_list_req_msg = MessageV11(header, message_body, message_list_request)
         application_id = '531'
         application_data_protocol_version = 513
-        self.message_v1_1_coder.initialize_message(self.uid, self.get_token(), '513', 513, 1, message_list_req_msg)
+        self.message_v1_1_coder.initialize_message(self.uid, self.get_token(), application_id,
+                                                   application_data_protocol_version, 1, message_list_req_msg)
+        if event_id is not None:
+            message_body.event_id = event_id
+        message_list_req_msg.header.protocol_version = 18
         self.publish_json_value(application_id, application_data_protocol_version, message_list_req_msg.get_data())
         message_list_req_hex = self.message_v1_1_coder.encode_request(message_list_req_msg)
         self.publish_raw_value(application_id, application_data_protocol_version, message_list_req_hex)

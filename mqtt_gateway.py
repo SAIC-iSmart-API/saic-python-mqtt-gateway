@@ -60,6 +60,20 @@ def convert(message: Message) -> SaicMessage:
                        message.read_status, message.vin)
 
 
+def handle_error(saic_api: SaicApi, message_body: AbstractMessageBody, iteration: int):
+    logging.error(message_body.error_message.decode())
+    if message_body.result == 2:
+        # re-login
+        saic_api.login()
+    elif message_body.result == 4:
+        # please try again later
+        waiting_time = iteration * 60
+        time.sleep(float(waiting_time))
+    # try again next time
+    else:
+        SystemExit(f'Error: {message_body.error_message.decode()}, code: {message_body.result}')
+
+
 class MqttGateway:
     def __init__(self, config: Configuration):
         self.configuration = config
@@ -167,7 +181,7 @@ class VehicleHandler:
         iteration = 0
         while vehicle_status_rsp_msg.application_data is None:
             if vehicle_status_rsp_msg.body.error_message is not None:
-                self.handle_error(vehicle_status_rsp_msg.body, iteration)
+                handle_error(self.saic_api, vehicle_status_rsp_msg.body, iteration)
             else:
                 waiting_time = iteration * 1
                 logging.debug(f'Update vehicle status request returned no application data. Waiting {waiting_time} seconds')
@@ -250,7 +264,7 @@ class VehicleHandler:
         while chrg_mgmt_data_rsp_msg.application_data is None:
             chrg_mgmt_body = cast(MessageBodyV30, chrg_mgmt_data_rsp_msg.body)
             if chrg_mgmt_body.error_message_present():
-                self.handle_error(chrg_mgmt_body, iteration)
+                handle_error(self.saic_api, chrg_mgmt_body, iteration)
             else:
                 waiting_time = iteration * 1
                 logging.debug(
@@ -280,19 +294,6 @@ class VehicleHandler:
                                    charge_mgmt_data.bmsPTCHeatReqDspCmd)
         return charge_mgmt_data
 
-    def handle_error(self, message_body: AbstractMessageBody, iteration: int):
-        logging.error(message_body.error_message.decode())
-        if message_body.result == 2:
-            # re-login
-            self.saic_api.login()
-        elif message_body.result == 4:
-            # please try again later
-            waiting_time = iteration * 60
-            time.sleep(float(waiting_time))
-        # try again next time
-        else:
-            SystemExit(f'Error: {message_body.error_message.decode()}, code: {message_body.result}')
-
 
 class MessageHandler:
     def __init__(self, gateway: MqttGateway, saicapi: SaicApi):
@@ -302,10 +303,23 @@ class MessageHandler:
     def polling(self):
         message_list_rsp_msg = self.saicapi.get_message_list()
 
-        if message_list_rsp_msg.application_data is not None:
-            message_list_rsp = cast(MessageListResp, message_list_rsp_msg.application_data)
-            for message in message_list_rsp.messages:
-                self.gateway.notify_message(convert(message))
+        iteration = 0
+        while message_list_rsp_msg.application_data is None:
+            if message_list_rsp_msg.body.error_message is not None:
+                handle_error(self.saicapi, message_list_rsp_msg.body, iteration)
+            else:
+                waiting_time = iteration * 1
+                logging.debug(
+                    f'Update message list request returned no application data. Waiting {waiting_time} seconds')
+                time.sleep(float(waiting_time))
+                iteration += 1
+
+            # we have received an eventId back...
+            message_list_rsp_msg = self.saicapi.get_message_list(message_list_rsp_msg.body.event_id)
+
+        message_list_rsp = cast(MessageListResp, message_list_rsp_msg.application_data)
+        for message in message_list_rsp.messages:
+            self.gateway.notify_message(convert(message))
 
 
 class EnvDefault(argparse.Action):

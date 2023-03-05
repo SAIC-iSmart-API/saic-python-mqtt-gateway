@@ -335,14 +335,15 @@ class Message(Asn1Type):
         data = {
             FIELD_MESSAGE_ID: self.message_id,
             FIELD_MESSAGE_TYPE: self.message_type,
-            FIELD_TITLE: self.title,
-            FIELD_MESSAGE_TIME: self.message_time,
+            FIELD_TITLE: self.title.decode(),
+            FIELD_MESSAGE_TIME: self.message_time.get_data(),
             FIELD_SENDER: self.sender
         }
-        content_id_list = []
-        for item in self.content_id_list:
-            content_id_list.append(item.get_data())
-        self.add_optional_field_to_data(data, FIELD_CONTENT_ID_LIST, content_id_list)
+        if self.content_id_list is not None:
+            content_id_list = []
+            for item in self.content_id_list:
+                content_id_list.append(item.get_data())
+            data[FIELD_CONTENT_ID] = content_id_list
         self.add_optional_field_to_data(data, FIELD_CONTENT, self.content)
         self.add_optional_field_to_data(data, FIELD_READ_STATUS, self.read_status)
         self.add_optional_field_to_data(data, FIELD_VIN, self.vin)
@@ -352,15 +353,15 @@ class Message(Asn1Type):
         self.message_id = data.get(FIELD_MESSAGE_ID)
         self.message_type = data.get(FIELD_MESSAGE_TYPE)
         self.title = data.get(FIELD_TITLE)
-        self.message_time = data.get(FIELD_MESSAGE_TIME)
+        self.message_time = Timestamp()
+        self.message_time.init_from_dict(data.get(FIELD_MESSAGE_TIME))
         self.sender = FIELD_SENDER
-        if FIELD_CONTENT_ID_LIST in data:
+        if FIELD_CONTENT_ID in data:
             self.content_id_list = []
-            for item in data.get(FIELD_CONTENT_ID_LIST):
+            for item in data.get(FIELD_CONTENT_ID):
                 content_id = ContentId()
                 content_id.init_from_dict(item)
                 self.content_id_list.append(content_id)
-        self.content_id_list = data.get(FIELD_CONTENT)
         self.read_status = data.get(FIELD_READ_STATUS)
         self.vin = data.get(FIELD_VIN)
 
