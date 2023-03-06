@@ -17,6 +17,9 @@ class MqttClient(Publisher):
         self.host = self.configuration.mqtt_host
         self.port = self.configuration.mqtt_port
         self.transport_protocol = self.configuration.mqtt_transport_protocol
+        self.on_refresh_mode_update = None
+        self.on_inactive_refresh_interval_update = None
+        self.on_active_refresh_interval_update = None
 
         mqtt_client = mqtt.Client(str(self.publisher_id), transport=self.transport_protocol)
         mqtt_client.on_connect = self.__on_connect
@@ -39,10 +42,22 @@ class MqttClient(Publisher):
         if rc == mqtt.CONNACK_ACCEPTED:
             self.is_connected.set()
         else:
-            SystemExit(f'Unable to connect to MQTT brocker. Return code: {rc}')
+            SystemExit(f'Unable to connect to MQTT broker. Return code: {rc}')
 
     def __on_message(self, client, userdata, msg: mqtt.MQTTMessage) -> None:
-        print(f'{msg.topic} {msg.payload}')
+        if msg.topic.endswith('/refresh/mode/set'):
+            vin = self.get_vin_from_topic(msg.topic)
+            mode_value = msg.payload.decode()
+            if self.on_refresh_mode_update is not None:
+                self.on_refresh_mode_update(mode_value, vin)
+        elif msg.topic.endswith('/refresh/period/active/set'):
+            vin = self.get_vin_from_topic(msg.topic)
+            if self.on_active_refresh_interval_update is not None:
+                self.on_active_refresh_interval_update(msg.payload, vin)
+        elif msg.topic.endswith('/refresh/period/inActive/set'):
+            vin = self.get_vin_from_topic(msg.topic)
+            if self.on_inactive_refresh_interval_update is not None:
+                self.on_inactive_refresh_interval_update(msg.payload, vin)
 
     def publish(self, msg: mqtt.MQTTMessage) -> None:
         self.client.publish(msg.topic, msg.payload, retain=True)
@@ -74,3 +89,8 @@ class MqttClient(Publisher):
         msg = mqtt.MQTTMessage(topic=self.get_topic(key))
         msg.payload = value
         self.publish(msg)
+
+    def get_vin_from_topic(self, topic: str) -> str:
+        global_topic_removed = topic[len(self.configuration.mqtt_topic) + 1:]
+        elements = global_topic_removed.split('/')
+        return elements[2]

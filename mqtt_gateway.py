@@ -77,55 +77,6 @@ def handle_error(saic_api: SaicApi, message_body: AbstractMessageBody, iteration
         SystemExit(f'Error: {message_body.error_message.decode()}, code: {message_body.result}')
 
 
-class MqttGateway:
-    def __init__(self, config: Configuration):
-        self.configuration = config
-        self.vehicle_handler = {}
-        self.publisher = MqttClient(self.configuration)
-        self.saic_api = SaicApi(config, self.publisher)
-        self.publisher.connect()
-        
-    def run(self):
-        login_response_message = self.saic_api.login()
-        user_logging_in_response = cast(MpUserLoggingInRsp, login_response_message.application_data)
-
-        self.saic_api.set_alarm_switches()
-
-        for info in user_logging_in_response.vin_list:
-            vin_info = cast(VinInfo, info)
-            info_prefix = f'{self.configuration.saic_user}/vehicles/{vin_info.vin}/info'
-            self.publisher.publish_str(f'{info_prefix}/brand', vin_info.brand_name.decode())
-            self.publisher.publish_str(f'{info_prefix}/model', vin_info.model_name.decode())
-            self.publisher.publish_str(f'{info_prefix}/year', vin_info.model_year)
-            self.publisher.publish_str(f'{info_prefix}/series', vin_info.series)
-            self.publisher.publish_str(f'{info_prefix}/color', vin_info.color_name.decode())
-
-            vehicle_handler = VehicleHandler(
-                self.configuration,  # Gateway pointer
-                self.saic_api,
-                self.publisher,
-                info)
-            self.vehicle_handler[info.vin] = vehicle_handler
-
-        message_handler = MessageHandler(self, self.saic_api)
-        asyncio.run(main(self.vehicle_handler, message_handler, self.configuration.query_messages_interval * 60))
-
-    def notify_message(self, message: SaicMessage):
-        message_prefix = f'{self.configuration.saic_user}/vehicles/{message.vin}/info/lastMessage'
-        self.publisher.publish_int(f'{message_prefix}/messageId', message.message_id)
-        self.publisher.publish_str(f'{message_prefix}/messageType', message.message_type)
-        self.publisher.publish_str(f'{message_prefix}/title', message.title)
-        self.publisher.publish_str(f'{message_prefix}/messageTime', epoch_value_to_str(message.message_time))
-        self.publisher.publish_str(f'{message_prefix}/sender', message.sender)
-        if message.content is not None:
-            self.publisher.publish_str(f'{message_prefix}/content', message.content)
-        self.publisher.publish_str(f'{message_prefix}/status', message.get_read_status_str())
-        self.publisher.publish_str(f'{message_prefix}/vin', message.vin)
-        if message.vin is not None:
-            handler = cast(VehicleHandler, self.vehicle_handler[message.vin])
-            handler.notify_message(message)
-
-
 class VehicleHandler:
     def __init__(self, config: Configuration, saicapi: SaicApi, publisher: Publisher, vin_info: VinInfo):
         self.configuration = config
@@ -136,8 +87,36 @@ class VehicleHandler:
         self.force_update = True
         self.abrp_api = AbrpApi(configuration, vin_info)
         self.vehicle_prefix = f'{self.configuration.saic_user}/vehicles/{self.vin_info.vin}'
+        self.refresh_mode = 'periodic'
+        self.inactive_refresh_interval = -1
+        self.active_refresh_interval = -1
+
+    def set_inactive_refresh_interval(self, seconds: int):
+        refresh_prefix = f'{self.vehicle_prefix}/refresh'
+        self.publisher.publish_int(f'{refresh_prefix}/inActive', seconds)
+
+    def set_active_refresh_interval(self, seconds: int):
+        refresh_prefix = f'{self.vehicle_prefix}/refresh'
+        self.publisher.publish_int(f'{refresh_prefix}/active', seconds)
+
+    def refresh_required(self):
+        refresh_interval = self.inactive_refresh_interval
+        now_minus_refresh_interval = datetime.datetime.now() - datetime.timedelta(seconds=float(refresh_interval))
+        if (
+            self.refresh_mode != 'off'
+            and (
+                self.last_car_activity is None
+                or self.force_update
+                or self.last_car_activity < now_minus_refresh_interval
+            )
+        ):
+            return True
+        else:
+            return False
 
     async def handle_vehicle(self) -> None:
+        self.set_inactive_refresh_interval(self.configuration.inactive_vehicle_state_refresh_interval)
+        self.set_active_refresh_interval(60)
         self.publisher.publish_str(f'{self.vehicle_prefix}/configuration/raw',
                                    self.vin_info.model_configuration_json_str)
         configuration_prefix = f'{self.vehicle_prefix}/configuration'
@@ -148,11 +127,7 @@ class VehicleHandler:
                 property_map[key_value_pair[0]] = key_value_pair[1]
             self.publisher.publish_str(f'{configuration_prefix}/{property_map["code"]}', property_map["value"])
         while True:
-            if (
-                self.last_car_activity is None
-                or self.force_update
-                or self.last_car_activity < (datetime.datetime.now() - datetime.timedelta(minutes=self.configuration.query_vehicle_status_interval))
-            ):
+            if self.refresh_required():
                 self.force_update = False
                 vehicle_status = self.update_vehicle_status()
                 last_vehicle_status = datetime.datetime.now()
@@ -163,13 +138,9 @@ class VehicleHandler:
                 refresh_prefix = f'{self.vehicle_prefix}/refresh'
                 self.publisher.publish_str(f'{refresh_prefix}/lastVehicleState', datetime_to_str(last_vehicle_status))
                 self.publisher.publish_str(f'{refresh_prefix}/lastChargeState', datetime_to_str(last_charge_status))
-                inactive_query_interval = self.configuration.query_vehicle_status_interval * 60
-                self.publisher.publish_int(f'{refresh_prefix}/inActive', inactive_query_interval)
                 if vehicle_status.is_charging() or vehicle_status.is_engine_running():
                     self.force_update = True
-                    active_query_interval = 60
-                    self.publisher.publish_int(f'{refresh_prefix}/active', active_query_interval)
-                    time.sleep(float(active_query_interval))
+                    time.sleep(float(self.active_refresh_interval))
             else:
                 # car not active, wait a second
                 logging.debug(f'sleeping {datetime.datetime.now()}, last car activity: {self.last_car_activity}')
@@ -310,6 +281,82 @@ class VehicleHandler:
         self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsPTCHeatReqDspCmd',
                                    charge_mgmt_data.bmsPTCHeatReqDspCmd)
         return charge_mgmt_data
+
+
+class MqttGateway:
+    def __init__(self, config: Configuration):
+        self.configuration = config
+        self.vehicle_handler = {}
+        self.publisher = MqttClient(self.configuration)
+        self.publisher.on_refresh_mode_update = self.__on_refresh_mode_update
+        self.publisher.on_inactive_refresh_interval_update = self.__on_inactive_refresh_interval_update
+        self.publisher.on_active_refresh_interval_update = self.__on_active_refresh_interval_update
+        self.saic_api = SaicApi(config, self.publisher)
+        self.publisher.connect()
+
+    def run(self):
+        login_response_message = self.saic_api.login()
+        user_logging_in_response = cast(MpUserLoggingInRsp, login_response_message.application_data)
+
+        self.saic_api.set_alarm_switches()
+
+        for info in user_logging_in_response.vin_list:
+            vin_info = cast(VinInfo, info)
+            info_prefix = f'{self.configuration.saic_user}/vehicles/{vin_info.vin}/info'
+            self.publisher.publish_str(f'{info_prefix}/brand', vin_info.brand_name.decode())
+            self.publisher.publish_str(f'{info_prefix}/model', vin_info.model_name.decode())
+            self.publisher.publish_str(f'{info_prefix}/year', vin_info.model_year)
+            self.publisher.publish_str(f'{info_prefix}/series', vin_info.series)
+            self.publisher.publish_str(f'{info_prefix}/color', vin_info.color_name.decode())
+
+            vehicle_handler = VehicleHandler(
+                self.configuration,  # Gateway pointer
+                self.saic_api,
+                self.publisher,
+                info)
+            self.vehicle_handler[info.vin] = vehicle_handler
+
+        message_handler = MessageHandler(self, self.saic_api)
+        asyncio.run(main(self.vehicle_handler, message_handler, self.configuration.messages_request_interval))
+
+    def notify_message(self, message: SaicMessage):
+        message_prefix = f'{self.configuration.saic_user}/vehicles/{message.vin}/info/lastMessage'
+        self.publisher.publish_int(f'{message_prefix}/messageId', message.message_id)
+        self.publisher.publish_str(f'{message_prefix}/messageType', message.message_type)
+        self.publisher.publish_str(f'{message_prefix}/title', message.title)
+        self.publisher.publish_str(f'{message_prefix}/messageTime', epoch_value_to_str(message.message_time))
+        self.publisher.publish_str(f'{message_prefix}/sender', message.sender)
+        if message.content is not None:
+            self.publisher.publish_str(f'{message_prefix}/content', message.content)
+        self.publisher.publish_str(f'{message_prefix}/status', message.get_read_status_str())
+        self.publisher.publish_str(f'{message_prefix}/vin', message.vin)
+        if message.vin is not None:
+            handler = cast(VehicleHandler, self.vehicle_handler[message.vin])
+            handler.notify_message(message)
+
+    def get_vehicle_handler(self, vin: str) -> VehicleHandler:
+        if vin in self.vehicle_handler:
+            return self.vehicle_handler[vin]
+        else:
+            logging.error(f'No vehicle handler found for VIN {vin}')
+
+    def __on_refresh_mode_update(self, mode: str, vin: str):
+        vehicle_handler = self.get_vehicle_handler(vin)
+        if vehicle_handler is not None:
+            vehicle_handler.refresh_mode = mode.lower()
+            logging.info(f'Setting vehicle handler mode for VIN {vin} to refresh mode: {mode}')
+
+    def __on_active_refresh_interval_update(self, seconds: int, vin: str):
+        vehicle_handler = self.get_vehicle_handler(vin)
+        if vehicle_handler is not None:
+            vehicle_handler.set_active_refresh_interval(seconds)
+            logging.info(f'Setting active query interval in vehicle handler for VIN {vin} to {seconds} seconds')
+
+    def __on_inactive_refresh_interval_update(self, seconds: int, vin: str):
+        vehicle_handler = self.get_vehicle_handler(vin)
+        if vehicle_handler is not None:
+            vehicle_handler.set_inactive_refresh_interval(seconds)
+            logging.info(f'Setting inactive query interval in vehicle handler for VIN {vin} to {seconds} seconds')
 
 
 class MessageHandler:

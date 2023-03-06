@@ -58,8 +58,8 @@ class Configuration:
         self.mqtt_topic = ''
         self.openwb_topic = ''
         self.anonymized_publishing = False
-        self.query_vehicle_status_interval = 15  # in minutes
-        self.query_messages_interval = 5  # in minutes
+        self.inactive_vehicle_state_refresh_interval = 900  # in seconds
+        self.messages_request_interval = 5  # in seconds
 
 
 class Header:
