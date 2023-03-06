@@ -413,4 +413,3 @@ class OtaRvmVehicleStatusResp25857(ApplicationData):
 
     def is_engine_running(self) -> bool:
         return self.get_basic_vehicle_status().engine_status == 1
-

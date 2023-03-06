@@ -31,6 +31,11 @@ class AbrpApi:
                 self.configuration.abrp_api_key is not None
                 and abrp_user_token is not None
                 and vehicle_status is not None
+                and vehicle_status.get_gps_position() is not None
+                and vehicle_status.get_gps_position().get_way_point() is not None
+                and vehicle_status.get_gps_position().get_way_point().get_position() is not None
+                and vehicle_status.get_gps_position().get_way_point().get_position().latitude > 0
+                and vehicle_status.get_gps_position().get_way_point().get_position().longitude > 0
                 and charge_status is not None
         ):
             # Request

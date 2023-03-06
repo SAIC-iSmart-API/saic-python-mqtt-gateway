@@ -11,14 +11,18 @@ from mqtt_publisher import MqttClient
 from saicapi.publisher import Publisher
 from saicapi.common_model import Configuration, AbstractMessageBody
 from saicapi.ota_v1_1.data_model import MpUserLoggingInRsp, VinInfo, MessageListResp, Message
-from saicapi.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857, RvsPosition, RvsWayPoint, RvsWgs84Point
+from saicapi.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
 from saicapi.ota_v3_0.Message import MessageBodyV30
 from saicapi.ota_v3_0.data_model import OtaChrgMangDataResp, RvsChargingStatus
 from saicapi.ws_api import AbrpApi, SaicApi
 
 
-def time_value_to_str(time_value: int) -> str:
+def epoch_value_to_str(time_value: int) -> str:
     return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time_value))
+
+
+def datetime_to_str(dt: datetime.datetime) -> str:
+    return dt.strftime('%Y-%m-%d %H:%M:%S')
 
 
 async def every(__seconds: float, func, *args, **kwargs):
@@ -111,7 +115,7 @@ class MqttGateway:
         self.publisher.publish_int(f'{message_prefix}/messageId', message.message_id)
         self.publisher.publish_str(f'{message_prefix}/messageType', message.message_type)
         self.publisher.publish_str(f'{message_prefix}/title', message.title)
-        self.publisher.publish_str(f'{message_prefix}/messageTime', message.message_time.strftime("%Y-%m-%d, %H:%M:%S"))
+        self.publisher.publish_str(f'{message_prefix}/messageTime', epoch_value_to_str(message.message_time))
         self.publisher.publish_str(f'{message_prefix}/sender', message.sender)
         if message.content is not None:
             self.publisher.publish_str(f'{message_prefix}/content', message.content)
@@ -151,12 +155,21 @@ class VehicleHandler:
             ):
                 self.force_update = False
                 vehicle_status = self.update_vehicle_status()
+                last_vehicle_status = datetime.datetime.now()
                 charge_status = self.update_charge_status()
+                last_charge_status = datetime.datetime.now()
                 self.abrp_api.update_abrp(vehicle_status, charge_status)
                 self.notify_car_activity(datetime.datetime.now())
+                refresh_prefix = f'{self.vehicle_prefix}/refresh'
+                self.publisher.publish_str(f'{refresh_prefix}/lastVehicleState', datetime_to_str(last_vehicle_status))
+                self.publisher.publish_str(f'{refresh_prefix}/lastChargeState', datetime_to_str(last_charge_status))
+                inactive_query_interval = self.configuration.query_vehicle_status_interval * 60
+                self.publisher.publish_int(f'{refresh_prefix}/inActive', inactive_query_interval)
                 if vehicle_status.is_charging() or vehicle_status.is_engine_running():
                     self.force_update = True
-                    time.sleep(60.0)
+                    active_query_interval = 60
+                    self.publisher.publish_int(f'{refresh_prefix}/active', active_query_interval)
+                    time.sleep(float(active_query_interval))
             else:
                 # car not active, wait a second
                 logging.debug(f'sleeping {datetime.datetime.now()}, last car activity: {self.last_car_activity}')
@@ -168,7 +181,7 @@ class VehicleHandler:
                 or self.last_car_activity < last_activity_time
         ):
             self.last_car_activity = last_activity_time
-            last_activity = self.last_car_activity.strftime("%Y-%m-%d, %H:%M:%S")
+            last_activity = datetime_to_str(self.last_car_activity)
             self.publisher.publish_str(f'{self.vin_info.vin}/last_activity', last_activity)
             logging.info(f'last activity: {last_activity}')
 
@@ -184,7 +197,8 @@ class VehicleHandler:
                 handle_error(self.saic_api, vehicle_status_rsp_msg.body, iteration)
             else:
                 waiting_time = iteration * 1
-                logging.debug(f'Update vehicle status request returned no application data. Waiting {waiting_time} seconds')
+                logging.debug(
+                    f'Update vehicle status request returned no application data. Waiting {waiting_time} seconds')
                 time.sleep(float(waiting_time))
                 iteration += 1
 
@@ -202,8 +216,9 @@ class VehicleHandler:
         if basic_vehicle_status.mileage > 0:
             mileage = basic_vehicle_status.mileage / 10.0
             self.publisher.publish_float(f'{drivetrain_prefix}/mileage', mileage)
-        electric_range = basic_vehicle_status.fuel_range_elec / 10.0
-        self.publisher.publish_float(f'{drivetrain_prefix}/range', electric_range)
+        if basic_vehicle_status.fuel_range_elec > 0:
+            electric_range = basic_vehicle_status.fuel_range_elec / 10.0
+            self.publisher.publish_float(f'{drivetrain_prefix}/range', electric_range)
 
         climate_prefix = f'{self.vehicle_prefix}/climate'
         interior_temperature = basic_vehicle_status.interior_temperature
@@ -218,12 +233,11 @@ class VehicleHandler:
         self.publisher.publish_int(f'{climate_prefix}/rearWindowDefrosterHeating', remote_rear_window_defroster_state)
 
         location_prefix = f'{self.vehicle_prefix}/location'
-        gps_position = cast(RvsPosition, vehicle_status_response.gps_position)
-        way_point = cast(RvsWayPoint, gps_position.way_point)
+        way_point = vehicle_status_response.get_gps_position().get_way_point()
         speed = way_point.speed / 10.0
         self.publisher.publish_float(f'{location_prefix}/speed', speed)
         self.publisher.publish_int(f'{location_prefix}/heading', way_point.heading)
-        position = cast(RvsWgs84Point, way_point.position)
+        position = way_point.get_position()
         if position.latitude > 0:
             latitude = position.latitude / 1000000.0
             self.publisher.publish_float(f'{location_prefix}/latitude', latitude)
