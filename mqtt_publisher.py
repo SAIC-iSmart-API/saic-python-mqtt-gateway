@@ -20,6 +20,7 @@ class MqttClient(Publisher):
         self.on_refresh_mode_update = None
         self.on_inactive_refresh_interval_update = None
         self.on_active_refresh_interval_update = None
+        self.on_doors_lock_state_update = None
 
         mqtt_client = mqtt.Client(str(self.publisher_id), transport=self.transport_protocol)
         mqtt_client.on_connect = self.__on_connect
@@ -58,6 +59,11 @@ class MqttClient(Publisher):
             vin = self.get_vin_from_topic(msg.topic)
             if self.on_inactive_refresh_interval_update is not None:
                 self.on_inactive_refresh_interval_update(msg.payload, vin)
+        elif msg.topic.endswith('/doors/locked/set'):
+            vin = self.get_vin_from_topic(msg.topic)
+            if self.on_doors_lock_state_update is not None:
+                lock_state = msg.payload.decode()
+                self.on_doors_lock_state_update(lock_state, vin)
 
     def publish(self, msg: mqtt.MQTTMessage) -> None:
         self.client.publish(msg.topic, msg.payload, retain=True)

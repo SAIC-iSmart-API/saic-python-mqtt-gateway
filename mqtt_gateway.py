@@ -99,6 +99,16 @@ class VehicleHandler:
         refresh_prefix = f'{self.vehicle_prefix}/refresh'
         self.publisher.publish_int(f'{refresh_prefix}/active', seconds)
 
+    def update_doors_lock_state(self, lock_state: str):
+        if lock_state.lower() == 'locked':
+            logging.info(f'Vehicle {self.vin_info.vin} will be locked')
+            self.saic_api.unlock_vehicle(self.vin_info)
+        elif lock_state.lower() == 'unlocked':
+            logging.info(f'Vehicle {self.vin_info.vin} will be unlocked')
+            self.saic_api.lock_vehicle(self.vin_info)
+        else:
+            logging.error(f'Invalid lock state: {lock_state}. Valid values are locked and unlocked')
+
     def refresh_required(self):
         refresh_interval = self.inactive_refresh_interval
         now_minus_refresh_interval = datetime.datetime.now() - datetime.timedelta(seconds=float(refresh_interval))
@@ -291,6 +301,7 @@ class MqttGateway:
         self.publisher.on_refresh_mode_update = self.__on_refresh_mode_update
         self.publisher.on_inactive_refresh_interval_update = self.__on_inactive_refresh_interval_update
         self.publisher.on_active_refresh_interval_update = self.__on_active_refresh_interval_update
+        self.publisher.on_doors_lock_state_update = self.__on_doors_lock_state_update
         self.saic_api = SaicApi(config, self.publisher)
         self.publisher.connect()
 
@@ -357,6 +368,11 @@ class MqttGateway:
         if vehicle_handler is not None:
             vehicle_handler.set_inactive_refresh_interval(seconds)
             logging.info(f'Setting inactive query interval in vehicle handler for VIN {vin} to {seconds} seconds')
+
+    def __on_doors_lock_state_update(self, lock_state: str, vin: str):
+        vehicle_handler = self.get_vehicle_handler(vin)
+        if vehicle_handler is not None:
+            vehicle_handler.update_doors_lock_state(lock_state)
 
 
 class MessageHandler:

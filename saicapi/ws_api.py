@@ -12,7 +12,7 @@ from saicapi.ota_v1_1.data_model import VinInfo, MpUserLoggingInReq, MpUserLoggi
     MpAlarmSettingType, AlarmSwitch, MessageBodyV11, MessageV11, MessageListReq, StartEndNumber, MessageListResp, \
     Timestamp
 from saicapi.ota_v2_1.Message import MessageCoderV21
-from saicapi.ota_v2_1.data_model import OtaRvmVehicleStatusReq, OtaRvmVehicleStatusResp25857
+from saicapi.ota_v2_1.data_model import OtaRvmVehicleStatusReq, OtaRvmVehicleStatusResp25857, OtaRvcReq, RvcReqParam
 from saicapi.ota_v3_0.Message import MessageCoderV30, MessageV30, MessageBodyV30
 from saicapi.ota_v3_0.data_model import OtaChrgMangDataResp
 
@@ -176,6 +176,66 @@ class SaicApi:
         self.message_V2_1_coder.decode_response(vehicle_status_rsp_hex, vehicle_status_rsp_msg)
         self.publish_json_value(application_id, application_data_protocol_version, vehicle_status_rsp_msg.get_data())
         return vehicle_status_rsp_msg
+
+    def lock_vehicle(self, vin_info: VinInfo) -> None:
+        rvc_params = []
+        self.send_vehicle_control_command(vin_info, '\x01', rvc_params)
+
+    def unlock_vehicle(self, vin_info: VinInfo) -> None:
+        rvc_params = []
+        param1 = RvcReqParam()
+        param1.param_id = 4
+        param1.param_value = '\00'
+        rvc_params.append(param1)
+
+        param2 = RvcReqParam()
+        param2.param_id = 5
+        param2.param_value = '\00'
+        rvc_params.append(param2)
+
+        param3 = RvcReqParam()
+        param3.param_id = 6
+        param3.param_value = '\00'
+        rvc_params.append(param3)
+
+        param4 = RvcReqParam()
+        param4.param_id = 7
+        param4.param_value = '\03'
+        rvc_params.append(param4)
+
+        param5 = RvcReqParam()
+        param5.param_id = 255
+        param5.param_value = '\00'
+        rvc_params.append(param5)
+
+        self.send_vehicle_control_command(vin_info, '\x02', rvc_params)
+
+    def send_vehicle_control_command(self, vin_info: VinInfo, rvc_req_type: str, rvc_params: list) -> None:
+        vehicle_control_req = OtaRvcReq()
+        vehicle_control_req.rvc_req_type = rvc_req_type
+        for p in rvc_params:
+            param = cast(RvcReqParam, p)
+            vehicle_control_req.rvc_params.append(param)
+
+        vehicle_control_cmd_req_msg = MessageV2(MessageBodyV2(), vehicle_control_req)
+        application_id = '510'
+        application_data_protocol_version = 25857
+        self.message_V2_1_coder.initialize_message(self.uid, self.get_token(), vin_info.vin, application_id,
+                                                   application_data_protocol_version, 1, vehicle_control_cmd_req_msg)
+        self.publish_json_value(application_id, application_data_protocol_version,
+                                vehicle_control_cmd_req_msg.get_data())
+        vehicle_control_cmd_req_msg_hex = self.message_V2_1_coder.encode_request(vehicle_control_cmd_req_msg)
+        self.publish_raw_value(application_id, application_data_protocol_version, vehicle_control_cmd_req_msg_hex)
+        vehicle_control_cmd_rsp_msg_hex = self.send_request(vehicle_control_cmd_req_msg_hex,
+                                                            urllib.parse.urljoin(self.configuration.saic_uri,
+                                                                                 '/TAP.Web/ota.mpv21'))
+        self.publish_raw_value(application_id, application_data_protocol_version, vehicle_control_cmd_rsp_msg_hex)
+        vehicle_control_cmd_rsp_msg = MessageV2(MessageBodyV2())
+        self.message_V2_1_coder.decode_response(vehicle_control_cmd_rsp_msg_hex, vehicle_control_cmd_rsp_msg)
+        self.publish_json_value(application_id, application_data_protocol_version,
+                                vehicle_control_cmd_rsp_msg.get_data())
+        if vehicle_control_cmd_rsp_msg.body.error_message is not None:
+            raise ValueError(vehicle_control_cmd_rsp_msg.body.error_message.decode())
 
     def get_charging_status(self, vin_info: VinInfo, event_id: str = None) -> MessageV30:
         chrg_mgmt_data_req_msg = MessageV30(MessageBodyV30())
