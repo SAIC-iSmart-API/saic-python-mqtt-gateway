@@ -179,66 +179,66 @@ class SaicApi:
 
     def lock_vehicle(self, vin_info: VinInfo) -> None:
         rvc_params = []
-        self.send_vehicle_control_command(vin_info, '\x01', rvc_params)
+        self.send_vehicle_control_command(vin_info, b'\x01', rvc_params)
 
     def unlock_vehicle(self, vin_info: VinInfo) -> None:
         rvc_params = []
         param1 = RvcReqParam()
         param1.param_id = 4
-        param1.param_value = '\00'
+        param1.param_value = b'\x00'
         rvc_params.append(param1)
 
         param2 = RvcReqParam()
         param2.param_id = 5
-        param2.param_value = '\00'
+        param2.param_value = b'\x00'
         rvc_params.append(param2)
 
         param3 = RvcReqParam()
         param3.param_id = 6
-        param3.param_value = '\00'
+        param3.param_value = b'\x00'
         rvc_params.append(param3)
 
         param4 = RvcReqParam()
         param4.param_id = 7
-        param4.param_value = '\03'
+        param4.param_value = b'\x03'
         rvc_params.append(param4)
 
         param5 = RvcReqParam()
         param5.param_id = 255
-        param5.param_value = '\00'
+        param5.param_value = b'\x00'
         rvc_params.append(param5)
 
-        self.send_vehicle_control_command(vin_info, '\x02', rvc_params)
+        self.send_vehicle_control_command(vin_info, b'\x02', rvc_params)
 
     def start_rear_window_heat(self, vin_info: VinInfo):
         rvc_params = []
         param1 = RvcReqParam()
         param1.param_id = 23
-        param1.param_value = '\01'
+        param1.param_value = b'\x01'
         rvc_params.append(param1)
 
         param2 = RvcReqParam()
         param2.param_id = 255
-        param2.param_value = '\00'
+        param2.param_value = b'\x00'
         rvc_params.append(param2)
 
-        self.send_vehicle_control_command(vin_info, '\x20', rvc_params)
+        self.send_vehicle_control_command(vin_info, b'\x20', rvc_params)
 
     def stop_rear_window_heat(self, vin_info: VinInfo):
         rvc_params = []
         param1 = RvcReqParam()
         param1.param_id = 23
-        param1.param_value = '\00'
+        param1.param_value = b'\x00'
         rvc_params.append(param1)
 
         param2 = RvcReqParam()
         param2.param_id = 255
-        param2.param_value = '\00'
+        param2.param_value = b'\x00'
         rvc_params.append(param2)
 
-        self.send_vehicle_control_command(vin_info, '\x20', rvc_params)
+        self.send_vehicle_control_command(vin_info, b'\x20', rvc_params)
 
-    def send_vehicle_control_command(self, vin_info: VinInfo, rvc_req_type: str, rvc_params: list) -> None:
+    def send_vehicle_control_command(self, vin_info: VinInfo, rvc_req_type: bytes, rvc_params: list) -> None:
         vehicle_control_req = OtaRvcReq()
         vehicle_control_req.rvc_req_type = rvc_req_type
         for p in rvc_params:
