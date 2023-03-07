@@ -382,11 +382,13 @@ class MessageListResp(ApplicationData):
         }
 
     def init_from_dict(self, data: dict):
-        messages = data.get(FIELD_MESSAGES)
-        for item in messages:
-            message = Message()
-            message.init_from_dict(item)
-            self.add_message(message)
+        records_number = data.get(FIELD_RECORDS_NUMBER)
+        if records_number > 0:
+            messages = data.get(FIELD_MESSAGES)
+            for item in messages:
+                message = Message()
+                message.init_from_dict(item)
+                self.add_message(message)
 
     def add_message(self, message: Message):
         self.messages.append(message)

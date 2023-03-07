@@ -23,7 +23,7 @@ class MqttClient(Publisher):
         self.on_doors_lock_state_update = None
         self.on_rear_window_heat_state_update = None
 
-        mqtt_client = mqtt.Client(str(self.publisher_id), transport=self.transport_protocol)
+        mqtt_client = mqtt.Client(str(self.publisher_id), transport=self.transport_protocol, protocol=mqtt.MQTTv31)
         mqtt_client.on_connect = self.__on_connect
         mqtt_client.on_message = self.__on_message
         self.client = mqtt_client
@@ -43,31 +43,40 @@ class MqttClient(Publisher):
     def __on_connect(self, client, userdata, flags, rc) -> None:
         if rc == mqtt.CONNACK_ACCEPTED:
             self.is_connected.set()
+
+            basic_topic = f'{self.configuration.mqtt_topic}/{self.configuration.saic_user}/vehicles/+'
+            self.client.subscribe(f'{basic_topic}/refresh/mode/set')
+            self.client.subscribe(f'{basic_topic}/refresh/period/active/set')
+            self.client.subscribe(f'{basic_topic}/refresh/period/inActive/set')
+            self.client.subscribe(f'{basic_topic}/doors/locked/set')
+            self.client.subscribe(f'{basic_topic}/climate/rearWindowDefrosterHeating/set')
         else:
             SystemExit(f'Unable to connect to MQTT broker. Return code: {rc}')
 
     def __on_message(self, client, userdata, msg: mqtt.MQTTMessage) -> None:
         if msg.topic.endswith('/refresh/mode/set'):
             vin = self.get_vin_from_topic(msg.topic)
-            mode_value = msg.payload.decode()
+            mode_value = msg.payload.decode().strip()
             if self.on_refresh_mode_update is not None:
                 self.on_refresh_mode_update(mode_value, vin)
         elif msg.topic.endswith('/refresh/period/active/set'):
             vin = self.get_vin_from_topic(msg.topic)
             if self.on_active_refresh_interval_update is not None:
-                self.on_active_refresh_interval_update(msg.payload, vin)
+                refresh_interval = msg.payload.decode().strip()
+                self.on_active_refresh_interval_update(int(refresh_interval), vin)
         elif msg.topic.endswith('/refresh/period/inActive/set'):
             vin = self.get_vin_from_topic(msg.topic)
             if self.on_inactive_refresh_interval_update is not None:
-                self.on_inactive_refresh_interval_update(msg.payload, vin)
+                refresh_interval = msg.payload.decode().strip()
+                self.on_inactive_refresh_interval_update(int(refresh_interval), vin)
         elif msg.topic.endswith('/doors/locked/set'):
             vin = self.get_vin_from_topic(msg.topic)
             if self.on_doors_lock_state_update is not None:
-                lock_state = msg.payload.decode()
+                lock_state = msg.payload.decode().strip()
                 self.on_doors_lock_state_update(lock_state, vin)
         elif msg.topic.endswith('/climate/rearWindowDefrosterHeating/set'):
             vin = self.get_vin_from_topic(msg.topic)
-            rear_windows_heat_state = msg.payload.decode()
+            rear_windows_heat_state = msg.payload.decode().strip()
             self.on_rear_window_heat_state_update(rear_windows_heat_state, vin)
 
     def publish(self, msg: mqtt.MQTTMessage) -> None:

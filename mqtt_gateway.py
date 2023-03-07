@@ -93,19 +93,21 @@ class VehicleHandler:
 
     def set_inactive_refresh_interval(self, seconds: int):
         refresh_prefix = f'{self.vehicle_prefix}/refresh'
-        self.publisher.publish_int(f'{refresh_prefix}/inActive', seconds)
+        self.publisher.publish_int(f'{refresh_prefix}/period/inActive', seconds)
+        self.inactive_refresh_interval = seconds
 
     def set_active_refresh_interval(self, seconds: int):
         refresh_prefix = f'{self.vehicle_prefix}/refresh'
-        self.publisher.publish_int(f'{refresh_prefix}/active', seconds)
+        self.publisher.publish_int(f'{refresh_prefix}/period/active', seconds)
+        self.active_refresh_interval = seconds
 
     def update_doors_lock_state(self, lock_state: str):
         if lock_state.lower() == 'locked':
             logging.info(f'Vehicle {self.vin_info.vin} will be locked')
-            self.saic_api.unlock_vehicle(self.vin_info)
+            self.saic_api.lock_vehicle(self.vin_info)
         elif lock_state.lower() == 'unlocked':
             logging.info(f'Vehicle {self.vin_info.vin} will be unlocked')
-            self.saic_api.lock_vehicle(self.vin_info)
+            self.saic_api.unlock_vehicle(self.vin_info)
         else:
             logging.error(f'Invalid lock state: {lock_state}. Valid values are locked and unlocked')
 
@@ -254,11 +256,11 @@ class VehicleHandler:
         self.publisher.publish_bool(f'{doors_prefix}/boot', basic_vehicle_status.boot_status)
 
         tyres_prefix = f'{self.vehicle_prefix}/tyres'
-        self.publisher.publish_int(f'f{tyres_prefix}/frontLeftPressure', basic_vehicle_status.front_left_tyre_pressure)
-        self.publisher.publish_int(f'f{tyres_prefix}/frontRightPressure',
+        self.publisher.publish_int(f'{tyres_prefix}/frontLeftPressure', basic_vehicle_status.front_left_tyre_pressure)
+        self.publisher.publish_int(f'{tyres_prefix}/frontRightPressure',
                                    basic_vehicle_status.front_right_tyre_pressure)
-        self.publisher.publish_int(f'f{tyres_prefix}/rearLeftPressure', basic_vehicle_status.rear_left_tyre_pressure)
-        self.publisher.publish_int(f'f{tyres_prefix}/rearRightPressure', basic_vehicle_status.rear_right_tyre_pressure)
+        self.publisher.publish_int(f'{tyres_prefix}/rearLeftPressure', basic_vehicle_status.rear_left_tyre_pressure)
+        self.publisher.publish_int(f'{tyres_prefix}/rearRightPressure', basic_vehicle_status.rear_right_tyre_pressure)
 
         lights_prefix = f'{self.vehicle_prefix}/lights'
         self.publisher.publish_bool(f'{lights_prefix}/mainBeam', basic_vehicle_status.main_beam_status)
