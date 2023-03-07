@@ -210,6 +210,34 @@ class SaicApi:
 
         self.send_vehicle_control_command(vin_info, '\x02', rvc_params)
 
+    def start_rear_window_heat(self, vin_info: VinInfo):
+        rvc_params = []
+        param1 = RvcReqParam()
+        param1.param_id = 23
+        param1.param_value = '\01'
+        rvc_params.append(param1)
+
+        param2 = RvcReqParam()
+        param2.param_id = 255
+        param2.param_value = '\00'
+        rvc_params.append(param2)
+
+        self.send_vehicle_control_command(vin_info, '\x20', rvc_params)
+
+    def stop_rear_window_heat(self, vin_info: VinInfo):
+        rvc_params = []
+        param1 = RvcReqParam()
+        param1.param_id = 23
+        param1.param_value = '\00'
+        rvc_params.append(param1)
+
+        param2 = RvcReqParam()
+        param2.param_id = 255
+        param2.param_value = '\00'
+        rvc_params.append(param2)
+
+        self.send_vehicle_control_command(vin_info, '\x20', rvc_params)
+
     def send_vehicle_control_command(self, vin_info: VinInfo, rvc_req_type: str, rvc_params: list) -> None:
         vehicle_control_req = OtaRvcReq()
         vehicle_control_req.rvc_req_type = rvc_req_type

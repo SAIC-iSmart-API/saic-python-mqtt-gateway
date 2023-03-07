@@ -5,25 +5,34 @@ import paho.mqtt.client as mqtt
 from mqtt_publisher import MqttClient
 from saicapi.common_model import Configuration
 
-USER = 'me@gome.da'
+USER = 'me@home.da'
 VIN = 'vin10000000000000'
 DELAY = 42
 MODE = 'periodic'
 LOCK_STATE = 'locked'
+REAR_WINDOW_HEAT_STATE = 'on'
 
 
 class TestMqttPublisher(TestCase):
     def __test_refresh_interval_update(self, seconds: int, vin: str):
         self.assertEqual(DELAY, seconds)
         self.assertEqual(VIN, vin)
+        self.message_processed = True
 
     def __test_refresh_mode_update(self, mode: str, vin: str):
         self.assertEqual(MODE, mode)
         self.assertEqual(VIN, vin)
+        self.message_processed = True
 
-    def __text_doors_lock_state_update(self, lock_state: str, vin: str):
+    def __test_doors_lock_state_update(self, lock_state: str, vin: str):
         self.assertEqual(LOCK_STATE, lock_state)
         self.assertEqual(VIN, vin)
+        self.message_processed = True
+
+    def __test_update_rear_window_heat_state(self, rear_window_heat_state: str, vin: str):
+        self.assertEqual(REAR_WINDOW_HEAT_STATE, rear_window_heat_state)
+        self.assertEqual(VIN, vin)
+        self.message_processed = True
 
     def setUp(self) -> None:
         config = Configuration()
@@ -33,16 +42,29 @@ class TestMqttPublisher(TestCase):
         self.mqtt_client.on_refresh_mode_update = self.__test_refresh_mode_update
         self.mqtt_client.on_active_refresh_interval_update = self.__test_refresh_interval_update
         self.mqtt_client.on_inactive_refresh_interval_update = self.__test_refresh_interval_update
-        self.mqtt_client.on_doors_lock_state_update = self.__text_doors_lock_state_update
+        self.mqtt_client.on_doors_lock_state_update = self.__test_doors_lock_state_update
+        self.mqtt_client.on_rear_window_heat_state_update = self.__test_update_rear_window_heat_state
 
     def test_update_mode(self):
         topic = f'{self.mqtt_client.configuration.mqtt_topic}/{USER}/vehicles/{VIN}/refresh/mode/set'
         msg = mqtt.MQTTMessage(topic=bytes(topic, encoding='utf8'))
         msg.payload = bytes(MODE, encoding='utf8')
-        self.mqtt_client.client.on_message('client', 'userdata', msg)
+        self.send_message(msg)
 
     def test_update_lock_state(self):
         topic = f'{self.mqtt_client.configuration.mqtt_topic}/{USER}/vehicles/{VIN}/doors/locked/set'
         msg = mqtt.MQTTMessage(topic=bytes(topic, encoding='utf8'))
         msg.payload = bytes(LOCK_STATE, encoding='utf8')
-        self.mqtt_client.client.on_message('client', 'userdata', msg)
+        self.send_message(msg)
+
+    def test_update_rear_window_heat_state(self):
+        topic = f'{self.mqtt_client.configuration.mqtt_topic}/{USER}/vehicles/{VIN}/climate/'\
+                + 'rearWindowDefrosterHeating/set'
+        msg = mqtt.MQTTMessage(topic=bytes(topic, encoding='utf8'))
+        msg.payload = bytes(REAR_WINDOW_HEAT_STATE, encoding='utf8')
+        self.send_message(msg)
+
+    def send_message(self, message: mqtt.MQTTMessage):
+        self.message_processed = False
+        self.mqtt_client.client.on_message('client', 'userdata', message)
+        self.assertEqual(True, self.message_processed)

@@ -109,6 +109,16 @@ class VehicleHandler:
         else:
             logging.error(f'Invalid lock state: {lock_state}. Valid values are locked and unlocked')
 
+    def update_rear_window_heat_state(self, rear_windows_heat_state: str):
+        if rear_windows_heat_state.lower() == 'on':
+            logging.info('Rear window heating will be switched on')
+            self.saic_api.start_rear_window_heat(self.vin_info)
+        elif rear_windows_heat_state.lower() == 'off':
+            logging.info('Rear window heating will be switched off')
+            self.saic_api.stop_rear_window_heat(self.vin_info)
+        else:
+            logging.error(f'Invalid rear window heat state: {rear_windows_heat_state}. Valid values are on and off')
+
     def refresh_required(self):
         refresh_interval = self.inactive_refresh_interval
         now_minus_refresh_interval = datetime.datetime.now() - datetime.timedelta(seconds=float(refresh_interval))
@@ -302,6 +312,7 @@ class MqttGateway:
         self.publisher.on_inactive_refresh_interval_update = self.__on_inactive_refresh_interval_update
         self.publisher.on_active_refresh_interval_update = self.__on_active_refresh_interval_update
         self.publisher.on_doors_lock_state_update = self.__on_doors_lock_state_update
+        self.publisher.on_rear_window_heat_state_update = self.__on_rear_window_heat_state_update
         self.saic_api = SaicApi(config, self.publisher)
         self.publisher.connect()
 
@@ -373,6 +384,11 @@ class MqttGateway:
         vehicle_handler = self.get_vehicle_handler(vin)
         if vehicle_handler is not None:
             vehicle_handler.update_doors_lock_state(lock_state)
+
+    def __on_rear_window_heat_state_update(self, rear_windows_heat_state: str, vin: str):
+        vehicle_handler = self.get_vehicle_handler(vin)
+        if vehicle_handler is not None:
+            vehicle_handler.update_rear_window_heat_state(rear_windows_heat_state)
 
 
 class MessageHandler:
