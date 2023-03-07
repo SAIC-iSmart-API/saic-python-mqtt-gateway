@@ -9,6 +9,7 @@ USER = 'me@gome.da'
 VIN = 'vin10000000000000'
 DELAY = 42
 MODE = 'periodic'
+LOCK_STATE = 'locked'
 
 
 class TestMqttPublisher(TestCase):
@@ -20,6 +21,10 @@ class TestMqttPublisher(TestCase):
         self.assertEqual(MODE, mode)
         self.assertEqual(VIN, vin)
 
+    def __text_doors_lock_state_update(self, lock_state: str, vin: str):
+        self.assertEqual(LOCK_STATE, lock_state)
+        self.assertEqual(VIN, vin)
+
     def setUp(self) -> None:
         config = Configuration()
         config.mqtt_topic = 'saic'
@@ -28,9 +33,16 @@ class TestMqttPublisher(TestCase):
         self.mqtt_client.on_refresh_mode_update = self.__test_refresh_mode_update
         self.mqtt_client.on_active_refresh_interval_update = self.__test_refresh_interval_update
         self.mqtt_client.on_inactive_refresh_interval_update = self.__test_refresh_interval_update
+        self.mqtt_client.on_doors_lock_state_update = self.__text_doors_lock_state_update
 
     def test_update_mode(self):
         topic = f'{self.mqtt_client.configuration.mqtt_topic}/{USER}/vehicles/{VIN}/refresh/mode/set'
         msg = mqtt.MQTTMessage(topic=bytes(topic, encoding='utf8'))
         msg.payload = bytes(MODE, encoding='utf8')
+        self.mqtt_client.client.on_message('client', 'userdata', msg)
+
+    def test_update_lock_state(self):
+        topic = f'{self.mqtt_client.configuration.mqtt_topic}/{USER}/vehicles/{VIN}/doors/locked/set'
+        msg = mqtt.MQTTMessage(topic=bytes(topic, encoding='utf8'))
+        msg.payload = bytes(LOCK_STATE, encoding='utf8')
         self.mqtt_client.client.on_message('client', 'userdata', msg)
