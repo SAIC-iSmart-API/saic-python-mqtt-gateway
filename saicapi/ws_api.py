@@ -246,7 +246,7 @@ class SaicApi:
                 vehicle_control_cmd_rsp_msg.body.error_message is not None
                 and retry < 3
         ):
-            time.sleep(float(5))
+            time.sleep(float(2))
             event_id = vehicle_control_cmd_rsp_msg.body.event_id
             vehicle_control_cmd_rsp_msg = self.send_vehicle_control_command(vin_info, rvc_req_type, rvc_params,
                                                                             event_id)
