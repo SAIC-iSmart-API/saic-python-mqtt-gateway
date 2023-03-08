@@ -299,7 +299,7 @@ class VehicleHandler:
         soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
         self.publisher.publish_float(f'{drivetrain_prefix}/soc', soc)
         # publish SoC to openWB topic
-        self.publisher.publish_int(self.configuration.openwb_topic, int(soc))
+        self.publisher.publish_int(self.configuration.openwb_topic, int(soc), True)
         estimated_electrical_range = charge_mgmt_data.bms_estd_elec_rng / 10.0
         self.publisher.publish_float(f'{drivetrain_prefix}/electrical_range', estimated_electrical_range)
         charge_status = cast(RvsChargingStatus, charge_mgmt_data.chargeStatus)
@@ -372,8 +372,8 @@ class MqttGateway:
         self.publisher.publish_int(f'{message_prefix}/messageId', message.message_id)
         self.publisher.publish_str(f'{message_prefix}/messageType', message.message_type)
         self.publisher.publish_str(f'{message_prefix}/title', message.title)
-        self.publisher.publish_str(f'{message_prefix}/messageTime', epoch_value_to_str(message.message_time))
-        self.publisher.publish_str(f'{message_prefix}/sender', message.sender)
+        self.publisher.publish_str(f'{message_prefix}/messageTime', datetime_to_str(message.message_time))
+        self.publisher.publish_str(f'{message_prefix}/sender', message.sender.decode())
         if message.content is not None:
             self.publisher.publish_str(f'{message_prefix}/content', message.content)
         self.publisher.publish_str(f'{message_prefix}/status', message.get_read_status_str())

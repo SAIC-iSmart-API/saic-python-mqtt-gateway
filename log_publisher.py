@@ -9,17 +9,17 @@ class Logger(Publisher):
         super().__init__(configuration)
         logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
 
-    def publish_json(self, key: str, data: dict) -> None:
+    def publish_json(self, key: str, data: dict, no_prefix: bool = False) -> None:
         logging.debug(f'{key}: {self.dict_to_anonymized_json(data)}')
 
-    def publish_str(self, key: str, value: str) -> None:
+    def publish_str(self, key: str, value: str, no_prefix: bool = False) -> None:
         logging.debug(f'{key}: {value}')
 
-    def publish_int(self, key: str, value: int) -> None:
+    def publish_int(self, key: str, value: int, no_prefix: bool = False) -> None:
         logging.debug(f'{key}: {value}')
 
-    def publish_bool(self, key: str, value: bool) -> None:
+    def publish_bool(self, key: str, value: bool, no_prefix: bool = False) -> None:
         logging.debug(f'{key}: {value}')
 
-    def publish_float(self, key: str, value: float) -> None:
+    def publish_float(self, key: str, value: float, no_prefix: bool = False) -> None:
         logging.debug(f'{key}: {value}')

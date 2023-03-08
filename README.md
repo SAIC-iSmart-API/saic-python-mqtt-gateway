@@ -42,6 +42,12 @@ $ python ./mqtt_gateway.py -m tcp://my-broker-host:1883 -u <saic-user> -p <saic-
 ### In a docker container
 
 Build the image yourself with the [Dockerfile](Dockerfile) or download the image from [docker hub](https://hub.docker.com/r/tosate/saic-mqtt-gateway).
+
+#### Building the docker image
+```
+$ docker build -t saic-mqtt-gateway .
+```
+
 There is a [docker compose file](docker-compose.yml) that shows how-to setup the service.
 
 ## openWB integration

@@ -82,31 +82,35 @@ class MqttClient(Publisher):
     def publish(self, msg: mqtt.MQTTMessage) -> None:
         self.client.publish(msg.topic, msg.payload, retain=True)
 
-    def get_topic(self, key: str) -> bytes:
-        return bytes(f'{self.topic_root}/{key}', encoding='utf8')
+    def get_topic(self, key: str, no_prefix: bool) -> bytes:
+        if no_prefix:
+            topic = bytes(f'{key}', encoding='utf8')
+        else:
+            topic = bytes(f'{self.topic_root}/{key}', encoding='utf8')
+        return topic
 
-    def publish_json(self, key: str, data: dict) -> None:
-        msg = mqtt.MQTTMessage(topic=self.get_topic(key))
+    def publish_json(self, key: str, data: dict, no_prefix: bool = False) -> None:
+        msg = mqtt.MQTTMessage(topic=self.get_topic(key, no_prefix))
         msg.payload = bytes(self.dict_to_anonymized_json(data), encoding='utf8')
         self.publish(msg)
 
-    def publish_str(self, key: str, value: str) -> None:
-        msg = mqtt.MQTTMessage(topic=self.get_topic(key))
+    def publish_str(self, key: str, value: str, no_prefix: bool = False) -> None:
+        msg = mqtt.MQTTMessage(topic=self.get_topic(key, no_prefix))
         msg.payload = bytes(value, encoding='utf8')
         self.publish(msg)
 
-    def publish_int(self, key: str, value: int) -> None:
-        msg = mqtt.MQTTMessage(topic=self.get_topic(key))
+    def publish_int(self, key: str, value: int, no_prefix: bool = False) -> None:
+        msg = mqtt.MQTTMessage(topic=self.get_topic(key, no_prefix))
         msg.payload = value
         self.publish(msg)
 
-    def publish_bool(self, key: str, value: bool) -> None:
-        msg = mqtt.MQTTMessage(topic=self.get_topic(key))
+    def publish_bool(self, key: str, value: bool, no_prefix: bool = False) -> None:
+        msg = mqtt.MQTTMessage(topic=self.get_topic(key, no_prefix))
         msg.payload = value
         self.publish(msg)
 
-    def publish_float(self, key: str, value: float) -> None:
-        msg = mqtt.MQTTMessage(topic=self.get_topic(key))
+    def publish_float(self, key: str, value: float, no_prefix: bool = False) -> None:
+        msg = mqtt.MQTTMessage(topic=self.get_topic(key, no_prefix))
         msg.payload = value
         self.publish(msg)
 

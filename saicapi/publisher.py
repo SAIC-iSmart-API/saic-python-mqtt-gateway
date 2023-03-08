@@ -8,19 +8,19 @@ class Publisher:
     def __init__(self, config: Configuration):
         self.configuration = config
 
-    def publish_json(self, key: str, data: dict) -> None:
+    def publish_json(self, key: str, data: dict, no_prefix: bool = False) -> None:
         pass
 
-    def publish_str(self, key: str, value: str) -> None:
+    def publish_str(self, key: str, value: str, no_prefix: bool = False) -> None:
         pass
 
-    def publish_int(self, key: str, value: int) -> None:
+    def publish_int(self, key: str, value: int, no_prefix: bool = False) -> None:
         pass
 
-    def publish_bool(self, key: str, value: bool) -> None:
+    def publish_bool(self, key: str, value: bool, no_prefix: bool = False) -> None:
         pass
 
-    def publish_float(self, key: str, value: float) -> None:
+    def publish_float(self, key: str, value: float, no_prefix: bool = False) -> None:
         pass
 
     def remove_byte_strings(self, data: dict) -> dict:
