@@ -256,11 +256,18 @@ class VehicleHandler:
         self.publisher.publish_bool(f'{doors_prefix}/boot', basic_vehicle_status.boot_status)
 
         tyres_prefix = f'{self.vehicle_prefix}/tyres'
-        self.publisher.publish_int(f'{tyres_prefix}/frontLeftPressure', basic_vehicle_status.front_left_tyre_pressure)
-        self.publisher.publish_int(f'{tyres_prefix}/frontRightPressure',
-                                   basic_vehicle_status.front_right_tyre_pressure)
-        self.publisher.publish_int(f'{tyres_prefix}/rearLeftPressure', basic_vehicle_status.rear_left_tyre_pressure)
-        self.publisher.publish_int(f'{tyres_prefix}/rearRightPressure', basic_vehicle_status.rear_right_tyre_pressure)
+        if basic_vehicle_status.front_left_tyre_pressure > 0:
+            self.publisher.publish_int(f'{tyres_prefix}/frontLeftPressure',
+                                       basic_vehicle_status.front_left_tyre_pressure)
+        if basic_vehicle_status.front_right_tyre_pressure > 0:
+            self.publisher.publish_int(f'{tyres_prefix}/frontRightPressure',
+                                       basic_vehicle_status.front_right_tyre_pressure)
+        if basic_vehicle_status.rear_left_tyre_pressure > 0:
+            self.publisher.publish_int(f'{tyres_prefix}/rearLeftPressure',
+                                       basic_vehicle_status.rear_left_tyre_pressure)
+        if basic_vehicle_status.rear_right_tyre_pressure > 0:
+            self.publisher.publish_int(f'{tyres_prefix}/rearRightPressure',
+                                       basic_vehicle_status.rear_right_tyre_pressure)
 
         lights_prefix = f'{self.vehicle_prefix}/lights'
         self.publisher.publish_bool(f'{lights_prefix}/mainBeam', basic_vehicle_status.main_beam_status)
