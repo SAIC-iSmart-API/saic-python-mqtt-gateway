@@ -154,7 +154,7 @@ def mock_chrg_mgmt_data_rsp(message_v3_0_coder: MessageCoderV30, uid: str, token
     chrg_mgmt_data_rsp.bmsChrgOtptCrntReq = 1023
     chrg_mgmt_data_rsp.bmsChrgSpRsn = 0
     chrg_mgmt_data_rsp.bmsChrgSts = 0
-    chrg_mgmt_data_rsp.bmsEstdElecRng = 290
+    chrg_mgmt_data_rsp.bms_estd_elec_rng = 290
     chrg_mgmt_data_rsp.bmsOnBdChrgTrgtSOCDspCmd = 7
     chrg_mgmt_data_rsp.bmsPackCrnt = 20000
     chrg_mgmt_data_rsp.bmsPackSOCDsp = 841

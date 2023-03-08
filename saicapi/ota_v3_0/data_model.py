@@ -10,7 +10,7 @@ class OtaChrgMangDataResp(ApplicationData):
         self.bmsReserSpHourDspCmd = None  # INTEGER(0..255),
         self.bmsReserSpMintueDspCmd = None  # INTEGER(0..255),
         self.bmsOnBdChrgTrgtSOCDspCmd = None  # INTEGER(0..255),
-        self.bmsEstdElecRng = None  # INTEGER(0..65535),
+        self.bms_estd_elec_rng = None  # INTEGER(0..65535),
         self.bmsAltngChrgCrntDspCmd = None  # INTEGER(0..255),
         self.bmsChrgCtrlDspCmd = None  # INTEGER(0..255),
         self.chrgngRmnngTime = None  # INTEGER(0..65535),
@@ -58,7 +58,7 @@ class OtaChrgMangDataResp(ApplicationData):
             'bmsReserSpHourDspCmd': self.bmsReserSpHourDspCmd,
             'bmsReserSpMintueDspCmd': self.bmsReserSpMintueDspCmd,
             'bmsOnBdChrgTrgtSOCDspCmd': self.bmsOnBdChrgTrgtSOCDspCmd,
-            'bmsEstdElecRng': self.bmsEstdElecRng,
+            'bmsEstdElecRng': self.bms_estd_elec_rng,
             'bmsAltngChrgCrntDspCmd': self.bmsAltngChrgCrntDspCmd,
             'bmsChrgCtrlDspCmd': self.bmsChrgCtrlDspCmd,
             'chrgngRmnngTime': self.chrgngRmnngTime,
@@ -107,7 +107,7 @@ class OtaChrgMangDataResp(ApplicationData):
         self.bmsReserSpHourDspCmd = data.get('bmsReserSpHourDspCmd')
         self.bmsReserSpMintueDspCmd = data.get('bmsReserSpMintueDspCmd')
         self.bmsOnBdChrgTrgtSOCDspCmd = data.get('bmsOnBdChrgTrgtSOCDspCmd')
-        self.bmsEstdElecRng = data.get('bmsEstdElecRng')
+        self.bms_estd_elec_rng = data.get('bmsEstdElecRng')
         self.bmsAltngChrgCrntDspCmd = data.get('bmsAltngChrgCrntDspCmd')
         self.bmsChrgCtrlDspCmd = data.get('bmsChrgCtrlDspCmd')
         self.chrgngRmnngTime = data.get('chrgngRmnngTime')

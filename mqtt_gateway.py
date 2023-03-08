@@ -284,20 +284,37 @@ class VehicleHandler:
 
             chrg_mgmt_data_rsp_msg = self.saic_api.get_charging_status(self.vin_info, chrg_mgmt_body.event_id)
         charge_mgmt_data = cast(OtaChrgMangDataResp, chrg_mgmt_data_rsp_msg.application_data)
+
         drivetrain_prefix = f'{self.vehicle_prefix}/drivetrain'
         self.publisher.publish_float(f'{drivetrain_prefix}/current', charge_mgmt_data.get_current())
         self.publisher.publish_float(f'{drivetrain_prefix}/voltage', charge_mgmt_data.get_voltage())
         self.publisher.publish_float(f'{drivetrain_prefix}/power', charge_mgmt_data.get_power())
         soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
         self.publisher.publish_float(f'{drivetrain_prefix}/soc', soc)
+        # publish SoC to openWB topic
         self.publisher.publish_int(self.configuration.openwb_topic, int(soc))
+        estimated_electrical_range = charge_mgmt_data.bms_estd_elec_rng / 10.0
+        self.publisher.publish_float(f'{drivetrain_prefix}/electrical_range', estimated_electrical_range)
         charge_status = cast(RvsChargingStatus, charge_mgmt_data.chargeStatus)
+        if charge_status.mileage_of_day > 0:
+            mileage_of_the_day = charge_status.mileage_of_day / 10.0
+            self.publisher.publish_float(f'{drivetrain_prefix}/mileageOfTheDay', mileage_of_the_day)
+        if charge_status.mileage_since_last_charge > 0:
+            mileage_since_last_charge = charge_status.mileage_since_last_charge / 10.0
+            self.publisher.publish_float(f'{drivetrain_prefix}/mileageSinceLastCharge', mileage_since_last_charge)
+        soc_kwh = charge_status.real_time_power / 10.0
+        self.publisher.publish_float(f'{drivetrain_prefix}/soc_kwh', soc_kwh)
         self.publisher.publish_int(f'{drivetrain_prefix}/chargingType', charge_status.charging_type)
         self.publisher.publish_bool(f'{drivetrain_prefix}/chargerConnected', charge_status.charging_gun_state)
+        if charge_status.last_charge_ending_power > 0:
+            last_charge_ending_power = charge_status.last_charge_ending_power / 10.0
+            self.publisher.publish_float(f'{drivetrain_prefix}/lastChargeEndingPower', last_charge_ending_power)
+        if charge_status.total_battery_capacity > 0:
+            total_battery_capacity = charge_status.total_battery_capacity / 10.0
+            self.publisher.publish_float(f'{drivetrain_prefix}/totalBatteryCapacity', total_battery_capacity)
 
         self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsChrgCtrlDspCmd', charge_mgmt_data.bmsChrgCtrlDspCmd)
-        self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsChrgOtptCrntReq',
-                                   charge_mgmt_data.bmsChrgOtptCrntReq)
+        self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsChrgOtptCrntReq', charge_mgmt_data.bmsChrgOtptCrntReq)
         self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsChrgSts', charge_mgmt_data.bmsChrgSts)
         self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsPackVol', charge_mgmt_data.bmsPackVol)
         self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsPTCHeatReqDspCmd',

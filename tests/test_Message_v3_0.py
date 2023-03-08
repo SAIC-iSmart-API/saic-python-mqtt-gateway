@@ -67,7 +67,7 @@ class TestMessageCoderV30(TestCase):
         self.assertEqual(expected.bmsChrgOtptCrntReq, actual.bmsChrgOtptCrntReq)
         self.assertEqual(expected.bmsChrgSpRsn, actual.bmsChrgSpRsn)
         self.assertEqual(expected.bmsChrgSts, actual.bmsChrgSts)
-        self.assertEqual(expected.bmsEstdElecRng, actual.bmsEstdElecRng)
+        self.assertEqual(expected.bms_estd_elec_rng, actual.bms_estd_elec_rng)
         self.assertEqual(expected.bmsOnBdChrgTrgtSOCDspCmd, actual.bmsOnBdChrgTrgtSOCDspCmd)
         self.assertEqual(expected.bmsPackCrnt, actual.bmsPackCrnt)
         self.assertEqual(expected.bmsPackSOCDsp, actual.bmsPackSOCDsp)
@@ -111,7 +111,7 @@ def get_chrg_mgmt_data_rsp_test_data() -> OtaChrgMangDataResp:
     chrg_mgmt_data.bmsChrgOtptCrntReq = 1023
     chrg_mgmt_data.bmsChrgSpRsn = 0
     chrg_mgmt_data.bmsChrgSts = 0
-    chrg_mgmt_data.bmsEstdElecRng = 290
+    chrg_mgmt_data.bms_estd_elec_rng = 290
     chrg_mgmt_data.bmsOnBdChrgTrgtSOCDspCmd = 7
     chrg_mgmt_data.bmsPackCrnt = 20000
     chrg_mgmt_data.bmsPackSOCDsp = 841
