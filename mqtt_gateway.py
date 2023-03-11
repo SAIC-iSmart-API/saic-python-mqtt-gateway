@@ -320,7 +320,7 @@ class VehicleHandler:
 
         drivetrain_prefix = f'{self.vehicle_prefix}/drivetrain'
         self.publisher.publish_float(f'{drivetrain_prefix}/current', charge_mgmt_data.get_current())
-        self.publisher.publish_float(f'{drivetrain_prefix}/voltage', charge_mgmt_data.get_voltage())
+        self.publisher.publish_int(f'{drivetrain_prefix}/voltage', charge_mgmt_data.get_voltage())
         self.publisher.publish_float(f'{drivetrain_prefix}/power', charge_mgmt_data.get_power())
         soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
         self.publisher.publish_float(f'{drivetrain_prefix}/soc', soc)
