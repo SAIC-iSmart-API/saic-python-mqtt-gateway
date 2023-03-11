@@ -269,16 +269,29 @@ class VehicleHandler:
         self.publisher.publish_bool(f'{doors_prefix}/boot', basic_vehicle_status.boot_status)
 
         tyres_prefix = f'{self.vehicle_prefix}/tyres'
-        if basic_vehicle_status.front_left_tyre_pressure > 0:
+        if (
+                basic_vehicle_status.front_left_tyre_pressure is not None
+                and basic_vehicle_status.front_left_tyre_pressure > 0
+        ):
+            # convert value from psi to bar
             front_left_tyre_bar = basic_vehicle_status.front_left_tyre_pressure / 14.5
             self.publisher.publish_float(f'{tyres_prefix}/frontLeftPressure', front_left_tyre_bar)
-        if basic_vehicle_status.front_right_tyre_pressure > 0:
+        if (
+                basic_vehicle_status.front_right_tyre_pressure is not None
+                and basic_vehicle_status.front_right_tyre_pressure > 0
+        ):
             front_right_tyre_bar = basic_vehicle_status.front_right_tyre_pressure / 14.5
             self.publisher.publish_float(f'{tyres_prefix}/frontRightPressure', front_right_tyre_bar)
-        if basic_vehicle_status.rear_left_tyre_pressure > 0:
+        if (
+                basic_vehicle_status.rear_left_tyre_pressure
+                and basic_vehicle_status.rear_left_tyre_pressure > 0
+        ):
             rear_left_tyre_bar = basic_vehicle_status.rear_left_tyre_pressure / 14.5
             self.publisher.publish_float(f'{tyres_prefix}/rearLeftPressure', rear_left_tyre_bar)
-        if basic_vehicle_status.rear_right_tyre_pressure > 0:
+        if (
+                basic_vehicle_status.rear_right_tyre_pressure is not None
+                and basic_vehicle_status.rear_right_tyre_pressure > 0
+        ):
             rear_right_tyre_bar = basic_vehicle_status.rear_right_tyre_pressure / 14.5
             self.publisher.publish_float(f'{tyres_prefix}/rearRightPressure', rear_right_tyre_bar)
 
@@ -316,20 +329,32 @@ class VehicleHandler:
         estimated_electrical_range = charge_mgmt_data.bms_estd_elec_rng / 10.0
         self.publisher.publish_float(f'{drivetrain_prefix}/electrical_range', estimated_electrical_range)
         charge_status = cast(RvsChargingStatus, charge_mgmt_data.chargeStatus)
-        if charge_status.mileage_of_day > 0:
+        if (
+                charge_status.mileage_of_day is not None
+                and charge_status.mileage_of_day > 0
+        ):
             mileage_of_the_day = charge_status.mileage_of_day / 10.0
             self.publisher.publish_float(f'{drivetrain_prefix}/mileageOfTheDay', mileage_of_the_day)
-        if charge_status.mileage_since_last_charge > 0:
+        if (
+                charge_status.mileage_since_last_charge is not None
+                and charge_status.mileage_since_last_charge > 0
+        ):
             mileage_since_last_charge = charge_status.mileage_since_last_charge / 10.0
             self.publisher.publish_float(f'{drivetrain_prefix}/mileageSinceLastCharge', mileage_since_last_charge)
         soc_kwh = charge_status.real_time_power / 10.0
         self.publisher.publish_float(f'{drivetrain_prefix}/soc_kwh', soc_kwh)
         self.publisher.publish_int(f'{drivetrain_prefix}/chargingType', charge_status.charging_type)
         self.publisher.publish_bool(f'{drivetrain_prefix}/chargerConnected', charge_status.charging_gun_state)
-        if charge_status.last_charge_ending_power > 0:
+        if (
+                charge_status.last_charge_ending_power is not None
+                and charge_status.last_charge_ending_power > 0
+        ):
             last_charge_ending_power = charge_status.last_charge_ending_power / 10.0
             self.publisher.publish_float(f'{drivetrain_prefix}/lastChargeEndingPower', last_charge_ending_power)
-        if charge_status.total_battery_capacity > 0:
+        if (
+                charge_status.total_battery_capacity is not None
+                and charge_status.total_battery_capacity > 0
+        ):
             total_battery_capacity = charge_status.total_battery_capacity / 10.0
             self.publisher.publish_float(f'{drivetrain_prefix}/totalBatteryCapacity', total_battery_capacity)
 
