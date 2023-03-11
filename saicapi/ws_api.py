@@ -65,16 +65,13 @@ class AbrpApi:
             if range_elec > 0:
                 data['est_battery_range'] = range_elec / 10.0
 
-            try:
-                tlm_response = requests.get(tlm_send_url, params={
-                    'api_key': self.configuration.abrp_api_key,
-                    'token': abrp_user_token,
-                    'tlm': urllib.parse.urlencode(data)
-                })
-                tlm_response.raise_for_status()
-                print(f'ABRP: {tlm_response.content}')
-            except requests.exceptions.RequestException as e:
-                raise SystemExit(e)
+            tlm_response = requests.get(tlm_send_url, params={
+                'api_key': self.configuration.abrp_api_key,
+                'token': abrp_user_token,
+                'tlm': urllib.parse.urlencode(data)
+            })
+            tlm_response.raise_for_status()
+            print(f'ABRP: {tlm_response.content}')
 
 
 class SaicApi:
@@ -346,13 +343,10 @@ class SaicApi:
             'Content-Length': str(len(hex_message))
         }
 
-        try:
-            response = requests.post(url=endpoint, data=hex_message, headers=headers, cookies=self.cookies)
-            response.raise_for_status()
-            self.cookies = response.cookies
-            return response.content.decode()
-        except requests.exceptions.RequestException as e:
-            raise SystemExit(e)
+        response = requests.post(url=endpoint, data=hex_message, headers=headers, cookies=self.cookies)
+        response.raise_for_status()
+        self.cookies = response.cookies
+        return response.content.decode()
 
     def get_token(self):
         if self.token_expiration is not None:

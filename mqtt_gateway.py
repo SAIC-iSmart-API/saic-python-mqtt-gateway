@@ -7,6 +7,8 @@ import time
 import urllib.parse
 from typing import cast
 
+import requests.exceptions
+
 from mqtt_publisher import MqttClient
 from saicapi.publisher import Publisher
 from saicapi.common_model import Configuration, AbstractMessageBody
@@ -60,7 +62,8 @@ def convert(message: Message) -> SaicMessage:
     else:
         content = None
     return SaicMessage(message.message_id, message.message_type, message.title.decode(),
-                       message.message_time.get_timestamp(), message.sender, content, message.read_status, message.vin)
+                       message.message_time.get_timestamp(), message.sender.decode(), content, message.read_status,
+                       message.vin)
 
 
 def handle_error(saic_api: SaicApi, message_body: AbstractMessageBody, iteration: int):
@@ -102,24 +105,30 @@ class VehicleHandler:
         self.active_refresh_interval = seconds
 
     def update_doors_lock_state(self, lock_state: str):
-        if lock_state.lower() == 'locked':
-            logging.info(f'Vehicle {self.vin_info.vin} will be locked')
-            self.saic_api.lock_vehicle(self.vin_info)
-        elif lock_state.lower() == 'unlocked':
-            logging.info(f'Vehicle {self.vin_info.vin} will be unlocked')
-            self.saic_api.unlock_vehicle(self.vin_info)
-        else:
-            logging.error(f'Invalid lock state: {lock_state}. Valid values are locked and unlocked')
+        try:
+            if lock_state.lower() == 'locked':
+                logging.info(f'Vehicle {self.vin_info.vin} will be locked')
+                self.saic_api.lock_vehicle(self.vin_info)
+            elif lock_state.lower() == 'unlocked':
+                logging.info(f'Vehicle {self.vin_info.vin} will be unlocked')
+                self.saic_api.unlock_vehicle(self.vin_info)
+            else:
+                logging.error(f'Invalid lock state: {lock_state}. Valid values are locked and unlocked')
+        except requests.exceptions.RequestException as e:
+            logging.error(f'HTTP request error: {e}')
 
     def update_rear_window_heat_state(self, rear_windows_heat_state: str):
-        if rear_windows_heat_state.lower() == 'on':
-            logging.info('Rear window heating will be switched on')
-            self.saic_api.start_rear_window_heat(self.vin_info)
-        elif rear_windows_heat_state.lower() == 'off':
-            logging.info('Rear window heating will be switched off')
-            self.saic_api.stop_rear_window_heat(self.vin_info)
-        else:
-            logging.error(f'Invalid rear window heat state: {rear_windows_heat_state}. Valid values are on and off')
+        try:
+            if rear_windows_heat_state.lower() == 'on':
+                logging.info('Rear window heating will be switched on')
+                self.saic_api.start_rear_window_heat(self.vin_info)
+            elif rear_windows_heat_state.lower() == 'off':
+                logging.info('Rear window heating will be switched off')
+                self.saic_api.stop_rear_window_heat(self.vin_info)
+            else:
+                logging.error(f'Invalid rear window heat state: {rear_windows_heat_state}. Valid values are on and off')
+        except requests.exceptions.RequestException as e:
+            logging.error(f'HTTP request error: {e}')
 
     def refresh_required(self):
         refresh_interval = self.inactive_refresh_interval
@@ -151,18 +160,22 @@ class VehicleHandler:
         while True:
             if self.refresh_required():
                 self.force_update = False
-                vehicle_status = self.update_vehicle_status()
-                last_vehicle_status = datetime.datetime.now()
-                charge_status = self.update_charge_status()
-                last_charge_status = datetime.datetime.now()
-                self.abrp_api.update_abrp(vehicle_status, charge_status)
-                self.notify_car_activity(datetime.datetime.now())
-                refresh_prefix = f'{self.vehicle_prefix}/refresh'
-                self.publisher.publish_str(f'{refresh_prefix}/lastVehicleState', datetime_to_str(last_vehicle_status))
-                self.publisher.publish_str(f'{refresh_prefix}/lastChargeState', datetime_to_str(last_charge_status))
-                if vehicle_status.is_charging() or vehicle_status.is_engine_running():
-                    self.force_update = True
-                    time.sleep(float(self.active_refresh_interval))
+                try:
+                    vehicle_status = self.update_vehicle_status()
+                    last_vehicle_status = datetime.datetime.now()
+                    charge_status = self.update_charge_status()
+                    last_charge_status = datetime.datetime.now()
+                    self.abrp_api.update_abrp(vehicle_status, charge_status)
+                    self.notify_car_activity(datetime.datetime.now())
+                    refresh_prefix = f'{self.vehicle_prefix}/refresh'
+                    self.publisher.publish_str(f'{refresh_prefix}/lastVehicleState', datetime_to_str(last_vehicle_status))
+                    self.publisher.publish_str(f'{refresh_prefix}/lastChargeState', datetime_to_str(last_charge_status))
+                    if vehicle_status.is_charging() or vehicle_status.is_engine_running():
+                        self.force_update = True
+                        time.sleep(float(self.active_refresh_interval))
+                except requests.exceptions.RequestException as e:
+                    logging.error(f'HTTP request error: {e} Retrying in a Minute')
+                    time.sleep(float(60))
             else:
                 # car not active, wait a second
                 logging.debug(f'sleeping {datetime.datetime.now()}, last car activity: {self.last_car_activity}')
@@ -257,17 +270,17 @@ class VehicleHandler:
 
         tyres_prefix = f'{self.vehicle_prefix}/tyres'
         if basic_vehicle_status.front_left_tyre_pressure > 0:
-            self.publisher.publish_int(f'{tyres_prefix}/frontLeftPressure',
-                                       basic_vehicle_status.front_left_tyre_pressure)
+            front_left_tyre_bar = basic_vehicle_status.front_left_tyre_pressure / 14.5
+            self.publisher.publish_float(f'{tyres_prefix}/frontLeftPressure', front_left_tyre_bar)
         if basic_vehicle_status.front_right_tyre_pressure > 0:
-            self.publisher.publish_int(f'{tyres_prefix}/frontRightPressure',
-                                       basic_vehicle_status.front_right_tyre_pressure)
+            front_right_tyre_bar = basic_vehicle_status.front_right_tyre_pressure / 14.5
+            self.publisher.publish_float(f'{tyres_prefix}/frontRightPressure', front_right_tyre_bar)
         if basic_vehicle_status.rear_left_tyre_pressure > 0:
-            self.publisher.publish_int(f'{tyres_prefix}/rearLeftPressure',
-                                       basic_vehicle_status.rear_left_tyre_pressure)
+            rear_left_tyre_bar = basic_vehicle_status.rear_left_tyre_pressure / 14.5
+            self.publisher.publish_float(f'{tyres_prefix}/rearLeftPressure', rear_left_tyre_bar)
         if basic_vehicle_status.rear_right_tyre_pressure > 0:
-            self.publisher.publish_int(f'{tyres_prefix}/rearRightPressure',
-                                       basic_vehicle_status.rear_right_tyre_pressure)
+            rear_right_tyre_bar = basic_vehicle_status.rear_right_tyre_pressure / 14.5
+            self.publisher.publish_float(f'{tyres_prefix}/rearRightPressure', rear_right_tyre_bar)
 
         lights_prefix = f'{self.vehicle_prefix}/lights'
         self.publisher.publish_bool(f'{lights_prefix}/mainBeam', basic_vehicle_status.main_beam_status)
@@ -373,7 +386,7 @@ class MqttGateway:
         self.publisher.publish_str(f'{message_prefix}/messageType', message.message_type)
         self.publisher.publish_str(f'{message_prefix}/title', message.title)
         self.publisher.publish_str(f'{message_prefix}/messageTime', datetime_to_str(message.message_time))
-        self.publisher.publish_str(f'{message_prefix}/sender', message.sender.decode())
+        self.publisher.publish_str(f'{message_prefix}/sender', message.sender)
         if message.content is not None:
             self.publisher.publish_str(f'{message_prefix}/content', message.content)
         self.publisher.publish_str(f'{message_prefix}/status', message.get_read_status_str())
@@ -423,34 +436,37 @@ class MessageHandler:
         self.saicapi = saicapi
 
     def polling(self):
-        message_list_rsp_msg = self.saicapi.get_message_list()
+        try:
+            message_list_rsp_msg = self.saicapi.get_message_list()
 
-        iteration = 0
-        while message_list_rsp_msg.application_data is None:
-            if message_list_rsp_msg.body.error_message is not None:
-                handle_error(self.saicapi, message_list_rsp_msg.body, iteration)
-            else:
-                waiting_time = iteration * 1
-                logging.debug(
-                    f'Update message list request returned no application data. Waiting {waiting_time} seconds')
-                time.sleep(float(waiting_time))
-                iteration += 1
+            iteration = 0
+            while message_list_rsp_msg.application_data is None:
+                if message_list_rsp_msg.body.error_message is not None:
+                    handle_error(self.saicapi, message_list_rsp_msg.body, iteration)
+                else:
+                    waiting_time = iteration * 1
+                    logging.debug(
+                        f'Update message list request returned no application data. Waiting {waiting_time} seconds')
+                    time.sleep(float(waiting_time))
+                    iteration += 1
 
-            # we have received an eventId back...
-            message_list_rsp_msg = self.saicapi.get_message_list(message_list_rsp_msg.body.event_id)
+                # we have received an eventId back...
+                message_list_rsp_msg = self.saicapi.get_message_list(message_list_rsp_msg.body.event_id)
 
-        message_list_rsp = cast(MessageListResp, message_list_rsp_msg.application_data)
-        latest_message = None
-        latest_timestamp = None
-        for message in message_list_rsp.messages:
-            if latest_timestamp is None:
-                latest_timestamp = message.message_time.get_timestamp()
-                latest_message = message
-            elif latest_timestamp < message.message_time.get_timestamp():
-                latest_timestamp = message.message_time.get_timestamp()
-                latest_message = message
-        if latest_message is not None:
-            self.gateway.notify_message(convert(latest_message))
+            message_list_rsp = cast(MessageListResp, message_list_rsp_msg.application_data)
+            latest_message = None
+            latest_timestamp = None
+            for message in message_list_rsp.messages:
+                if latest_timestamp is None:
+                    latest_timestamp = message.message_time.get_timestamp()
+                    latest_message = message
+                elif latest_timestamp < message.message_time.get_timestamp():
+                    latest_timestamp = message.message_time.get_timestamp()
+                    latest_message = message
+            if latest_message is not None:
+                self.gateway.notify_message(convert(latest_message))
+        except requests.exceptions.RequestException as e:
+            logging.error(f'HTTP request error: {e}')
 
 
 class EnvDefault(argparse.Action):
