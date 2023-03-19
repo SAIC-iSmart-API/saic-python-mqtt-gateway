@@ -482,17 +482,32 @@ class MessageHandler:
                 message_list_rsp_msg = self.saicapi.get_message_list(message_list_rsp_msg.body.event_id)
 
             message_list_rsp = cast(MessageListResp, message_list_rsp_msg.application_data)
+            logging.info(f'{message_list_rsp.records_number} messages received')
+
             latest_message = None
             latest_timestamp = None
-            for message in message_list_rsp.messages:
+            message_count_map = {}
+            for msg in message_list_rsp.messages:
+                message = convert(msg)
+                # create statistics
+                if message.message_type in message_count_map:
+                    count = message_count_map[message.message_type]
+                    count += 1
+                    message_count_map[message.message_type] = count
+                else:
+                    message_count_map[message.message_type] = 1
+                # find the latest message
                 if latest_timestamp is None:
-                    latest_timestamp = message.message_time.get_timestamp()
+                    latest_timestamp = message.message_time
                     latest_message = message
-                elif latest_timestamp < message.message_time.get_timestamp():
-                    latest_timestamp = message.message_time.get_timestamp()
+                elif latest_timestamp < message.message_time:
+                    latest_timestamp = message.message_time
                     latest_message = message
+
+            for key in message_count_map.keys():
+                logging.info(f'Received {message_count_map[key]} messages of type {key}')
             if latest_message is not None:
-                self.gateway.notify_message(convert(latest_message))
+                self.gateway.notify_message(latest_message)
         except requests.exceptions.RequestException as e:
             logging.error(f'HTTP request error: {e}')
 
