@@ -67,7 +67,10 @@ def convert(message: Message) -> SaicMessage:
 
 
 def handle_error(saic_api: SaicApi, message_body: AbstractMessageBody, iteration: int):
-    logging.error(message_body.error_message.decode())
+    logging.error(f'application ID: {message_body.application_id},'
+                  + f' protocol version: {message_body.application_data_protocol_version},'
+                  + f' message: {message_body.error_message.decode()}'
+                  + f' result code: {message_body.result}')
     if message_body.result == 2:
         # re-login
         saic_api.login()
