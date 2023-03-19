@@ -149,13 +149,13 @@ class OtaChrgMangDataResp(ApplicationData):
         self.bmsAdpPubChrgSttnDspCmd = data.get('bmsAdpPubChrgSttnDspCmd')
 
     def get_current(self) -> float:
-        return self.bmsPackCrnt / 1000.0
+        return self.bmsPackCrnt * 0.05 - 1000.0
 
-    def get_voltage(self) -> int:
-        return self.bmsPackVol
+    def get_voltage(self) -> float:
+        return self.bmsPackVol * 0.25
 
     def get_power(self) -> float:
-        return round(self.get_current() * float(self.get_voltage()) / 1000.0, 2)
+        return self.get_current() * float(self.get_voltage()) / 1000.0
 
 
 class RvsChargingStatus(Asn1Type):

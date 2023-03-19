@@ -278,25 +278,25 @@ class VehicleHandler:
         ):
             # convert value from psi to bar
             front_left_tyre_bar = basic_vehicle_status.front_left_tyre_pressure / 14.5
-            self.publisher.publish_float(f'{tyres_prefix}/frontLeftPressure', front_left_tyre_bar)
+            self.publisher.publish_float(f'{tyres_prefix}/frontLeftPressure', round(front_left_tyre_bar, 2))
         if (
                 basic_vehicle_status.front_right_tyre_pressure is not None
                 and basic_vehicle_status.front_right_tyre_pressure > 0
         ):
             front_right_tyre_bar = basic_vehicle_status.front_right_tyre_pressure / 14.5
-            self.publisher.publish_float(f'{tyres_prefix}/frontRightPressure', front_right_tyre_bar)
+            self.publisher.publish_float(f'{tyres_prefix}/frontRightPressure', round(front_right_tyre_bar, 2))
         if (
                 basic_vehicle_status.rear_left_tyre_pressure
                 and basic_vehicle_status.rear_left_tyre_pressure > 0
         ):
             rear_left_tyre_bar = basic_vehicle_status.rear_left_tyre_pressure / 14.5
-            self.publisher.publish_float(f'{tyres_prefix}/rearLeftPressure', rear_left_tyre_bar)
+            self.publisher.publish_float(f'{tyres_prefix}/rearLeftPressure', round(rear_left_tyre_bar, 2))
         if (
                 basic_vehicle_status.rear_right_tyre_pressure is not None
                 and basic_vehicle_status.rear_right_tyre_pressure > 0
         ):
             rear_right_tyre_bar = basic_vehicle_status.rear_right_tyre_pressure / 14.5
-            self.publisher.publish_float(f'{tyres_prefix}/rearRightPressure', rear_right_tyre_bar)
+            self.publisher.publish_float(f'{tyres_prefix}/rearRightPressure', round(rear_right_tyre_bar, 2))
 
         lights_prefix = f'{self.vehicle_prefix}/lights'
         self.publisher.publish_bool(f'{lights_prefix}/mainBeam', basic_vehicle_status.main_beam_status)
@@ -322,9 +322,9 @@ class VehicleHandler:
         charge_mgmt_data = cast(OtaChrgMangDataResp, chrg_mgmt_data_rsp_msg.application_data)
 
         drivetrain_prefix = f'{self.vehicle_prefix}/drivetrain'
-        self.publisher.publish_float(f'{drivetrain_prefix}/current', charge_mgmt_data.get_current())
-        self.publisher.publish_int(f'{drivetrain_prefix}/voltage', charge_mgmt_data.get_voltage())
-        self.publisher.publish_float(f'{drivetrain_prefix}/power', charge_mgmt_data.get_power())
+        self.publisher.publish_float(f'{drivetrain_prefix}/current', round(charge_mgmt_data.get_current(), 3))
+        self.publisher.publish_float(f'{drivetrain_prefix}/voltage', round(charge_mgmt_data.get_voltage(), 3))
+        self.publisher.publish_float(f'{drivetrain_prefix}/power', round(charge_mgmt_data.get_power(), 3))
         soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
         self.publisher.publish_float(f'{drivetrain_prefix}/soc', soc)
         # publish SoC to openWB topic
