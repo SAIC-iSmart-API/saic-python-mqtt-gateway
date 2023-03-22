@@ -32,7 +32,7 @@ async def every(__seconds: float, func, *args, **kwargs):
         func(*args, **kwargs)
         await asyncio.sleep(__seconds)
 
-logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
 
 
 class SaicMessage:
@@ -54,6 +54,10 @@ class SaicMessage:
             return 'unread'
         else:
             return 'read'
+
+    def get_details(self) -> str:
+        return f'ID: {self.message_id}, Time: {self.message_time}, Type: {self.message_type}, Title: {self.title}, '\
+            + f'Content: {self.content}, Status: {self.get_read_status_str()}, Sender: {self.sender}, VIN: {self.vin}'
 
 
 def convert(message: Message) -> SaicMessage:
@@ -489,6 +493,7 @@ class MessageHandler:
             message_count_map = {}
             for msg in message_list_rsp.messages:
                 message = convert(msg)
+                logging.debug(msg.get_details())
                 # create statistics
                 if message.message_type in message_count_map:
                     count = message_count_map[message.message_type]
