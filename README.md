@@ -15,17 +15,17 @@ The implementation is based on the findings from the [SAIC-API Documentation](ht
 
 Configuration parameters can be provided as command line parameters or environment variables (this is what you typically do when you run the service from a docker container).
 
-| CMD param             | ENV variable    | Description                                                                                                                         |
-|-----------------------|-----------------|-------------------------------------------------------------------------------------------------------------------------------------|
-| -m or --mqtt-uri      | MQTT_URI        | URI to the MQTT Server. TCP: tcp://mqtt.eclipseprojects.io:1883 or WebSocket: ws://mqtt.eclipseprojects.io:9001 - **required**      |
-| --mqtt-user           | MQTT_USER       | MQTT user name                                                                                                                      |
-| --mqtt-password       | MQTT_PASSWORD   | MQTT password                                                                                                                       |
-| --mqtt-topic-prefix   | MQTT_TOPIC      | Provide a custom MQTT prefix to replace the default: saic                                                                           |
-| -u or --saic-user     | SAIC_USER       | SAIC user name - **required**                                                                                                       |
-| -p or --saic-password | SAIC_PASSWORD   | SAIC password - **required**                                                                                                        |
-| --abrp-api-key        | ABRP_API_KEY    | API key for the A Better Route Planer telemetry API. Default is the open source telemetry API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d. |
+| CMD param             | ENV variable    | Description                                                                                                                              |
+|-----------------------|-----------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| -m or --mqtt-uri      | MQTT_URI        | URI to the MQTT Server. TCP: tcp://mqtt.eclipseprojects.io:1883 or WebSocket: ws://mqtt.eclipseprojects.io:9001 - **required**           |
+| --mqtt-user           | MQTT_USER       | MQTT user name                                                                                                                           |
+| --mqtt-password       | MQTT_PASSWORD   | MQTT password                                                                                                                            |
+| --mqtt-topic-prefix   | MQTT_TOPIC      | Provide a custom MQTT prefix to replace the default: saic                                                                                |
+| -u or --saic-user     | SAIC_USER       | SAIC user name - **required**                                                                                                            |
+| -p or --saic-password | SAIC_PASSWORD   | SAIC password - **required**                                                                                                             |
+| --abrp-api-key        | ABRP_API_KEY    | API key for the A Better Route Planer telemetry API. Default is the open source telemetry API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.  |
 | --abrp-user-token     | ABRP_USER_TOKEN | Mapping of VIN to ABRP User Token. Multiple mappings can be provided seperated by ',' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl |
-| --openwb-lp-topic     | OPENWB_TOPIC    | Topic for openWB charging point. Default: openWB/set/lp/1                                                                           |
+| --openwb-lp-map       | OPENWB_LP_MAP   | Mapping of VIN to openWB charging point. Multiple mappings can be provided seperated by ',' Example: 1=LSJXXXX,2=LSJYYYY                 |
 
 
 ## Running the service
@@ -52,7 +52,7 @@ There is a [docker compose file](docker-compose.yml) that shows how-to setup the
 
 ## openWB integration
 
-The state-of-charge (SoC) can be provided over MQTT to an [openWB wallbox](https://openwb.de). By default the SoC is also published to the topic: openWB/set/lp/1/%Soc This topic can also be changed in the configuration.
+The state-of-charge (SoC) can be provided over MQTT to an [openWB wallbox](https://openwb.de). To activate this, you need to provide the Mapping of VIN to openWB charging point. With this information the gateway can also detect that the vehicle is charging.
 
 Just configure the MQTT gateway to connect to the MQTT broker which is running on your openWB and enable SoC over MQTT in the openWB.
 

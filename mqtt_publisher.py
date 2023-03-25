@@ -51,7 +51,8 @@ class MqttClient(Publisher):
             self.client.subscribe(f'{basic_topic}/refresh/period/inActive/set')
             self.client.subscribe(f'{basic_topic}/doors/locked/set')
             self.client.subscribe(f'{basic_topic}/climate/rearWindowDefrosterHeating/set')
-            self.client.subscribe('openWB/lp/1/boolChargeStat')
+            for key in self.configuration.open_wb_lp_map.keys():
+                self.client.subscribe(f'{self.configuration.open_wb_topic}/lp/{key}/boolChargeStat')
         else:
             SystemExit(f'Unable to connect to MQTT broker. Return code: {rc}')
 
@@ -80,9 +81,11 @@ class MqttClient(Publisher):
             vin = self.get_vin_from_topic(msg.topic)
             rear_windows_heat_state = msg.payload.decode().strip()
             self.on_rear_window_heat_state_update(rear_windows_heat_state, vin)
-        elif msg.topic == 'openWB/lp/1/boolChargeStat':
+        elif msg.topic.endswith('/boolChargeStat'):
             if msg.payload.decode() == '1':
-                self.on_lp_charging(1)
+                index = self.get_index_from_open_wp_topic(msg.topic)
+                vin = self.configuration.open_wb_lp_map[index]
+                self.on_lp_charging(vin)
 
     def publish(self, msg: mqtt.MQTTMessage) -> None:
         self.client.publish(msg.topic, msg.payload, retain=True)
@@ -123,3 +126,8 @@ class MqttClient(Publisher):
         global_topic_removed = topic[len(self.configuration.mqtt_topic) + 1:]
         elements = global_topic_removed.split('/')
         return elements[2]
+
+    def get_index_from_open_wp_topic(self, topic: str):
+        open_wb_topic_removed = topic[len(f'{self.configuration.open_wb_topic}') + 1:]
+        elements = open_wb_topic_removed.split('/')
+        return elements[1]

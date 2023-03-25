@@ -83,11 +83,13 @@ def handle_error(saic_api: SaicApi, message_body: AbstractMessageBody, iteration
 
 
 class VehicleHandler:
-    def __init__(self, config: Configuration, saicapi: SaicApi, publisher: Publisher, vin_info: VinInfo):
+    def __init__(self, config: Configuration, saicapi: SaicApi, publisher: Publisher, vin_info: VinInfo,
+                 open_wb_lp: str = None):
         self.configuration = config
         self.saic_api = saicapi
         self.publisher = publisher
         self.vin_info = vin_info
+        self.open_wb_lp = open_wb_lp
         self.last_car_activity = None
         self.force_update = True
         self.abrp_api = AbrpApi(configuration, vin_info)
@@ -170,7 +172,8 @@ class VehicleHandler:
                     self.abrp_api.update_abrp(vehicle_status, charge_status)
                     self.notify_car_activity(datetime.datetime.now())
                     refresh_prefix = f'{self.vehicle_prefix}/refresh'
-                    self.publisher.publish_str(f'{refresh_prefix}/lastVehicleState', datetime_to_str(last_vehicle_status))
+                    self.publisher.publish_str(f'{refresh_prefix}/lastVehicleState',
+                                               datetime_to_str(last_vehicle_status))
                     self.publisher.publish_str(f'{refresh_prefix}/lastChargeState', datetime_to_str(last_charge_status))
                     if vehicle_status.is_charging() or vehicle_status.is_engine_running():
                         self.force_update = True
@@ -326,8 +329,10 @@ class VehicleHandler:
         self.publisher.publish_float(f'{drivetrain_prefix}/power', round(charge_mgmt_data.get_power(), 3))
         soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
         self.publisher.publish_float(f'{drivetrain_prefix}/soc', soc)
-        # publish SoC to openWB topic
-        self.publisher.publish_int(f'{self.configuration.openwb_topic}/%Soc', int(soc), True)
+        if self.open_wb_lp is not None:
+            # publish SoC to openWB topic
+            topic = f'{self.configuration.open_wb_topic}/set/lp/{self.open_wb_lp}/%Soc'
+            self.publisher.publish_int(topic, int(soc), True)
         estimated_electrical_range = charge_mgmt_data.bms_estd_elec_rng / 10.0
         self.publisher.publish_float(f'{drivetrain_prefix}/electrical_range', estimated_electrical_range)
         charge_status = cast(RvsChargingStatus, charge_mgmt_data.chargeStatus)
@@ -402,7 +407,8 @@ class MqttGateway:
                 self.configuration,  # Gateway pointer
                 self.saic_api,
                 self.publisher,
-                info)
+                info,
+                self.get_open_wb_lp(info.vin))
             self.vehicle_handler[info.vin] = vehicle_handler
 
         message_handler = MessageHandler(self, self.saic_api)
@@ -457,13 +463,17 @@ class MqttGateway:
         if vehicle_handler is not None:
             vehicle_handler.update_rear_window_heat_state(rear_windows_heat_state)
 
-    def __on_lp_charging(self, lp: int):
-        # TODO select VIN by lp
-        if len(self.vehicle_handler) == 1:
-            key, vehicle_handler = self.vehicle_handler.popitem()
-            if vehicle_handler is not None:
-                logging.info('Vehicle is charging')
-                vehicle_handler.notify_car_activity(datetime.datetime.now())
+    def __on_lp_charging(self, vin: str):
+        vehicle_handler = self.get_vehicle_handler(vin)
+        if vehicle_handler is not None:
+            logging.info('Vehicle is charging')
+            vehicle_handler.force_update = True
+
+    def get_open_wb_lp(self, vin) -> str | None:
+        for key in self.configuration.open_wb_lp_map.keys():
+            if self.configuration.open_wb_lp_map[key] == vin:
+                return key
+        return None
 
 
 class MessageHandler:
@@ -596,10 +606,10 @@ def process_arguments() -> Configuration:
                                                       + ' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl,'
                                                       + ' Environment Variable: ABRP_USER_TOKEN',
                             dest='abrp_user_token', required=False, action=EnvDefault, envvar='ABRP_USER_TOKEN')
-        parser.add_argument('--openwb-lp-topic', help='Topic for openWB charging point.'
-                                                       + ' Environment Variable: OPENWB_TOPIC.'
-                                                       + ' Default: openWB/set/lp/1', dest='openwb_topic',
-                            default='openWB/set/lp/1', required=False, action=EnvDefault, envvar='OPENWB_TOPIC')
+        parser.add_argument('--openwb-lp-map', help='The mapping of VIN to openWB charging point.'
+                                                    + ' Multiple mappings can be provided seperated by ,'
+                                                    + ' Example: LSJXXXX=1,LSJYYYY=2',
+                            dest='open_wp_lp_map', required=False, action=EnvDefault, envvar='OPENWB_LP_MAP')
         args = parser.parse_args()
         config.mqtt_user = args.mqtt_user
         config.mqtt_password = args.mqtt_password
@@ -608,7 +618,6 @@ def process_arguments() -> Configuration:
         config.saic_user = args.saic_user
         config.saic_password = args.saic_password
         config.abrp_api_key = args.abrp_api_key
-        config.openwb_topic = args.openwb_topic
         if args.abrp_user_token:
             map_entries = args.abrp_user_token.split(',')
             for entry in map_entries:
@@ -616,6 +625,14 @@ def process_arguments() -> Configuration:
                 key = key_value_pair[0]
                 value = key_value_pair[1]
                 config.abrp_token_map[key] = value
+        if args.open_wp_lp_map:
+            map_entries = args.open_wp_lp_map.split(',')
+            for entry in map_entries:
+                key_value_pair = entry.split('=')
+                key = key_value_pair[0]
+                value = key_value_pair[1]
+                config.open_wb_lp_map[key] = value
+                logging.info(f'Providing SoC and subscribing to charge state on openWB LP{key}')
         config.saic_password = args.saic_password
 
         parse_result = urllib.parse.urlparse(args.mqtt_uri)
