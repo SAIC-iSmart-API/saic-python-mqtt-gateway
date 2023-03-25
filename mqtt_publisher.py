@@ -22,6 +22,7 @@ class MqttClient(Publisher):
         self.on_active_refresh_interval_update = None
         self.on_doors_lock_state_update = None
         self.on_rear_window_heat_state_update = None
+        self.on_lp_charging = None
 
         mqtt_client = mqtt.Client(str(self.publisher_id), transport=self.transport_protocol, protocol=mqtt.MQTTv31)
         mqtt_client.on_connect = self.__on_connect
@@ -50,6 +51,7 @@ class MqttClient(Publisher):
             self.client.subscribe(f'{basic_topic}/refresh/period/inActive/set')
             self.client.subscribe(f'{basic_topic}/doors/locked/set')
             self.client.subscribe(f'{basic_topic}/climate/rearWindowDefrosterHeating/set')
+            self.client.subscribe('openWB/lp/1/boolChargeStat')
         else:
             SystemExit(f'Unable to connect to MQTT broker. Return code: {rc}')
 
@@ -78,6 +80,9 @@ class MqttClient(Publisher):
             vin = self.get_vin_from_topic(msg.topic)
             rear_windows_heat_state = msg.payload.decode().strip()
             self.on_rear_window_heat_state_update(rear_windows_heat_state, vin)
+        elif msg.topic == 'openWB/lp/1/boolChargeStat':
+            if msg.payload.decode() == '1':
+                self.on_lp_charging(1)
 
     def publish(self, msg: mqtt.MQTTMessage) -> None:
         self.client.publish(msg.topic, msg.payload, retain=True)

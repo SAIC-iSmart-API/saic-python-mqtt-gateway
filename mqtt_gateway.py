@@ -27,12 +27,7 @@ def datetime_to_str(dt: datetime.datetime) -> str:
     return dt.strftime('%Y-%m-%d %H:%M:%S')
 
 
-async def every(__seconds: float, func, *args, **kwargs):
-    while True:
-        func(*args, **kwargs)
-        await asyncio.sleep(__seconds)
-
-logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
+logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
 
 class SaicMessage:
@@ -179,14 +174,14 @@ class VehicleHandler:
                     self.publisher.publish_str(f'{refresh_prefix}/lastChargeState', datetime_to_str(last_charge_status))
                     if vehicle_status.is_charging() or vehicle_status.is_engine_running():
                         self.force_update = True
-                        time.sleep(float(self.active_refresh_interval))
+                        await asyncio.sleep(float(self.active_refresh_interval))
                 except requests.exceptions.RequestException as e:
                     logging.error(f'HTTP request error: {e} Retrying in a Minute')
-                    time.sleep(float(60))
+                    await asyncio.sleep(float(60))
             else:
                 # car not active, wait a second
                 logging.debug(f'sleeping {datetime.datetime.now()}, last car activity: {self.last_car_activity}')
-                time.sleep(1.0)
+                await asyncio.sleep(1.0)
 
     def notify_car_activity(self, last_activity_time: datetime):
         if (
@@ -332,7 +327,7 @@ class VehicleHandler:
         soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
         self.publisher.publish_float(f'{drivetrain_prefix}/soc', soc)
         # publish SoC to openWB topic
-        self.publisher.publish_int(self.configuration.openwb_topic, int(soc), True)
+        self.publisher.publish_int(f'{self.configuration.openwb_topic}/%Soc', int(soc), True)
         estimated_electrical_range = charge_mgmt_data.bms_estd_elec_rng / 10.0
         self.publisher.publish_float(f'{drivetrain_prefix}/electrical_range', estimated_electrical_range)
         charge_status = cast(RvsChargingStatus, charge_mgmt_data.chargeStatus)
@@ -384,6 +379,7 @@ class MqttGateway:
         self.publisher.on_active_refresh_interval_update = self.__on_active_refresh_interval_update
         self.publisher.on_doors_lock_state_update = self.__on_doors_lock_state_update
         self.publisher.on_rear_window_heat_state_update = self.__on_rear_window_heat_state_update
+        self.publisher.on_lp_charging = self.__on_lp_charging
         self.saic_api = SaicApi(config, self.publisher)
         self.publisher.connect()
 
@@ -461,6 +457,14 @@ class MqttGateway:
         if vehicle_handler is not None:
             vehicle_handler.update_rear_window_heat_state(rear_windows_heat_state)
 
+    def __on_lp_charging(self, lp: int):
+        # TODO select VIN by lp
+        if len(self.vehicle_handler) == 1:
+            key, vehicle_handler = self.vehicle_handler.popitem()
+            if vehicle_handler is not None:
+                logging.info('Vehicle is charging')
+                vehicle_handler.notify_car_activity(datetime.datetime.now())
+
 
 class MessageHandler:
     def __init__(self, gateway: MqttGateway, saicapi: SaicApi):
@@ -477,7 +481,7 @@ class MessageHandler:
                     handle_error(self.saicapi, message_list_rsp_msg.body, iteration)
                 else:
                     waiting_time = iteration * 1
-                    logging.debug(
+                    logging.info(
                         f'Update message list request returned no application data. Waiting {waiting_time} seconds')
                     time.sleep(float(waiting_time))
                     iteration += 1
@@ -490,17 +494,22 @@ class MessageHandler:
 
             latest_message = None
             latest_timestamp = None
-            message_count_map = {}
+            latest_vehicle_start_message = None
+            latest_vehicle_start_timestamp = None
             for msg in message_list_rsp.messages:
                 message = convert(msg)
-                logging.debug(msg.get_details())
-                # create statistics
-                if message.message_type in message_count_map:
-                    count = message_count_map[message.message_type]
-                    count += 1
-                    message_count_map[message.message_type] = count
-                else:
-                    message_count_map[message.message_type] = 1
+                logging.info(message.get_details())
+
+                if (
+                        message.message_type == '323'
+                        and message.title == 'Vehicle Start'
+                ):
+                    if latest_vehicle_start_message is None:
+                        latest_vehicle_start_timestamp = message.message_time
+                        latest_vehicle_start_message = message
+                    elif latest_vehicle_start_timestamp < message.message_time:
+                        latest_vehicle_start_timestamp = message.message_time
+                        latest_vehicle_start_message = message
                 # find the latest message
                 if latest_timestamp is None:
                     latest_timestamp = message.message_time
@@ -509,9 +518,10 @@ class MessageHandler:
                     latest_timestamp = message.message_time
                     latest_message = message
 
-            for key in message_count_map.keys():
-                logging.info(f'Received {message_count_map[key]} messages of type {key}')
-            if latest_message is not None:
+            if latest_vehicle_start_message is not None:
+                logging.info(f'Vehicle start detected at {latest_vehicle_start_message.message_time}')
+                self.gateway.notify_message(latest_vehicle_start_message)
+            elif latest_message is not None:
                 self.gateway.notify_message(latest_message)
         except requests.exceptions.RequestException as e:
             logging.error(f'HTTP request error: {e}')
@@ -530,6 +540,12 @@ class EnvDefault(argparse.Action):
         setattr(namespace, self.dest, values)
 
 
+async def periodic(message_handler: MessageHandler, query_messages_interval: int):
+    while True:
+        message_handler.polling()
+        await asyncio.sleep(float(query_messages_interval))
+
+
 async def main(vh_map: dict, message_handler: MessageHandler, query_messages_interval: int):
     tasks = []
     for key in vh_map:
@@ -538,7 +554,7 @@ async def main(vh_map: dict, message_handler: MessageHandler, query_messages_int
         task = asyncio.create_task(vh.handle_vehicle())
         tasks.append(task)
 
-    tasks.append(asyncio.create_task(every(float(query_messages_interval), message_handler.polling())))
+    tasks.append(asyncio.create_task(periodic(message_handler, query_messages_interval)))
 
     for task in tasks:
         # make sure we wait on all futures before exiting
@@ -580,10 +596,10 @@ def process_arguments() -> Configuration:
                                                       + ' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl,'
                                                       + ' Environment Variable: ABRP_USER_TOKEN',
                             dest='abrp_user_token', required=False, action=EnvDefault, envvar='ABRP_USER_TOKEN')
-        parser.add_argument('--openwb-soc-topic', help='Topic for publishing SoC top openWB.'
+        parser.add_argument('--openwb-lp-topic', help='Topic for openWB charging point.'
                                                        + ' Environment Variable: OPENWB_TOPIC.'
-                                                       + ' Default: openWB/set/lp/1/%Soc', dest='openwb_topic',
-                            default='openWB/set/lp/1/%Soc', required=False, action=EnvDefault, envvar='OPENWB_TOPIC')
+                                                       + ' Default: openWB/set/lp/1', dest='openwb_topic',
+                            default='openWB/set/lp/1', required=False, action=EnvDefault, envvar='OPENWB_TOPIC')
         args = parser.parse_args()
         config.mqtt_user = args.mqtt_user
         config.mqtt_password = args.mqtt_password

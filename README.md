@@ -15,17 +15,17 @@ The implementation is based on the findings from the [SAIC-API Documentation](ht
 
 Configuration parameters can be provided as command line parameters or environment variables (this is what you typically do when you run the service from a docker container).
 
-| CMD param             | ENV variable    | Description                        |
-|-----------------------|-----------------|------------------------------------|
-| -m or --mqtt-uri      | MQTT_URI        | URI to the MQTT Server. TCP: tcp://mqtt.eclipseprojects.io:1883 or WebSocket: ws://mqtt.eclipseprojects.io:9001 - **required** |
-| --mqtt-user           | MQTT_USER       | MQTT user name |
-| --mqtt-password       | MQTT_PASSWORD   | MQTT password |
-| --mqtt-topic-prefix   | MQTT_TOPIC      | Provide a custom MQTT prefix to replace the default: saic |
-| -u or --saic-user     | SAIC_USER       | SAIC user name - **required** |
-| -p or --saic-password | SAIC_PASSWORD   | SAIC password - **required** |
+| CMD param             | ENV variable    | Description                                                                                                                         |
+|-----------------------|-----------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| -m or --mqtt-uri      | MQTT_URI        | URI to the MQTT Server. TCP: tcp://mqtt.eclipseprojects.io:1883 or WebSocket: ws://mqtt.eclipseprojects.io:9001 - **required**      |
+| --mqtt-user           | MQTT_USER       | MQTT user name                                                                                                                      |
+| --mqtt-password       | MQTT_PASSWORD   | MQTT password                                                                                                                       |
+| --mqtt-topic-prefix   | MQTT_TOPIC      | Provide a custom MQTT prefix to replace the default: saic                                                                           |
+| -u or --saic-user     | SAIC_USER       | SAIC user name - **required**                                                                                                       |
+| -p or --saic-password | SAIC_PASSWORD   | SAIC password - **required**                                                                                                        |
 | --abrp-api-key        | ABRP_API_KEY    | API key for the A Better Route Planer telemetry API. Default is the open source telemetry API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d. |
 | --abrp-user-token     | ABRP_USER_TOKEN | Mapping of VIN to ABRP User Token. Multiple mappings can be provided seperated by ',' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl |
-| --openwb-soc-topic    | OPENWB_TOPIC    | Topic for publishing SoC top openWB. Default: openWB/set/lp/1/%Soc |
+| --openwb-lp-topic     | OPENWB_TOPIC    | Topic for openWB charging point. Default: openWB/set/lp/1                                                                           |
 
 
 ## Running the service
