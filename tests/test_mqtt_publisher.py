@@ -2,8 +2,8 @@ from unittest import TestCase
 
 import paho.mqtt.client as mqtt
 
+from configuration import Configuration
 from mqtt_publisher import MqttClient
-from saicapi.common_model import Configuration
 
 USER = 'me@home.da'
 VIN = 'vin10000000000000'

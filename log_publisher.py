@@ -1,7 +1,7 @@
 import logging
 
-from saicapi.common_model import Configuration
-from saicapi.publisher import Publisher
+from configuration import Configuration
+from publisher import Publisher
 
 
 class Logger(Publisher):

@@ -2,8 +2,8 @@ import threading
 import uuid
 import paho.mqtt.client as mqtt
 
-from saicapi.common_model import Configuration
-from saicapi.publisher import Publisher
+from configuration import Configuration
+from publisher import Publisher
 
 
 class MqttClient(Publisher):

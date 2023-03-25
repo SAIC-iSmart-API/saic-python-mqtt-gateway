@@ -1,7 +1,7 @@
 import json
 import re
 
-from saicapi.common_model import Configuration
+from configuration import Configuration
 
 
 class Publisher:

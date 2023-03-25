@@ -8,15 +8,17 @@ import urllib.parse
 from typing import cast
 
 import requests.exceptions
+from saic_ismart_client.abrp_api import AbrpApi
+from saic_ismart_client.common_model import AbstractMessageBody
+from saic_ismart_client.ota_v1_1.data_model import Message, VinInfo, MpUserLoggingInRsp, MessageListResp
+from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
+from saic_ismart_client.ota_v3_0.Message import MessageBodyV30
+from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp, RvsChargingStatus
+from saic_ismart_client.saic_api import SaicApi
 
+from configuration import Configuration
 from mqtt_publisher import MqttClient
-from saicapi.publisher import Publisher
-from saicapi.common_model import Configuration, AbstractMessageBody
-from saicapi.ota_v1_1.data_model import MpUserLoggingInRsp, VinInfo, MessageListResp, Message
-from saicapi.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
-from saicapi.ota_v3_0.Message import MessageBodyV30
-from saicapi.ota_v3_0.data_model import OtaChrgMangDataResp, RvsChargingStatus
-from saicapi.ws_api import AbrpApi, SaicApi
+from publisher import Publisher
 
 
 def epoch_value_to_str(time_value: int) -> str:
@@ -92,7 +94,11 @@ class VehicleHandler:
         self.open_wb_lp = open_wb_lp
         self.last_car_activity = None
         self.force_update = True
-        self.abrp_api = AbrpApi(configuration, vin_info)
+        if vin_info.vin in configuration.abrp_token_map:
+            abrp_user_token = configuration.abrp_token_map[vin_info.vin]
+        else:
+            abrp_user_token = None
+        self.abrp_api = AbrpApi(configuration.abrp_api_key, abrp_user_token)
         self.vehicle_prefix = f'{self.configuration.saic_user}/vehicles/{self.vin_info.vin}'
         self.refresh_mode = 'periodic'
         self.inactive_refresh_interval = -1
@@ -385,7 +391,7 @@ class MqttGateway:
         self.publisher.on_doors_lock_state_update = self.__on_doors_lock_state_update
         self.publisher.on_rear_window_heat_state_update = self.__on_rear_window_heat_state_update
         self.publisher.on_lp_charging = self.__on_lp_charging
-        self.saic_api = SaicApi(config, self.publisher)
+        self.saic_api = SaicApi(config.saic_uri, config.saic_user, config.saic_password)
         self.publisher.connect()
 
     def run(self):
