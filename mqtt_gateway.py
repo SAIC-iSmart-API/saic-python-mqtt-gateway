@@ -202,9 +202,10 @@ class VehicleHandler:
             self.publisher.publish_str(f'{self.vin_info.vin}/last_activity', last_activity)
             logging.info(f'last activity: {last_activity}')
 
-    def notify_message(self, message: SaicMessage):
+    def force_update_by_message_time(self, message: SaicMessage):
         # something happened, better check the vehicle state
-        self.notify_car_activity(message.message_time)
+        if self.last_car_activity < message.message_time:
+            self.force_update = True
 
     def update_vehicle_status(self) -> OtaRvmVehicleStatusResp25857:
         vehicle_status_rsp_msg = self.saic_api.get_vehicle_status(self.vin_info)
@@ -433,7 +434,7 @@ class MqttGateway:
         self.publisher.publish_str(f'{message_prefix}/vin', message.vin)
         if message.vin is not None:
             handler = cast(VehicleHandler, self.vehicle_handler[message.vin])
-            handler.notify_message(message)
+            handler.force_update_by_message_time(message)
 
     def get_vehicle_handler(self, vin: str) -> VehicleHandler:
         if vin in self.vehicle_handler:
