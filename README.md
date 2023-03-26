@@ -1,10 +1,10 @@
 # SAIC MQTT Gateway
 
-A service that queries the data from a MG iSMART account and publishes the data over MQTT.
+A service that queries the data from an MG iSMART account and publishes the data over MQTT.
 
 MG iSMART is the connectivity system in your MG car (MG5 MG4, ZS...).
 
-The implementation is based on the findings from the [SAIC-API Documentation](https://github.com/tosate/SAIC-API-Documentation) project.
+The implementation is based on the findings from the [SAIC-iSmart-API Documentation](https://github.com/SAIC-iSmart-API/documentation) project.
 
 ## Prerequisites
 
@@ -48,7 +48,7 @@ Build the image yourself with the [Dockerfile](Dockerfile) or download the image
 $ docker build -t saic-mqtt-gateway .
 ```
 
-There is a [docker compose file](docker-compose.yml) that shows how-to setup the service.
+There is a [docker compose file](docker-compose.yml) that shows how-to set up the service.
 
 ## openWB integration
 
@@ -60,4 +60,4 @@ The openWB can also connect to an external MQTT broker. However, this connection
 
 ## A Better Route Planer (ABRP) integration
 
-Telemetry data from your car can be provided to [ABRP](https://abetterrouteplanner.com/). **Be aware that this is not done by default.** The data will be send only if you provide the mapping of your vehicle identification number (VIN) to an ABRP user token.
+Telemetry data from your car can be provided to [ABRP](https://abetterrouteplanner.com/). **Be aware that this is not done by default.** The data will be sent only if you provide the mapping of your vehicle identification number (VIN) to an ABRP user token.
