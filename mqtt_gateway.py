@@ -94,6 +94,7 @@ class VehicleHandler:
         self.open_wb_lp = open_wb_lp
         self.last_car_activity = None
         self.force_update = True
+        self.is_charging_on_openwb = False
         if vin_info.vin in configuration.abrp_token_map:
             abrp_user_token = configuration.abrp_token_map[vin_info.vin]
         else:
@@ -181,7 +182,11 @@ class VehicleHandler:
                     self.publisher.publish_str(f'{refresh_prefix}/lastVehicleState',
                                                datetime_to_str(last_vehicle_status))
                     self.publisher.publish_str(f'{refresh_prefix}/lastChargeState', datetime_to_str(last_charge_status))
-                    if vehicle_status.is_charging() or vehicle_status.is_engine_running():
+                    if (
+                            vehicle_status.is_charging()
+                            or self.is_charging_on_openwb
+                            or vehicle_status.is_engine_running()
+                    ):
                         self.force_update = True
                         await asyncio.sleep(float(self.active_refresh_interval))
                 except requests.exceptions.RequestException as e:
@@ -473,11 +478,11 @@ class MqttGateway:
         if vehicle_handler is not None:
             vehicle_handler.update_rear_window_heat_state(rear_windows_heat_state)
 
-    def __on_lp_charging(self, vin: str):
+    def __on_lp_charging(self, vin: str, is_charging: bool):
         vehicle_handler = self.get_vehicle_handler(vin)
         if vehicle_handler is not None:
             logging.info('Vehicle is charging')
-            vehicle_handler.force_update = True
+            vehicle_handler.is_charging_on_openwb = is_charging
 
     def get_open_wb_lp(self, vin) -> str | None:
         for key in self.configuration.open_wb_lp_map.keys():
