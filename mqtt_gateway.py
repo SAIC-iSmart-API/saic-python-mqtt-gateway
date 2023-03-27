@@ -480,12 +480,15 @@ class MqttGateway:
 
     def __on_lp_charging(self, vin: str, is_charging: bool):
         vehicle_handler = self.get_vehicle_handler(vin)
-        if is_charging:
-            logging.info(f'Vehicle {vin} started charging on openWB.')
-        else:
-            logging.info(f'Vehicle {vin} stopped charging on openWB.')
         if vehicle_handler is not None:
             vehicle_handler.is_charging_on_openwb = is_charging
+            if is_charging:
+                logging.info(f'Vehicle {vin} started charging on openWB.')
+                vehicle_handler.force_update = True
+            else:
+                logging.info(f'Vehicle {vin} stopped charging on openWB.')
+        else:
+            logging.error(f'No vehicle handler found for VIN {vin}')
 
     def get_open_wb_lp(self, vin) -> str | None:
         for key in self.configuration.open_wb_lp_map.keys():
