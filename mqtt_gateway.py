@@ -158,7 +158,7 @@ class VehicleHandler:
 
     async def handle_vehicle(self) -> None:
         self.set_inactive_refresh_interval(self.configuration.inactive_vehicle_state_refresh_interval)
-        self.set_active_refresh_interval(60)
+        self.set_active_refresh_interval(30)
         self.publisher.publish_str(f'{self.vehicle_prefix}/configuration/raw',
                                    self.vin_info.model_configuration_json_str)
         configuration_prefix = f'{self.vehicle_prefix}/configuration'
@@ -191,7 +191,7 @@ class VehicleHandler:
                         await asyncio.sleep(float(self.active_refresh_interval))
                 except requests.exceptions.RequestException as e:
                     logging.error(f'HTTP request error: {e} Retrying in a Minute')
-                    await asyncio.sleep(float(60))
+                    await asyncio.sleep(float(30))
             else:
                 # car not active, wait a second
                 logging.debug(f'sleeping {datetime.datetime.now()}, last car activity: {self.last_car_activity}')
@@ -480,8 +480,11 @@ class MqttGateway:
 
     def __on_lp_charging(self, vin: str, is_charging: bool):
         vehicle_handler = self.get_vehicle_handler(vin)
+        if is_charging:
+            logging.info(f'Vehicle {vin} started charging on openWB.')
+        else:
+            logging.info(f'Vehicle {vin} stopped charging on openWB.')
         if vehicle_handler is not None:
-            logging.info('Vehicle is charging')
             vehicle_handler.is_charging_on_openwb = is_charging
 
     def get_open_wb_lp(self, vin) -> str | None:
