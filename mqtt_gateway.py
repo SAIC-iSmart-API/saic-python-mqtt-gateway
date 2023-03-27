@@ -399,7 +399,10 @@ class MqttGateway:
         login_response_message = self.saic_api.login()
         user_logging_in_response = cast(MpUserLoggingInRsp, login_response_message.application_data)
 
-        self.saic_api.set_alarm_switches()
+        try:
+            self.saic_api.set_alarm_switches()
+        except ValueError as e:
+            logging.error(e)
 
         for info in user_logging_in_response.vin_list:
             vin_info = cast(VinInfo, info)
