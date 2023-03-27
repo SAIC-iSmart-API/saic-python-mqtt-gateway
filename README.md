@@ -41,7 +41,7 @@ $ python ./mqtt_gateway.py -m tcp://my-broker-host:1883 -u <saic-user> -p <saic-
 
 ### In a docker container
 
-Build the image yourself with the [Dockerfile](Dockerfile) or download the image from [docker hub](https://hub.docker.com/r/tosate/saic-mqtt-gateway).
+Build the image yourself with the [Dockerfile](Dockerfile) or download the image from [docker hub](https://hub.docker.com/r/saicismartapi/saic-python-mqtt-gateway).
 
 #### Building the docker image
 ```
