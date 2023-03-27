@@ -82,10 +82,9 @@ class MqttClient(Publisher):
             rear_windows_heat_state = msg.payload.decode().strip()
             self.on_rear_window_heat_state_update(rear_windows_heat_state, vin)
         elif msg.topic.endswith('/boolChargeStat'):
-            if msg.payload.decode() == '1':
-                index = self.get_index_from_open_wp_topic(msg.topic)
-                vin = self.configuration.open_wb_lp_map[index]
-                self.on_lp_charging(vin)
+            index = self.get_index_from_open_wp_topic(msg.topic)
+            vin = self.configuration.open_wb_lp_map[index]
+            self.on_lp_charging(vin, msg.payload.decode() == '1')
 
     def publish(self, msg: mqtt.MQTTMessage) -> None:
         self.client.publish(msg.topic, msg.payload, retain=True)
