@@ -413,6 +413,8 @@ class MqttGateway:
             alarm_switches = [saic_ismart_client.saic_api.create_alarm_switch(MpAlarmSettingType.ENGINE_START),
                               saic_ismart_client.saic_api.create_alarm_switch(MpAlarmSettingType.OFF_CAR),
                               saic_ismart_client.saic_api.create_alarm_switch(MpAlarmSettingType.ABNORMAL)]
+            for switch in alarm_switches:
+                logging.info(f'Registering for {switch.alarm_setting_type.value} messages')
             self.saic_api.set_alarm_switches(alarm_switches)
         except SaicApiException as e:
             logging.error(e)
