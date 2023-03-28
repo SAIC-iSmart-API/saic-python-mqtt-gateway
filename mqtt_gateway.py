@@ -8,13 +8,15 @@ import urllib.parse
 from typing import cast
 
 import requests.exceptions
+import saic_ismart_client.saic_api
 from saic_ismart_client.abrp_api import AbrpApi
 from saic_ismart_client.common_model import AbstractMessageBody
-from saic_ismart_client.ota_v1_1.data_model import Message, VinInfo, MpUserLoggingInRsp, MessageListResp
+from saic_ismart_client.ota_v1_1.data_model import Message, VinInfo, MpUserLoggingInRsp, MessageListResp, \
+    MpAlarmSettingType
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
 from saic_ismart_client.ota_v3_0.Message import MessageBodyV30
 from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp, RvsChargingStatus
-from saic_ismart_client.saic_api import SaicApi
+from saic_ismart_client.saic_api import SaicApi, SaicApiException
 
 from configuration import Configuration
 from mqtt_publisher import MqttClient
@@ -401,12 +403,18 @@ class MqttGateway:
         self.publisher.connect()
 
     def run(self):
-        login_response_message = self.saic_api.login()
-        user_logging_in_response = cast(MpUserLoggingInRsp, login_response_message.application_data)
+        try:
+            login_response_message = self.saic_api.login()
+            user_logging_in_response = cast(MpUserLoggingInRsp, login_response_message.application_data)
+        except SaicApiException as e:
+            raise SystemExit(e)
 
         try:
-            self.saic_api.set_alarm_switches()
-        except ValueError as e:
+            alarm_switches = [saic_ismart_client.saic_api.create_alarm_switch(MpAlarmSettingType.ENGINE_START),
+                              saic_ismart_client.saic_api.create_alarm_switch(MpAlarmSettingType.OFF_CAR),
+                              saic_ismart_client.saic_api.create_alarm_switch(MpAlarmSettingType.ABNORMAL)]
+            self.saic_api.set_alarm_switches(alarm_switches)
+        except SaicApiException as e:
             logging.error(e)
 
         for info in user_logging_in_response.vin_list:
@@ -552,6 +560,13 @@ class MessageHandler:
             if latest_vehicle_start_message is not None:
                 logging.info(f'Vehicle start detected at {latest_vehicle_start_message.message_time}')
                 self.gateway.notify_message(latest_vehicle_start_message)
+                # delete the vehicle start message after processing it
+                try:
+                    message_id = latest_vehicle_start_message.message_id
+                    self.saicapi.delete_message(message_id)
+                    logging.info(f'{latest_vehicle_start_message.title} message with ID {message_id} deleted')
+                except SaicApiException as e:
+                    logging.error(e)
             elif latest_message is not None:
                 self.gateway.notify_message(latest_message)
         except requests.exceptions.RequestException as e:
