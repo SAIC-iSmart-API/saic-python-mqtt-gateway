@@ -407,6 +407,7 @@ class MqttGateway:
             login_response_message = self.saic_api.login()
             user_logging_in_response = cast(MpUserLoggingInRsp, login_response_message.application_data)
         except SaicApiException as e:
+            logging.exception(e)
             raise SystemExit(e)
 
         try:
@@ -417,7 +418,7 @@ class MqttGateway:
                 logging.info(f'Registering for {switch.alarm_setting_type.value} messages')
             self.saic_api.set_alarm_switches(alarm_switches)
         except SaicApiException as e:
-            logging.error(e)
+            logging.exception(e)
 
         for info in user_logging_in_response.vin_list:
             vin_info = cast(VinInfo, info)
@@ -568,7 +569,7 @@ class MessageHandler:
                     self.saicapi.delete_message(message_id)
                     logging.info(f'{latest_vehicle_start_message.title} message with ID {message_id} deleted')
                 except SaicApiException as e:
-                    logging.error(e)
+                    logging.exception(e)
             elif latest_message is not None:
                 self.gateway.notify_message(latest_message)
         except requests.exceptions.RequestException as e:
