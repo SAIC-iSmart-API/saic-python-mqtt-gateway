@@ -7,7 +7,6 @@ import time
 import urllib.parse
 from typing import cast
 
-import requests.exceptions
 import saic_ismart_client.saic_api
 from saic_ismart_client.abrp_api import AbrpApi
 from saic_ismart_client.common_model import AbstractMessageBody
@@ -127,8 +126,8 @@ class VehicleHandler:
                 self.saic_api.unlock_vehicle(self.vin_info)
             else:
                 logging.error(f'Invalid lock state: {lock_state}. Valid values are locked and unlocked')
-        except requests.exceptions.RequestException as e:
-            logging.error(f'HTTP request error: {e}')
+        except SaicApiException as e:
+            logging.exception(e)
 
     def update_rear_window_heat_state(self, rear_windows_heat_state: str):
         try:
@@ -140,8 +139,8 @@ class VehicleHandler:
                 self.saic_api.stop_rear_window_heat(self.vin_info)
             else:
                 logging.error(f'Invalid rear window heat state: {rear_windows_heat_state}. Valid values are on and off')
-        except requests.exceptions.RequestException as e:
-            logging.error(f'HTTP request error: {e}')
+        except SaicApiException as e:
+            logging.exception(e)
 
     def refresh_required(self):
         refresh_interval = self.inactive_refresh_interval
@@ -191,8 +190,8 @@ class VehicleHandler:
                     ):
                         self.force_update = True
                         await asyncio.sleep(float(self.active_refresh_interval))
-                except requests.exceptions.RequestException as e:
-                    logging.error(f'HTTP request error: {e} Retrying in a Minute')
+                except SaicApiException as e:
+                    logging.exception(e)
                     await asyncio.sleep(float(30))
             else:
                 # car not active, wait a second
@@ -407,15 +406,18 @@ class MqttGateway:
             login_response_message = self.saic_api.login()
             user_logging_in_response = cast(MpUserLoggingInRsp, login_response_message.application_data)
         except SaicApiException as e:
+            logging.exception(e)
             raise SystemExit(e)
 
         try:
             alarm_switches = [saic_ismart_client.saic_api.create_alarm_switch(MpAlarmSettingType.ENGINE_START),
                               saic_ismart_client.saic_api.create_alarm_switch(MpAlarmSettingType.OFF_CAR),
                               saic_ismart_client.saic_api.create_alarm_switch(MpAlarmSettingType.ABNORMAL)]
+            for switch in alarm_switches:
+                logging.info(f'Registering for {switch.alarm_setting_type} messages')
             self.saic_api.set_alarm_switches(alarm_switches)
         except SaicApiException as e:
-            logging.error(e)
+            logging.exception(e)
 
         for info in user_logging_in_response.vin_list:
             vin_info = cast(VinInfo, info)
@@ -566,11 +568,11 @@ class MessageHandler:
                     self.saicapi.delete_message(message_id)
                     logging.info(f'{latest_vehicle_start_message.title} message with ID {message_id} deleted')
                 except SaicApiException as e:
-                    logging.error(e)
+                    logging.exception(e)
             elif latest_message is not None:
                 self.gateway.notify_message(latest_message)
-        except requests.exceptions.RequestException as e:
-            logging.error(f'HTTP request error: {e}')
+        except SaicApiException as e:
+            logging.exception(e)
 
 
 class EnvDefault(argparse.Action):
