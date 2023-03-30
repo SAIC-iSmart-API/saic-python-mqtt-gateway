@@ -75,8 +75,14 @@ class MqttClient(Publisher):
         elif msg.topic.endswith('/doors/locked/set'):
             vin = self.get_vin_from_topic(msg.topic)
             if self.on_doors_lock_state_update is not None:
-                lock_state = msg.payload.decode().strip()
-                self.on_doors_lock_state_update(lock_state, vin)
+                lock_value = msg.payload.decode().strip().lower()
+                if lock_value == 'true':
+                    self.on_doors_lock_state_update(True, vin)
+                elif lock_value == 'false':
+                    self.on_doors_lock_state_update(False, vin)
+                else:
+                    topic = msg.topic[len(self.configuration.mqtt_topic) + 1:-4]
+                    self.publish_str(f'{topic}/result', f'Invalid value: {lock_value}. Valid values are true or false')
         elif msg.topic.endswith('/climate/rearWindowDefrosterHeating/set'):
             vin = self.get_vin_from_topic(msg.topic)
             rear_windows_heat_state = msg.payload.decode().strip()

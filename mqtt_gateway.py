@@ -116,30 +116,37 @@ class VehicleHandler:
         self.publisher.publish_int(f'{refresh_prefix}/period/active', seconds)
         self.active_refresh_interval = seconds
 
-    def update_doors_lock_state(self, lock_state: str):
+    def update_doors_lock_state(self, doors_locked: bool):
+        result_key = f'{self.vehicle_prefix}/doors/locked/result'
         try:
-            if lock_state.lower() == 'locked':
+            if doors_locked:
                 logging.info(f'Vehicle {self.vin_info.vin} will be locked')
                 self.saic_api.lock_vehicle(self.vin_info)
-            elif lock_state.lower() == 'unlocked':
+            else:
                 logging.info(f'Vehicle {self.vin_info.vin} will be unlocked')
                 self.saic_api.unlock_vehicle(self.vin_info)
-            else:
-                logging.error(f'Invalid lock state: {lock_state}. Valid values are locked and unlocked')
+            self.publisher.publish_str(result_key, 'Success')
         except SaicApiException as e:
+            self.publisher.publish_str(result_key, f'Failed: {e.message}')
             logging.exception(e)
 
     def update_rear_window_heat_state(self, rear_windows_heat_state: str):
+        result_key = f'{self.vehicle_prefix}/climate/rearWindowDefrosterHeating/result'
         try:
             if rear_windows_heat_state.lower() == 'on':
                 logging.info('Rear window heating will be switched on')
                 self.saic_api.start_rear_window_heat(self.vin_info)
+                self.publisher.publish_str(result_key, 'Success')
             elif rear_windows_heat_state.lower() == 'off':
                 logging.info('Rear window heating will be switched off')
                 self.saic_api.stop_rear_window_heat(self.vin_info)
+                self.publisher.publish_str(result_key, 'Success')
             else:
-                logging.error(f'Invalid rear window heat state: {rear_windows_heat_state}. Valid values are on and off')
+                message = f'Invalid rear window heat state: {rear_windows_heat_state}. Valid values are on and off'
+                self.publisher.publish_str(result_key, message)
+                logging.error(message)
         except SaicApiException as e:
+            self.publisher.publish_str(result_key, f'Failed: {e.message}')
             logging.exception(e)
 
     def refresh_required(self):
@@ -478,10 +485,10 @@ class MqttGateway:
             vehicle_handler.set_inactive_refresh_interval(seconds)
             logging.info(f'Setting inactive query interval in vehicle handler for VIN {vin} to {seconds} seconds')
 
-    def __on_doors_lock_state_update(self, lock_state: str, vin: str):
+    def __on_doors_lock_state_update(self, doors_locked: bool, vin: str):
         vehicle_handler = self.get_vehicle_handler(vin)
         if vehicle_handler is not None:
-            vehicle_handler.update_doors_lock_state(lock_state)
+            vehicle_handler.update_doors_lock_state(doors_locked)
 
     def __on_rear_window_heat_state_update(self, rear_windows_heat_state: str, vin: str):
         vehicle_handler = self.get_vehicle_handler(vin)
