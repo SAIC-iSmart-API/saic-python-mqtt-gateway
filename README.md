@@ -2,14 +2,14 @@
 
 A service that queries the data from an MG iSMART account and publishes the data over MQTT.
 
-MG iSMART is the connectivity system in your MG car (MG5 MG4, ZS...).
+MG iSMART is the connectivity system in your MG car (MG5, MG4, ZS...).
 
 The implementation is based on the findings from the [SAIC-iSmart-API Documentation](https://github.com/SAIC-iSmart-API/documentation) project.
 
 ## Prerequisites
 
 * You have an iSMART account (can be created in the iSMART app)
-* Your car needs to be registered to your accout
+* Your car needs to be registered to your account
 
 ## Configuration
 
@@ -23,7 +23,7 @@ Configuration parameters can be provided as command line parameters or environme
 | --mqtt-topic-prefix   | MQTT_TOPIC      | Provide a custom MQTT prefix to replace the default: saic                                                                                |
 | -u or --saic-user     | SAIC_USER       | SAIC user name - **required**                                                                                                            |
 | -p or --saic-password | SAIC_PASSWORD   | SAIC password - **required**                                                                                                             |
-| --abrp-api-key        | ABRP_API_KEY    | API key for the A Better Route Planer telemetry API. Default is the open source telemetry API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.  |
+| --abrp-api-key        | ABRP_API_KEY    | API key for the A Better Route Planner telemetry API. Default is the open source telemetry API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.  |
 | --abrp-user-token     | ABRP_USER_TOKEN | Mapping of VIN to ABRP User Token. Multiple mappings can be provided seperated by ',' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl |
 | --openwb-lp-map       | OPENWB_LP_MAP   | Mapping of VIN to openWB charging point. Multiple mappings can be provided seperated by ',' Example: 1=LSJXXXX,2=LSJYYYY                 |
 
@@ -48,7 +48,7 @@ Build the image yourself with the [Dockerfile](Dockerfile) or download the image
 $ docker build -t saic-mqtt-gateway .
 ```
 
-There is a [docker compose file](docker-compose.yml) that shows how-to set up the service.
+There is a [docker compose file](docker-compose.yml) that shows how to set up the service.
 
 ## openWB integration
 
@@ -56,8 +56,8 @@ The state-of-charge (SoC) can be provided over MQTT to an [openWB wallbox](https
 
 Just configure the MQTT gateway to connect to the MQTT broker which is running on your openWB and enable SoC over MQTT in the openWB.
 
-The openWB can also connect to an external MQTT broker. However, this connection needs to be secured with TLS so that messages are not exchanged in clear text. Since the MQTT gateway does not yet support secured MQTT connections, it won't be possible wo use a third-party broker.
+The openWB can also connect to an external MQTT broker. However, this connection needs to be secured with TLS so that messages are not exchanged in clear text. Since the MQTT gateway does not yet support secured MQTT connections, it won't be possible to use a third-party broker.
 
-## A Better Route Planer (ABRP) integration
+## A Better Route Planner (ABRP) integration
 
 Telemetry data from your car can be provided to [ABRP](https://abetterrouteplanner.com/). **Be aware that this is not done by default.** The data will be sent only if you provide the mapping of your vehicle identification number (VIN) to an ABRP user token.
