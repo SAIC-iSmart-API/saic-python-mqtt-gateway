@@ -548,10 +548,7 @@ class MessageHandler:
                 message = convert(msg)
                 logging.info(message.get_details())
 
-                if (
-                        message.message_type == '323'
-                        and message.title == 'Vehicle Start'
-                ):
+                if message.message_type == '323':
                     if latest_vehicle_start_message is None:
                         latest_vehicle_start_timestamp = message.message_time
                         latest_vehicle_start_message = message
@@ -567,7 +564,8 @@ class MessageHandler:
                     latest_message = message
 
             if latest_vehicle_start_message is not None:
-                logging.info(f'Vehicle start detected at {latest_vehicle_start_message.message_time}')
+                logging.info(f'{latest_vehicle_start_message.title} detected'
+                             + ' at {latest_vehicle_start_message.message_time}')
                 self.gateway.notify_message(latest_vehicle_start_message)
                 # delete the vehicle start message after processing it
                 try:
