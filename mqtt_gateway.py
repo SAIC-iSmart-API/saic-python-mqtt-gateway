@@ -565,7 +565,7 @@ class MessageHandler:
 
             if latest_vehicle_start_message is not None:
                 logging.info(f'{latest_vehicle_start_message.title} detected'
-                             + ' at {latest_vehicle_start_message.message_time}')
+                             + f' at {latest_vehicle_start_message.message_time}')
                 self.gateway.notify_message(latest_vehicle_start_message)
                 # delete the vehicle start message after processing it
                 try:
