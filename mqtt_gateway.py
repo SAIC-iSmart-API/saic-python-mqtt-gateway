@@ -416,15 +416,13 @@ class MqttGateway:
             logging.exception(e)
             raise SystemExit(e)
 
-        try:
-            alarm_switches = [saic_ismart_client.saic_api.create_alarm_switch(MpAlarmSettingType.ENGINE_START),
-                              saic_ismart_client.saic_api.create_alarm_switch(MpAlarmSettingType.OFF_CAR),
-                              saic_ismart_client.saic_api.create_alarm_switch(MpAlarmSettingType.ABNORMAL)]
-            for switch in alarm_switches:
-                logging.info(f'Registering for {switch.alarm_setting_type} messages')
-            self.saic_api.set_alarm_switches(alarm_switches)
-        except SaicApiException as e:
-            logging.exception(e)
+        for alarm_setting_type in MpAlarmSettingType:
+            try:
+                alarm_switches = [saic_ismart_client.saic_api.create_alarm_switch(alarm_setting_type)]
+                self.saic_api.set_alarm_switches(alarm_switches)
+                logging.info(f'Registering for {alarm_setting_type.value} messages')
+            except SaicApiException:
+                logging.warning(f'Failed to register for {alarm_setting_type.value} messages')
 
         for info in user_logging_in_response.vin_list:
             vin_info = cast(VinInfo, info)
@@ -565,7 +563,7 @@ class MessageHandler:
 
             if latest_vehicle_start_message is not None:
                 logging.info(f'{latest_vehicle_start_message.title} detected'
-                             + ' at {latest_vehicle_start_message.message_time}')
+                             + f' at {latest_vehicle_start_message.message_time}')
                 self.gateway.notify_message(latest_vehicle_start_message)
                 # delete the vehicle start message after processing it
                 try:
