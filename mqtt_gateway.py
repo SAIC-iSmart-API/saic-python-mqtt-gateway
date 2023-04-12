@@ -431,7 +431,8 @@ class MqttGateway:
             self.publisher.publish_str(f'{info_prefix}/model', vin_info.model_name.decode())
             self.publisher.publish_str(f'{info_prefix}/year', vin_info.model_year)
             self.publisher.publish_str(f'{info_prefix}/series', vin_info.series)
-            self.publisher.publish_str(f'{info_prefix}/color', vin_info.color_name.decode())
+            if vin_info.color_name is not None:
+                self.publisher.publish_str(f'{info_prefix}/color', vin_info.color_name.decode())
 
             vehicle_handler = VehicleHandler(
                 self.configuration,  # Gateway pointer
