@@ -69,19 +69,22 @@ def convert(message: Message) -> SaicMessage:
 
 
 def handle_error(saic_api: SaicApi, message_body: AbstractMessageBody, iteration: int):
-    logging.error(f'application ID: {message_body.application_id},'
-                  + f' protocol version: {message_body.application_data_protocol_version},'
-                  + f' message: {message_body.error_message.decode()}'
-                  + f' result code: {message_body.result}')
+    message = f'application ID: {message_body.application_id},'\
+              + f' protocol version: {message_body.application_data_protocol_version},'\
+              + f' message: {message_body.error_message.decode()}'\
+              + f' result code: {message_body.result}'
     if message_body.result == 2:
         # re-login
+        logging.debug(message)
         saic_api.login()
     elif message_body.result == 4:
         # please try again later
+        logging.debug(message)
         waiting_time = iteration * 60
         time.sleep(float(waiting_time))
     # try again next time
     else:
+        logging.error(message)
         SystemExit(f'Error: {message_body.error_message.decode()}, code: {message_body.result}')
 
 
@@ -348,11 +351,12 @@ class VehicleHandler:
         self.publisher.publish_float(f'{drivetrain_prefix}/voltage', round(charge_mgmt_data.get_voltage(), 3))
         self.publisher.publish_float(f'{drivetrain_prefix}/power', round(charge_mgmt_data.get_power(), 3))
         soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
-        self.publisher.publish_float(f'{drivetrain_prefix}/soc', soc)
-        if self.open_wb_lp is not None:
-            # publish SoC to openWB topic
-            topic = f'{self.configuration.open_wb_topic}/set/lp/{self.open_wb_lp}/%Soc'
-            self.publisher.publish_int(topic, int(soc), True)
+        if soc <= 100.0:
+            self.publisher.publish_float(f'{drivetrain_prefix}/soc', soc)
+            if self.open_wb_lp is not None:
+                # publish SoC to openWB topic
+                topic = f'{self.configuration.open_wb_topic}/set/lp/{self.open_wb_lp}/%Soc'
+                self.publisher.publish_int(topic, int(soc), True)
         estimated_electrical_range = charge_mgmt_data.bms_estd_elec_rng / 10.0
         self.publisher.publish_float(f'{drivetrain_prefix}/electrical_range', estimated_electrical_range)
         charge_status = cast(RvsChargingStatus, charge_mgmt_data.chargeStatus)
