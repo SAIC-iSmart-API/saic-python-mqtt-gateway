@@ -358,7 +358,7 @@ class VehicleHandler:
                 topic = f'{self.configuration.open_wb_topic}/set/lp/{self.open_wb_lp}/%Soc'
                 self.publisher.publish_int(topic, int(soc), True)
         estimated_electrical_range = charge_mgmt_data.bms_estd_elec_rng / 10.0
-        self.publisher.publish_float(f'{drivetrain_prefix}/electrical_range', estimated_electrical_range)
+        self.publisher.publish_float(f'{drivetrain_prefix}/hybrid_electrical_range', estimated_electrical_range)
         charge_status = cast(RvsChargingStatus, charge_mgmt_data.chargeStatus)
         if (
                 charge_status.mileage_of_day is not None
