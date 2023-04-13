@@ -410,6 +410,8 @@ class MqttGateway:
         self.publisher.on_rear_window_heat_state_update = self.__on_rear_window_heat_state_update
         self.publisher.on_lp_charging = self.__on_lp_charging
         self.saic_api = SaicApi(config.saic_uri, config.saic_user, config.saic_password)
+        self.saic_api.on_publish_json_value = self.__on_publish_json_value
+        self.saic_api.on_publish_raw_value = self.__on_publish_raw_value
         self.publisher.connect()
 
     def run(self):
@@ -509,6 +511,12 @@ class MqttGateway:
                 logging.info(f'Vehicle {vin} stopped charging on openWB.')
         else:
             logging.error(f'No vehicle handler found for VIN {vin}')
+
+    def __on_publish_raw_value(self, key: str, raw: str):
+        self.publisher.publish_str(key, raw)
+
+    def __on_publish_json_value(self, key: str, json: dict):
+        self.publisher.publish_json(key, json)
 
     def get_open_wb_lp(self, vin) -> str | None:
         for key in self.configuration.open_wb_lp_map.keys():
