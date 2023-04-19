@@ -21,6 +21,8 @@ from configuration import Configuration
 from mqtt_publisher import MqttClient
 from publisher import Publisher
 
+PRESSURE_TO_BAR_FACTOR = 0.25
+
 
 def epoch_value_to_str(time_value: int) -> str:
     return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time_value))
@@ -302,25 +304,25 @@ class VehicleHandler:
                 and basic_vehicle_status.front_left_tyre_pressure > 0
         ):
             # convert value from psi to bar
-            front_left_tyre_bar = basic_vehicle_status.front_left_tyre_pressure / 14.5
+            front_left_tyre_bar = basic_vehicle_status.front_left_tyre_pressure * PRESSURE_TO_BAR_FACTOR
             self.publisher.publish_float(f'{tyres_prefix}/frontLeftPressure', round(front_left_tyre_bar, 2))
         if (
                 basic_vehicle_status.front_right_tyre_pressure is not None
                 and basic_vehicle_status.front_right_tyre_pressure > 0
         ):
-            front_right_tyre_bar = basic_vehicle_status.front_right_tyre_pressure / 14.5
+            front_right_tyre_bar = basic_vehicle_status.front_right_tyre_pressure * PRESSURE_TO_BAR_FACTOR
             self.publisher.publish_float(f'{tyres_prefix}/frontRightPressure', round(front_right_tyre_bar, 2))
         if (
                 basic_vehicle_status.rear_left_tyre_pressure
                 and basic_vehicle_status.rear_left_tyre_pressure > 0
         ):
-            rear_left_tyre_bar = basic_vehicle_status.rear_left_tyre_pressure / 14.5
+            rear_left_tyre_bar = basic_vehicle_status.rear_left_tyre_pressure * PRESSURE_TO_BAR_FACTOR
             self.publisher.publish_float(f'{tyres_prefix}/rearLeftPressure', round(rear_left_tyre_bar, 2))
         if (
                 basic_vehicle_status.rear_right_tyre_pressure is not None
                 and basic_vehicle_status.rear_right_tyre_pressure > 0
         ):
-            rear_right_tyre_bar = basic_vehicle_status.rear_right_tyre_pressure / 14.5
+            rear_right_tyre_bar = basic_vehicle_status.rear_right_tyre_pressure * PRESSURE_TO_BAR_FACTOR
             self.publisher.publish_float(f'{tyres_prefix}/rearRightPressure', round(rear_right_tyre_bar, 2))
 
         lights_prefix = f'{self.vehicle_prefix}/lights'
