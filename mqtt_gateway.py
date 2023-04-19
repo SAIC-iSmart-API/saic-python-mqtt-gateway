@@ -477,8 +477,16 @@ class MqttGateway:
     def __on_refresh_mode_update(self, mode: str, vin: str):
         vehicle_handler = self.get_vehicle_handler(vin)
         if vehicle_handler is not None:
-            vehicle_handler.refresh_mode = mode.lower()
-            logging.info(f'Setting vehicle handler mode for VIN {vin} to refresh mode: {mode}')
+            mode = mode.lower()
+            if mode == 'force':
+                vehicle_handler.force_update = True
+                logging.info(f'Forcing single fetch for VIN {vin}. Refresh mode was: {vehicle_handler.refresh_mode}')
+                # reset previous refresh mode
+                topic = f'{vehicle_handler.vehicle_prefix}/refresh/mode/set'
+                self.publisher.publish_str(topic, vehicle_handler.refresh_mode)
+            else:
+                vehicle_handler.refresh_mode = mode
+                logging.info(f'Setting vehicle handler mode for VIN {vin} to refresh mode: {mode}')
 
     def __on_active_refresh_interval_update(self, seconds: int, vin: str):
         vehicle_handler = self.get_vehicle_handler(vin)
