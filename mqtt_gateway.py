@@ -175,10 +175,10 @@ class VehicleHandler:
         self.publisher.publish_str(f'{self.vehicle_prefix}/configuration/raw',
                                    self.vin_info.model_configuration_json_str)
         configuration_prefix = f'{self.vehicle_prefix}/configuration'
-        for c in self.vin_info.model_configuration_json_str.split(';'):
+        for c in self.vin_info.model_configuration_json_str.rstrip(';').split(';'):
             property_map = {}
             for e in c.split(','):
-                key_value_pair = e.split(":")
+                key_value_pair = e.split(":",1)
                 property_map[key_value_pair[0]] = key_value_pair[1]
             self.publisher.publish_str(f'{configuration_prefix}/{property_map["code"]}', property_map["value"])
         while True:
