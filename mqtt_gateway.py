@@ -177,10 +177,12 @@ class VehicleHandler:
         configuration_prefix = f'{self.vehicle_prefix}/configuration'
         for c in self.vin_info.model_configuration_json_str.split(';'):
             property_map = {}
-            for e in c.split(','):
-                key_value_pair = e.split(":")
-                property_map[key_value_pair[0]] = key_value_pair[1]
-            self.publisher.publish_str(f'{configuration_prefix}/{property_map["code"]}', property_map["value"])
+            if ',' in c:
+                for e in c.split(','):
+                    if ':' in e:
+                        key_value_pair = e.split(":")
+                        property_map[key_value_pair[0]] = key_value_pair[1]
+                self.publisher.publish_str(f'{configuration_prefix}/{property_map["code"]}', property_map["value"])
         while True:
             if self.refresh_required():
                 self.force_update = False
