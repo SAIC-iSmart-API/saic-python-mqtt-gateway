@@ -8,7 +8,7 @@ import urllib.parse
 from typing import cast
 
 import saic_ismart_client.saic_api
-from saic_ismart_client.abrp_api import AbrpApi
+from saic_ismart_client.abrp_api import AbrpApi, AbrpApiException
 from saic_ismart_client.common_model import AbstractMessageBody
 from saic_ismart_client.ota_v1_1.data_model import Message, VinInfo, MpUserLoggingInRsp, MessageListResp, \
     MpAlarmSettingType
@@ -205,6 +205,8 @@ class VehicleHandler:
                 except SaicApiException as e:
                     logging.exception(e)
                     await asyncio.sleep(float(30))
+                except AbrpApiException as ae:
+                    logging.exception(ae)
             else:
                 # car not active, wait a second
                 logging.debug(f'sleeping {datetime.datetime.now()}, last car activity: {self.last_car_activity}')
