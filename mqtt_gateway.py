@@ -21,7 +21,7 @@ from configuration import Configuration
 from mqtt_publisher import MqttClient
 from publisher import Publisher
 
-PRESSURE_TO_BAR_FACTOR = 0.25
+PRESSURE_TO_BAR_FACTOR = 0.04
 
 
 def epoch_value_to_str(time_value: int) -> str:
