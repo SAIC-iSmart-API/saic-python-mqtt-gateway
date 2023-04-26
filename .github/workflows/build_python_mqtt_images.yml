@@ -56,4 +56,4 @@ jobs:
             ghcr.io/${{ steps.lowercase-repository.outputs.lowercase }}/saic-mqtt-gateway:latest
             ghcr.io/${{ steps.lowercase-repository.outputs.lowercase }}/saic-mqtt-gateway:${{ env.RELEASE_VERSION }}
             ${{ secrets.DOCKERHUB_ORGANIZATION != null && format('{0}/saic-python-mqtt-gateway:latest', secrets.DOCKERHUB_ORGANIZATION)}}
-            ${{ secrets.DOCKERHUB_ORGANIZATION != null && format('{0}/saic-python-mqtt-gateway:env.RELEASE_VERSION', secrets.DOCKERHUB_ORGANIZATION)}}
+            ${{ secrets.DOCKERHUB_ORGANIZATION != null && format('{0}/saic-python-mqtt-gateway:{1}', secrets.DOCKERHUB_ORGANIZATION, env.RELEASE_VERSION)}}
