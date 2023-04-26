@@ -267,7 +267,7 @@ class VehicleHandler:
         exterior_temperature = basic_vehicle_status.exterior_temperature
         if exterior_temperature > -128:
             self.publisher.publish_int(f'{climate_prefix}/exteriorTemperature', exterior_temperature)
-        self.publisher.publish_int(f'{self.vin_info.vin}/remoteClimateState',
+        self.publisher.publish_int(f'{climate_prefix}/remoteClimateState',
                                    basic_vehicle_status.remote_climate_status)
         remote_rear_window_defroster_state = basic_vehicle_status.rmt_htd_rr_wnd_st
         self.publisher.publish_int(f'{climate_prefix}/rearWindowDefrosterHeating', remote_rear_window_defroster_state)
