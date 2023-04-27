@@ -61,3 +61,15 @@ The openWB can also connect to an external MQTT broker. However, this connection
 ## A Better Route Planner (ABRP) integration
 
 Telemetry data from your car can be provided to [ABRP](https://abetterrouteplanner.com/). **Be aware that this is not done by default.** The data will be sent only if you provide the mapping of your vehicle identification number (VIN) to an ABRP user token.
+
+## Commands over MQTT
+
+The MQTT Gateway subscribes to MQTT topics where it is listening for commands.
+
+| Topic                                                                         | Value range                 | Description                                                                                                                                                                                                                            |
+|-------------------------------------------------------------------------------|-----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| saic/<saic_user>/vehicles/<vehicle_id>/refresh/mode/set                       | periodic/off/force          | The gateway queries the vehicle and charge status periodically after a vehicle start event has happened (default value: periodic. The periodic refresh can be switched off (value: off). A refresh can also be forced (value: forced). |
+| saic/<saic_user>/vehicles/<vehicle_id>/refresh/period/active/set              | refresh interval in seconds | In case a vehicle start event has occurred, the gateway queries the status every 30 seconds (default value). The refresh interval can be modified with this topic.                                                                     |
+| saic/<saic_user>/vehicles/<vehicle_id>/refresh/period/inActive/set            | refresh interval in seconds | Vehicle and charge status are queried once per day (default value: 86400) independently from any event. Changing this to a lower value might affect the 12V battery of your vehicle. Be very careful!                                  |
+| saic/<saic_user>/vehicles/<vehicle_id>/doors/locked/set                       | true/false                  | Lock or unlock your car. This is not always working. It might take some time until it takes effect. Don't trust this feature. Use your car key!                                                                                        |
+| saic/<saic_user>/vehicles/<vehicle_id>/climate/rearWindowDefrosterHeating/set | true/false                  | Turn rear window defroster heating on or off. This is not always working. It might take some time until it takes effect.                                                                                                               |
