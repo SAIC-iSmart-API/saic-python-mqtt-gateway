@@ -70,7 +70,7 @@ def convert(message: Message) -> SaicMessage:
                        message.vin)
 
 
-def handle_error(saic_api: SaicApi, message_body: AbstractMessageBody, iteration: int):
+def handle_error(saic_api: SaicApi, configuration: Configuration, message_body: AbstractMessageBody, iteration: int):
     message = f'application ID: {message_body.application_id},'\
               + f' protocol version: {message_body.application_data_protocol_version},'\
               + f' message: {message_body.error_message.decode()}'\
@@ -78,6 +78,11 @@ def handle_error(saic_api: SaicApi, message_body: AbstractMessageBody, iteration
     if message_body.result == 2:
         # re-login
         logging.debug(message)
+        relogin_delay = configuration.saic_relogin_delay
+        if relogin_delay > 0:
+            logging.warning(f'The gateway has been logged out, waiting {relogin_delay}s before attempting another'
+                            f' login')
+            time.sleep(relogin_delay)
         saic_api.login()
     elif message_body.result == 4:
         # please try again later
@@ -234,7 +239,7 @@ class VehicleHandler:
         iteration = 0
         while vehicle_status_rsp_msg.application_data is None:
             if vehicle_status_rsp_msg.body.error_message is not None:
-                handle_error(self.saic_api, vehicle_status_rsp_msg.body, iteration)
+                handle_error(self.saic_api, self.configuration, vehicle_status_rsp_msg.body, iteration)
             else:
                 waiting_time = iteration * 1
                 logging.debug(
@@ -341,7 +346,7 @@ class VehicleHandler:
         while chrg_mgmt_data_rsp_msg.application_data is None:
             chrg_mgmt_body = cast(MessageBodyV30, chrg_mgmt_data_rsp_msg.body)
             if chrg_mgmt_body.error_message_present():
-                handle_error(self.saic_api, chrg_mgmt_body, iteration)
+                handle_error(self.saic_api, self.configuration, chrg_mgmt_body, iteration)
             else:
                 waiting_time = iteration * 1
                 logging.debug(
@@ -551,7 +556,7 @@ class MessageHandler:
             iteration = 0
             while message_list_rsp_msg.application_data is None:
                 if message_list_rsp_msg.body.error_message is not None:
-                    handle_error(self.saicapi, message_list_rsp_msg.body, iteration)
+                    handle_error(self.saicapi, self.gateway.configuration, message_list_rsp_msg.body, iteration)
                 else:
                     waiting_time = iteration * 1
                     logging.info(
@@ -663,6 +668,9 @@ def process_arguments() -> Configuration:
                             action=EnvDefault, envvar='SAIC_USER')
         parser.add_argument('-p', '--saic-password', help='The SAIC password. Environment Variable: SAIC_PASSWORD',
                             dest='saic_password', required=True, action=EnvDefault, envvar='SAIC_PASSWORD')
+        parser.add_argument('--saic-relogin-delay', help='How long to wait before attempting another login to the SAIC '
+                                                         'API. Environment Variable: SAIC_RELOGIN_DELAY',
+                            dest='relogin_delay', required=False, action=EnvDefault, envvar='SAIC_RELOGIN_DELAY')
         parser.add_argument('--abrp-api-key', help='The API key for the A Better Route Planer telemetry API.'
                                                    + ' Default is the open source telemetry'
                                                    + ' API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.'
@@ -685,6 +693,7 @@ def process_arguments() -> Configuration:
         config.saic_uri = args.saic_uri
         config.saic_user = args.saic_user
         config.saic_password = args.saic_password
+        config.saic_relogin_delay = args.saic_relogin_delay
         config.abrp_api_key = args.abrp_api_key
         if args.abrp_user_token:
             map_entries = args.abrp_user_token.split(',')
