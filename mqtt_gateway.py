@@ -687,20 +687,9 @@ def process_arguments() -> Configuration:
         config.saic_password = args.saic_password
         config.abrp_api_key = args.abrp_api_key
         if args.abrp_user_token:
-            map_entries = args.abrp_user_token.split(',')
-            for entry in map_entries:
-                key_value_pair = entry.split('=')
-                key = key_value_pair[0]
-                value = key_value_pair[1]
-                config.abrp_token_map[key] = value
+            cfg_value_to_dict(args.abrp_user_token, config.abrp_token_map)
         if args.open_wp_lp_map:
-            map_entries = args.open_wp_lp_map.split(',')
-            for entry in map_entries:
-                key_value_pair = entry.split('=')
-                key = key_value_pair[0]
-                value = key_value_pair[1]
-                config.open_wb_lp_map[key] = value
-                logging.info(f'Providing SoC and subscribing to charge state on openWB LP{key}')
+            cfg_value_to_dict(args.open_wp_lp_map, config.open_wb_lp_map)
         config.saic_password = args.saic_password
 
         parse_result = urllib.parse.urlparse(args.mqtt_uri)
@@ -725,6 +714,20 @@ def process_arguments() -> Configuration:
     except argparse.ArgumentError as err:
         parser.print_help()
         SystemExit(err)
+
+
+def cfg_value_to_dict(cfg_value: str, result_map: dict):
+    if ',' in cfg_value:
+        map_entries = cfg_value.split(',')
+    else:
+        map_entries = [cfg_value]
+
+    for entry in map_entries:
+        if '=' in entry:
+            key_value_pair = entry.split('=')
+            key = key_value_pair[0]
+            value = key_value_pair[1]
+            result_map[key] = value
 
 
 configuration = process_arguments()
