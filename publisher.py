@@ -7,6 +7,7 @@ from configuration import Configuration
 class Publisher:
     def __init__(self, config: Configuration):
         self.configuration = config
+        self.mode_by_vin = {}
 
     def publish_json(self, key: str, data: dict, no_prefix: bool = False) -> None:
         pass
@@ -22,6 +23,14 @@ class Publisher:
 
     def publish_float(self, key: str, value: float, no_prefix: bool = False) -> None:
         pass
+
+    def reset_force_mode(self, vin: str, refresh_mode: str) -> None:
+        topic = f'{self.configuration.mqtt_topic}/{self.configuration.saic_user}/vehicles/{vin}/refresh/mode/set'
+        if (
+            vin in self.mode_by_vin
+            and self.mode_by_vin[vin] == 'force'
+        ):
+            self.publish_str(topic, refresh_mode)
 
     def remove_byte_strings(self, data: dict) -> dict:
         for key in data.keys():
