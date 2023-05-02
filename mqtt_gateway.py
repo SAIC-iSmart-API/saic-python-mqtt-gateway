@@ -22,6 +22,7 @@ from mqtt_publisher import MqttClient
 from publisher import Publisher
 
 PRESSURE_TO_BAR_FACTOR = 0.04
+AVG_SMS_DELIVERY_TIME = 15
 
 
 def epoch_value_to_str(time_value: int) -> str:
@@ -70,7 +71,7 @@ def convert(message: Message) -> SaicMessage:
                        message.vin)
 
 
-def handle_error(saic_api: SaicApi, message_body: AbstractMessageBody, iteration: int):
+def handle_error(saic_api: SaicApi, message_body: AbstractMessageBody):
     message = f'application ID: {message_body.application_id},'\
               + f' protocol version: {message_body.application_data_protocol_version},'\
               + f' message: {message_body.error_message.decode()}'\
@@ -82,8 +83,7 @@ def handle_error(saic_api: SaicApi, message_body: AbstractMessageBody, iteration
     elif message_body.result == 4:
         # please try again later
         logging.debug(message)
-        waiting_time = iteration * 60
-        time.sleep(float(waiting_time))
+        time.sleep(float(AVG_SMS_DELIVERY_TIME))
     # try again next time
     else:
         logging.error(message)
@@ -234,7 +234,7 @@ class VehicleHandler:
         iteration = 0
         while vehicle_status_rsp_msg.application_data is None:
             if vehicle_status_rsp_msg.body.error_message is not None:
-                handle_error(self.saic_api, vehicle_status_rsp_msg.body, iteration)
+                handle_error(self.saic_api, vehicle_status_rsp_msg.body)
             else:
                 waiting_time = iteration * 1
                 logging.debug(
@@ -341,7 +341,7 @@ class VehicleHandler:
         while chrg_mgmt_data_rsp_msg.application_data is None:
             chrg_mgmt_body = cast(MessageBodyV30, chrg_mgmt_data_rsp_msg.body)
             if chrg_mgmt_body.error_message_present():
-                handle_error(self.saic_api, chrg_mgmt_body, iteration)
+                handle_error(self.saic_api, chrg_mgmt_body)
             else:
                 waiting_time = iteration * 1
                 logging.debug(
@@ -551,10 +551,10 @@ class MessageHandler:
             iteration = 0
             while message_list_rsp_msg.application_data is None:
                 if message_list_rsp_msg.body.error_message is not None:
-                    handle_error(self.saicapi, message_list_rsp_msg.body, iteration)
+                    handle_error(self.saicapi, message_list_rsp_msg.body)
                 else:
                     waiting_time = iteration * 1
-                    logging.info(
+                    logging.debug(
                         f'Update message list request returned no application data. Waiting {waiting_time} seconds')
                     time.sleep(float(waiting_time))
                     iteration += 1
