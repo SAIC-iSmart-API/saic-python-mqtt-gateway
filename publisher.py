@@ -25,7 +25,7 @@ class Publisher:
         pass
 
     def reset_force_mode(self, vin: str, refresh_mode: str) -> None:
-        topic = f'{self.configuration.mqtt_topic}/{self.configuration.saic_user}/vehicles/{vin}/refresh/mode/set'
+        topic = f'{self.configuration.saic_user}/vehicles/{vin}/refresh/mode/set'
         if (
             vin in self.mode_by_vin
             and self.mode_by_vin[vin] == 'force'
