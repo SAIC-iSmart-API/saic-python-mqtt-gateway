@@ -9,7 +9,7 @@ USER = 'me@home.da'
 VIN = 'vin10000000000000'
 DELAY = 42
 MODE = 'periodic'
-LOCK_STATE = 'locked'
+LOCK_STATE = 'True'
 REAR_WINDOW_HEAT_STATE = 'on'
 
 
@@ -25,7 +25,7 @@ class TestMqttPublisher(TestCase):
         self.message_processed = True
 
     def __test_doors_lock_state_update(self, lock_state: str, vin: str):
-        self.assertEqual(LOCK_STATE, lock_state)
+        self.assertEqual(LOCK_STATE, str(lock_state))
         self.assertEqual(VIN, vin)
         self.message_processed = True
 

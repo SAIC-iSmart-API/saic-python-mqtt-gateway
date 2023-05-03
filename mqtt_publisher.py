@@ -59,8 +59,9 @@ class MqttClient(Publisher):
     def __on_message(self, client, userdata, msg: mqtt.MQTTMessage) -> None:
         if msg.topic.endswith('/refresh/mode/set'):
             vin = self.get_vin_from_topic(msg.topic)
-            mode_value = msg.payload.decode().strip()
+            mode_value = msg.payload.decode().strip().lower()
             if self.on_refresh_mode_update is not None:
+                self.mode_by_vin[vin] = mode_value
                 self.on_refresh_mode_update(mode_value, vin)
         elif msg.topic.endswith('/refresh/period/active/set'):
             vin = self.get_vin_from_topic(msg.topic)

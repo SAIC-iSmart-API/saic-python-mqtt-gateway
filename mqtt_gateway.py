@@ -22,6 +22,7 @@ from mqtt_publisher import MqttClient
 from publisher import Publisher
 
 PRESSURE_TO_BAR_FACTOR = 0.04
+AVG_SMS_DELIVERY_TIME = 15
 
 
 def epoch_value_to_str(time_value: int) -> str:
@@ -70,7 +71,7 @@ def convert(message: Message) -> SaicMessage:
                        message.vin)
 
 
-def handle_error(saic_api: SaicApi, configuration: Configuration, message_body: AbstractMessageBody, iteration: int):
+def handle_error(saic_api: SaicApi, configuration: Configuration, message_body: AbstractMessageBody):
     message = f'application ID: {message_body.application_id},'\
               + f' protocol version: {message_body.application_data_protocol_version},'\
               + f' message: {message_body.error_message.decode()}'\
@@ -87,8 +88,7 @@ def handle_error(saic_api: SaicApi, configuration: Configuration, message_body: 
     elif message_body.result == 4:
         # please try again later
         logging.debug(message)
-        waiting_time = iteration * 60
-        time.sleep(float(waiting_time))
+        time.sleep(float(AVG_SMS_DELIVERY_TIME))
     # try again next time
     else:
         logging.error(message)
@@ -191,6 +191,8 @@ class VehicleHandler:
         while True:
             if self.refresh_required():
                 self.force_update = False
+                # reset previous refresh mode
+                self.publisher.reset_force_mode(self.vin_info.vin, self.refresh_mode)
                 try:
                     vehicle_status = self.update_vehicle_status()
                     last_vehicle_status = datetime.datetime.now()
@@ -239,7 +241,7 @@ class VehicleHandler:
         iteration = 0
         while vehicle_status_rsp_msg.application_data is None:
             if vehicle_status_rsp_msg.body.error_message is not None:
-                handle_error(self.saic_api, self.configuration, vehicle_status_rsp_msg.body, iteration)
+                handle_error(self.saic_api, self.configuration, vehicle_status_rsp_msg.body)
             else:
                 waiting_time = iteration * 1
                 logging.debug(
@@ -346,7 +348,7 @@ class VehicleHandler:
         while chrg_mgmt_data_rsp_msg.application_data is None:
             chrg_mgmt_body = cast(MessageBodyV30, chrg_mgmt_data_rsp_msg.body)
             if chrg_mgmt_body.error_message_present():
-                handle_error(self.saic_api, self.configuration, chrg_mgmt_body, iteration)
+                handle_error(self.saic_api, self.configuration, chrg_mgmt_body)
             else:
                 waiting_time = iteration * 1
                 logging.debug(
@@ -486,13 +488,9 @@ class MqttGateway:
     def __on_refresh_mode_update(self, mode: str, vin: str):
         vehicle_handler = self.get_vehicle_handler(vin)
         if vehicle_handler is not None:
-            mode = mode.lower()
             if mode == 'force':
                 vehicle_handler.force_update = True
                 logging.info(f'Forcing single fetch for VIN {vin}. Refresh mode was: {vehicle_handler.refresh_mode}')
-                # reset previous refresh mode
-                topic = f'{vehicle_handler.vehicle_prefix}/refresh/mode/set'
-                self.publisher.publish_str(topic, vehicle_handler.refresh_mode)
             else:
                 vehicle_handler.refresh_mode = mode
                 logging.info(f'Setting vehicle handler mode for VIN {vin} to refresh mode: {mode}')
@@ -556,10 +554,10 @@ class MessageHandler:
             iteration = 0
             while message_list_rsp_msg.application_data is None:
                 if message_list_rsp_msg.body.error_message is not None:
-                    handle_error(self.saicapi, self.gateway.configuration, message_list_rsp_msg.body, iteration)
+                    handle_error(self.saicapi, self.gateway.configuration, message_list_rsp_msg.body)
                 else:
                     waiting_time = iteration * 1
-                    logging.info(
+                    logging.debug(
                         f'Update message list request returned no application data. Waiting {waiting_time} seconds')
                     time.sleep(float(waiting_time))
                     iteration += 1
@@ -696,20 +694,9 @@ def process_arguments() -> Configuration:
         config.saic_relogin_delay = args.saic_relogin_delay
         config.abrp_api_key = args.abrp_api_key
         if args.abrp_user_token:
-            map_entries = args.abrp_user_token.split(',')
-            for entry in map_entries:
-                key_value_pair = entry.split('=')
-                key = key_value_pair[0]
-                value = key_value_pair[1]
-                config.abrp_token_map[key] = value
+            cfg_value_to_dict(args.abrp_user_token, config.abrp_token_map)
         if args.open_wp_lp_map:
-            map_entries = args.open_wp_lp_map.split(',')
-            for entry in map_entries:
-                key_value_pair = entry.split('=')
-                key = key_value_pair[0]
-                value = key_value_pair[1]
-                config.open_wb_lp_map[key] = value
-                logging.info(f'Providing SoC and subscribing to charge state on openWB LP{key}')
+            cfg_value_to_dict(args.open_wp_lp_map, config.open_wb_lp_map)
         config.saic_password = args.saic_password
 
         parse_result = urllib.parse.urlparse(args.mqtt_uri)
@@ -734,6 +721,20 @@ def process_arguments() -> Configuration:
     except argparse.ArgumentError as err:
         parser.print_help()
         SystemExit(err)
+
+
+def cfg_value_to_dict(cfg_value: str, result_map: dict):
+    if ',' in cfg_value:
+        map_entries = cfg_value.split(',')
+    else:
+        map_entries = [cfg_value]
+
+    for entry in map_entries:
+        if '=' in entry:
+            key_value_pair = entry.split('=')
+            key = key_value_pair[0]
+            value = key_value_pair[1]
+            result_map[key] = value
 
 
 configuration = process_arguments()
