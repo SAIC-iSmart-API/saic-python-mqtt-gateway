@@ -668,7 +668,7 @@ def process_arguments() -> Configuration:
                             dest='saic_password', required=True, action=EnvDefault, envvar='SAIC_PASSWORD')
         parser.add_argument('--saic-relogin-delay', help='How long to wait before attempting another login to the SAIC '
                                                          'API. Environment Variable: SAIC_RELOGIN_DELAY',
-                            dest='relogin_delay', required=False, action=EnvDefault, envvar='SAIC_RELOGIN_DELAY')
+                            dest='saic_relogin_delay', required=False, action=EnvDefault, envvar='SAIC_RELOGIN_DELAY')
         parser.add_argument('--abrp-api-key', help='The API key for the A Better Route Planer telemetry API.'
                                                    + ' Default is the open source telemetry'
                                                    + ' API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.'
