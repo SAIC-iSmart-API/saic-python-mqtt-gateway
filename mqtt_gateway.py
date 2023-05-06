@@ -33,7 +33,8 @@ def datetime_to_str(dt: datetime.datetime) -> str:
     return dt.strftime('%Y-%m-%d %H:%M:%S')
 
 
-logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+logging.root.handlers = []
+logging.basicConfig(format='[%(levelname)s] %(asctime)s %(message)s', level=logging.DEBUG)
 
 
 class SaicMessage:
@@ -204,6 +205,12 @@ class VehicleHandler:
                     self.publisher.publish_str(f'{refresh_prefix}/lastVehicleState',
                                                datetime_to_str(last_vehicle_status))
                     self.publisher.publish_str(f'{refresh_prefix}/lastChargeState', datetime_to_str(last_charge_status))
+                    logging.info(
+                        f"Vehicle active conditions: "
+                        f"is_charging={vehicle_status.is_charging()}, "
+                        f"is_charging_on_openwb={self.is_charging_on_openwb}, "
+                        f"is_engine_running={vehicle_status.is_engine_running()}"
+                    )
                     if (
                             vehicle_status.is_charging()
                             or self.is_charging_on_openwb
