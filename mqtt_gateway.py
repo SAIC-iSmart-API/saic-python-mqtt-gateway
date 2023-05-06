@@ -79,7 +79,7 @@ def handle_error(saic_api: SaicApi, configuration: Configuration, message_body: 
     if message_body.result == 2:
         # re-login
         logging.debug(message)
-        relogin_delay = configuration.saic_relogin_delay
+        relogin_delay = float(configuration.saic_relogin_delay)
         if relogin_delay > 0:
             logging.warning(f'The gateway has been logged out, waiting {relogin_delay}s before attempting another'
                             f' login')
