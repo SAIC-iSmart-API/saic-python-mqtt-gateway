@@ -10,6 +10,7 @@ Vehicle control commands are finally working
 * Turn A/C on or off
 * Configurable re-login delay
 * Using new saic-ismart-client (version 1.2.6)
+* Environment variable to configure log level
 
 ## 0.2.1
 
