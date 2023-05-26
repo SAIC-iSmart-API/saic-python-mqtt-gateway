@@ -30,7 +30,8 @@ def datetime_to_str(dt: datetime.datetime) -> str:
     return dt.strftime('%Y-%m-%d %H:%M:%S')
 
 
-logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s %(message)s')
+logging.getLogger().setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
 
 
 class SaicMessage:
@@ -463,11 +464,12 @@ class MqttGateway:
             handler = cast(VehicleHandler, self.vehicle_handler[message.vin])
             handler.force_update_by_message_time(message)
 
-    def get_vehicle_handler(self, vin: str) -> VehicleHandler:
+    def get_vehicle_handler(self, vin: str) -> VehicleHandler | None:
         if vin in self.vehicle_handler:
             return self.vehicle_handler[vin]
         else:
             logging.error(f'No vehicle handler found for VIN {vin}')
+            return None
 
     def __on_refresh_mode_update(self, mode: str, vin: str):
         vehicle_handler = self.get_vehicle_handler(vin)
@@ -608,7 +610,7 @@ async def periodic(message_handler: MessageHandler, query_messages_interval: int
 async def main(vh_map: dict, message_handler: MessageHandler, query_messages_interval: int):
     tasks = []
     for key in vh_map:
-        print(f'{key}')
+        logging.debug(f'{key}')
         vh = cast(VehicleHandler, vh_map[key])
         task = asyncio.create_task(vh.handle_vehicle())
         tasks.append(task)
