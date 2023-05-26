@@ -3,6 +3,7 @@ class Configuration:
         self.saic_user = ''
         self.saic_password = ''
         self.saic_uri = ''
+        self.saic_relogin_delay = 15 * 60  # in seconds
         self.abrp_token_map = {}
         self.abrp_api_key = ''
         self.mqtt_host = ''

@@ -1,5 +1,16 @@
 # Change Log
 
+## 0.2.2
+
+Vehicle control commands are finally working
+
+### Added
+
+* Turn front window defroster heating on or off
+* Turn A/C on or off
+* Configurable re-login delay
+* Using new saic-ismart-client (version 1.2.6)
+
 ## 0.2.1
 
 ### Added

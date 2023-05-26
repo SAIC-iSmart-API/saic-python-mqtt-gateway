@@ -22,6 +22,8 @@ class MqttClient(Publisher):
         self.on_active_refresh_interval_update = None
         self.on_doors_lock_state_update = None
         self.on_rear_window_heat_state_update = None
+        self.on_front_window_heat_state_update = None
+        self.on_ac_state_update = None
         self.on_lp_charging = None
 
         mqtt_client = mqtt.Client(str(self.publisher_id), transport=self.transport_protocol, protocol=mqtt.MQTTv31)
@@ -51,6 +53,8 @@ class MqttClient(Publisher):
             self.client.subscribe(f'{basic_topic}/refresh/period/inActive/set')
             self.client.subscribe(f'{basic_topic}/doors/locked/set')
             self.client.subscribe(f'{basic_topic}/climate/rearWindowDefrosterHeating/set')
+            self.client.subscribe(f'{basic_topic}/climate/frontWindowDefrosterHeating/set')
+            self.client.subscribe(f'{basic_topic}/climate/remoteClimateState/set')
             for key in self.configuration.open_wb_lp_map.keys():
                 self.client.subscribe(f'{self.configuration.open_wb_topic}/lp/{key}/boolChargeStat')
         else:
@@ -86,8 +90,16 @@ class MqttClient(Publisher):
                     self.publish_str(f'{topic}/result', f'Invalid value: {lock_value}. Valid values are true or false')
         elif msg.topic.endswith('/climate/rearWindowDefrosterHeating/set'):
             vin = self.get_vin_from_topic(msg.topic)
-            rear_windows_heat_state = msg.payload.decode().strip()
-            self.on_rear_window_heat_state_update(rear_windows_heat_state, vin)
+            rear_window_heat_state = msg.payload.decode().strip()
+            self.on_rear_window_heat_state_update(rear_window_heat_state, vin)
+        elif msg.topic.endswith('/climate/frontWindowDefrosterHeating/set'):
+            vin = self.get_vin_from_topic(msg.topic)
+            front_window_heat_state = msg.payload.decode().strip()
+            self.on_front_window_heat_state_update(front_window_heat_state, vin)
+        elif msg.topic.endswith('/climate/remoteClimateState/set'):
+            vin = self.get_vin_from_topic(msg.topic)
+            ac_state = msg.payload.decode().strip().lower()
+            self.on_ac_state_update(ac_state, vin)
         elif msg.topic.endswith('/boolChargeStat'):
             index = self.get_index_from_open_wp_topic(msg.topic)
             vin = self.configuration.open_wb_lp_map[index]

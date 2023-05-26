@@ -9,11 +9,8 @@ from typing import cast
 
 import saic_ismart_client.saic_api
 from saic_ismart_client.abrp_api import AbrpApi, AbrpApiException
-from saic_ismart_client.common_model import AbstractMessageBody
-from saic_ismart_client.ota_v1_1.data_model import Message, VinInfo, MpUserLoggingInRsp, MessageListResp, \
-    MpAlarmSettingType
+from saic_ismart_client.ota_v1_1.data_model import Message, VinInfo, MpUserLoggingInRsp, MpAlarmSettingType
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
-from saic_ismart_client.ota_v3_0.Message import MessageBodyV30
 from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp, RvsChargingStatus
 from saic_ismart_client.saic_api import SaicApi, SaicApiException
 
@@ -21,8 +18,8 @@ from configuration import Configuration
 from mqtt_publisher import MqttClient
 from publisher import Publisher
 
+MSG_CMD_SUCCESSFUL = 'Success'
 PRESSURE_TO_BAR_FACTOR = 0.04
-AVG_SMS_DELIVERY_TIME = 15
 
 
 def epoch_value_to_str(time_value: int) -> str:
@@ -71,25 +68,6 @@ def convert(message: Message) -> SaicMessage:
                        message.vin)
 
 
-def handle_error(saic_api: SaicApi, message_body: AbstractMessageBody):
-    message = f'application ID: {message_body.application_id},'\
-              + f' protocol version: {message_body.application_data_protocol_version},'\
-              + f' message: {message_body.error_message.decode()}'\
-              + f' result code: {message_body.result}'
-    if message_body.result == 2:
-        # re-login
-        logging.debug(message)
-        saic_api.login()
-    elif message_body.result == 4:
-        # please try again later
-        logging.debug(message)
-        time.sleep(float(AVG_SMS_DELIVERY_TIME))
-    # try again next time
-    else:
-        logging.error(message)
-        SystemExit(f'Error: {message_body.error_message.decode()}, code: {message_body.result}')
-
-
 class VehicleHandler:
     def __init__(self, config: Configuration, saicapi: SaicApi, publisher: Publisher, vin_info: VinInfo,
                  open_wb_lp: str = None):
@@ -130,26 +108,62 @@ class VehicleHandler:
             else:
                 logging.info(f'Vehicle {self.vin_info.vin} will be unlocked')
                 self.saic_api.unlock_vehicle(self.vin_info)
-            self.publisher.publish_str(result_key, 'Success')
+            self.publisher.publish_str(result_key, MSG_CMD_SUCCESSFUL)
         except SaicApiException as e:
             self.publisher.publish_str(result_key, f'Failed: {e.message}')
             logging.exception(e)
 
-    def update_rear_window_heat_state(self, rear_windows_heat_state: str):
+    def update_rear_window_heat_state(self, rear_window_heat_state: str):
         result_key = f'{self.vehicle_prefix}/climate/rearWindowDefrosterHeating/result'
         try:
-            if rear_windows_heat_state.lower() == 'on':
+            if rear_window_heat_state.lower() == 'on':
                 logging.info('Rear window heating will be switched on')
                 self.saic_api.start_rear_window_heat(self.vin_info)
-                self.publisher.publish_str(result_key, 'Success')
-            elif rear_windows_heat_state.lower() == 'off':
+                self.publisher.publish_str(result_key, MSG_CMD_SUCCESSFUL)
+            elif rear_window_heat_state.lower() == 'off':
                 logging.info('Rear window heating will be switched off')
                 self.saic_api.stop_rear_window_heat(self.vin_info)
-                self.publisher.publish_str(result_key, 'Success')
+                self.publisher.publish_str(result_key, MSG_CMD_SUCCESSFUL)
             else:
-                message = f'Invalid rear window heat state: {rear_windows_heat_state}. Valid values are on and off'
+                message = f'Invalid rear window heat state: {rear_window_heat_state}. Valid values are on and off'
                 self.publisher.publish_str(result_key, message)
                 logging.error(message)
+        except SaicApiException as e:
+            self.publisher.publish_str(result_key, f'Failed: {e.message}')
+            logging.exception(e)
+
+    def update_front_window_heat_state(self, front_window_heat_state: str):
+        result_key = f'{self.vehicle_prefix}/climate/frontWindowDefrosterHeating/result'
+        try:
+            if front_window_heat_state.lower() == 'on':
+                logging.info('Front window heating will be switched on')
+                self.saic_api.start_front_defrost(self.vin_info)
+                self.publisher.publish_str(result_key, MSG_CMD_SUCCESSFUL)
+            elif front_window_heat_state.lower() == 'off':
+                logging.info('Front window heating will be switched off')
+                self.saic_api.stop_front_defrost(self.vin_info)
+                self.publisher.publish_str(result_key, MSG_CMD_SUCCESSFUL)
+            else:
+                message = f'Invalid front window heat state: {front_window_heat_state}. Valid values are on and off'
+                self.publisher.publish_str(result_key, message)
+        except SaicApiException as e:
+            self.publisher.publish_str(result_key, f'Failed: {e.message}')
+            logging.exception(e)
+
+    def update_ac_state(self, ac_state: str):
+        result_key = f'{self.vehicle_prefix}/climate/remoteClimateState/result'
+        try:
+            if ac_state.lower() == 'on':
+                logging.info('A/C will be switched on')
+                self.saic_api.start_ac(self.vin_info)
+                self.publisher.publish_str(result_key, MSG_CMD_SUCCESSFUL)
+            elif ac_state.lower() == 'off':
+                logging.info('A/C will be switched off')
+                self.saic_api.stop_ac(self.vin_info)
+                self.publisher.publish_str(result_key, MSG_CMD_SUCCESSFUL)
+            else:
+                message = f'Invalid A/C state: {ac_state}. Valid values are on and off'
+                self.publisher.publish_str(result_key, message)
         except SaicApiException as e:
             self.publisher.publish_str(result_key, f'Failed: {e.message}')
             logging.exception(e)
@@ -232,21 +246,7 @@ class VehicleHandler:
             self.force_update = True
 
     def update_vehicle_status(self) -> OtaRvmVehicleStatusResp25857:
-        vehicle_status_rsp_msg = self.saic_api.get_vehicle_status(self.vin_info)
-        iteration = 0
-        while vehicle_status_rsp_msg.application_data is None:
-            if vehicle_status_rsp_msg.body.error_message is not None:
-                handle_error(self.saic_api, vehicle_status_rsp_msg.body)
-            else:
-                waiting_time = iteration * 1
-                logging.debug(
-                    f'Update vehicle status request returned no application data. Waiting {waiting_time} seconds')
-                time.sleep(float(waiting_time))
-                iteration += 1
-
-            # we have received an eventId back...
-            vehicle_status_rsp_msg = self.saic_api.get_vehicle_status(self.vin_info,
-                                                                      vehicle_status_rsp_msg.body.event_id)
+        vehicle_status_rsp_msg = self.saic_api.get_vehicle_status_with_retry(self.vin_info)
 
         vehicle_status_response = cast(OtaRvmVehicleStatusResp25857, vehicle_status_rsp_msg.application_data)
         basic_vehicle_status = vehicle_status_response.get_basic_vehicle_status()
@@ -338,20 +338,7 @@ class VehicleHandler:
         return vehicle_status_response
 
     def update_charge_status(self) -> OtaChrgMangDataResp:
-        chrg_mgmt_data_rsp_msg = self.saic_api.get_charging_status(self.vin_info)
-        iteration = 0
-        while chrg_mgmt_data_rsp_msg.application_data is None:
-            chrg_mgmt_body = cast(MessageBodyV30, chrg_mgmt_data_rsp_msg.body)
-            if chrg_mgmt_body.error_message_present():
-                handle_error(self.saic_api, chrg_mgmt_body)
-            else:
-                waiting_time = iteration * 1
-                logging.debug(
-                    f'Update charge status request returned no application data. Waiting {waiting_time} seconds')
-                time.sleep(float(waiting_time))
-                iteration += 1
-
-            chrg_mgmt_data_rsp_msg = self.saic_api.get_charging_status(self.vin_info, chrg_mgmt_body.event_id)
+        chrg_mgmt_data_rsp_msg = self.saic_api.get_charging_status_with_retry(self.vin_info)
         charge_mgmt_data = cast(OtaChrgMangDataResp, chrg_mgmt_data_rsp_msg.application_data)
 
         drivetrain_prefix = f'{self.vehicle_prefix}/drivetrain'
@@ -416,8 +403,10 @@ class MqttGateway:
         self.publisher.on_active_refresh_interval_update = self.__on_active_refresh_interval_update
         self.publisher.on_doors_lock_state_update = self.__on_doors_lock_state_update
         self.publisher.on_rear_window_heat_state_update = self.__on_rear_window_heat_state_update
+        self.publisher.on_front_window_heat_state_update = self.__on_front_window_heat_state_update
+        self.publisher.on_ac_state_update = self.__on_ac_state_update
         self.publisher.on_lp_charging = self.__on_lp_charging
-        self.saic_api = SaicApi(config.saic_uri, config.saic_user, config.saic_password)
+        self.saic_api = SaicApi(config.saic_uri, config.saic_user, config.saic_password, config.saic_relogin_delay)
         self.saic_api.on_publish_json_value = self.__on_publish_json_value
         self.saic_api.on_publish_raw_value = self.__on_publish_raw_value
         self.publisher.connect()
@@ -507,10 +496,20 @@ class MqttGateway:
         if vehicle_handler is not None:
             vehicle_handler.update_doors_lock_state(doors_locked)
 
-    def __on_rear_window_heat_state_update(self, rear_windows_heat_state: str, vin: str):
+    def __on_rear_window_heat_state_update(self, rear_window_heat_state: str, vin: str):
         vehicle_handler = self.get_vehicle_handler(vin)
         if vehicle_handler is not None:
-            vehicle_handler.update_rear_window_heat_state(rear_windows_heat_state)
+            vehicle_handler.update_rear_window_heat_state(rear_window_heat_state)
+
+    def __on_front_window_heat_state_update(self, front_window_heat_state: str, vin: str):
+        vehicle_handler = self.get_vehicle_handler(vin)
+        if vehicle_handler is not None:
+            vehicle_handler.update_front_window_heat_state(front_window_heat_state)
+
+    def __on_ac_state_update(self, ac_state: str, vin: str):
+        vehicle_handler = self.get_vehicle_handler(vin)
+        if vehicle_handler is not None:
+            vehicle_handler.update_ac_state(ac_state)
 
     def __on_lp_charging(self, vin: str, is_charging: bool):
         vehicle_handler = self.get_vehicle_handler(vin)
@@ -544,30 +543,14 @@ class MessageHandler:
 
     def polling(self):
         try:
-            message_list_rsp_msg = self.saicapi.get_message_list()
-
-            iteration = 0
-            while message_list_rsp_msg.application_data is None:
-                if message_list_rsp_msg.body.error_message is not None:
-                    handle_error(self.saicapi, message_list_rsp_msg.body)
-                else:
-                    waiting_time = iteration * 1
-                    logging.debug(
-                        f'Update message list request returned no application data. Waiting {waiting_time} seconds')
-                    time.sleep(float(waiting_time))
-                    iteration += 1
-
-                # we have received an eventId back...
-                message_list_rsp_msg = self.saicapi.get_message_list(message_list_rsp_msg.body.event_id)
-
-            message_list_rsp = cast(MessageListResp, message_list_rsp_msg.application_data)
-            logging.info(f'{message_list_rsp.records_number} messages received')
+            message_list = self.saicapi.get_message_list_with_retry()
+            logging.info(f'{len(message_list)} messages received')
 
             latest_message = None
             latest_timestamp = None
             latest_vehicle_start_message = None
             latest_vehicle_start_timestamp = None
-            for msg in message_list_rsp.messages:
+            for msg in message_list:
                 message = convert(msg)
                 logging.info(message.get_details())
 
@@ -676,9 +659,14 @@ def process_arguments() -> Configuration:
                                                     + ' Multiple mappings can be provided seperated by ,'
                                                     + ' Example: LSJXXXX=1,LSJYYYY=2',
                             dest='open_wp_lp_map', required=False, action=EnvDefault, envvar='OPENWB_LP_MAP')
+        parser.add_argument('--saic-relogin-delay', help='How long to wait before attempting another login to the SAIC '
+                                                         'API. Environment Variable: SAIC_RELOGIN_DELAY',
+                            dest='saic_relogin_delay', required=False, action=EnvDefault, envvar='SAIC_RELOGIN_DELAY')
         args = parser.parse_args()
         config.mqtt_user = args.mqtt_user
         config.mqtt_password = args.mqtt_password
+        if args.saic_relogin_delay:
+            config.saic_relogin_delay = args.saic_relogin_delay
         config.mqtt_topic = args.mqtt_topic
         config.saic_uri = args.saic_uri
         config.saic_user = args.saic_user
