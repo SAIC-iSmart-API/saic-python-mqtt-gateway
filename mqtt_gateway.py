@@ -110,6 +110,7 @@ class VehicleHandler:
                 logging.info(f'Vehicle {self.vin_info.vin} will be unlocked')
                 self.saic_api.unlock_vehicle(self.vin_info)
             self.publisher.publish_str(result_key, MSG_CMD_SUCCESSFUL)
+            self.force_update = True
         except SaicApiException as e:
             self.publisher.publish_str(result_key, f'Failed: {e.message}')
             logging.exception(e)
