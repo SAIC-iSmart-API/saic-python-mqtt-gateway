@@ -9,10 +9,10 @@ from typing import cast
 
 import saic_ismart_client.saic_api
 from saic_ismart_client.abrp_api import AbrpApi, AbrpApiException
-from saic_ismart_client.ota_v1_1.data_model import Message, VinInfo, MpUserLoggingInRsp, MpAlarmSettingType
+from saic_ismart_client.ota_v1_1.data_model import VinInfo, MpUserLoggingInRsp, MpAlarmSettingType
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
 from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp, RvsChargingStatus
-from saic_ismart_client.saic_api import SaicApi, SaicApiException
+from saic_ismart_client.saic_api import SaicApi, SaicApiException, SaicMessage
 
 from configuration import Configuration
 from mqtt_publisher import MqttClient
@@ -32,42 +32,6 @@ def datetime_to_str(dt: datetime.datetime) -> str:
 
 logging.basicConfig(format='%(asctime)s %(message)s')
 logging.getLogger().setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
-
-
-class SaicMessage:
-    def __init__(self, message_id: int, message_type: str, title: str, message_time: datetime, sender: str,
-                 content: str, read_status: int, vin: str):
-        self.message_id = message_id
-        self.message_type = message_type
-        self.title = title
-        self.message_time = message_time
-        self.sender = sender
-        self.content = content
-        self.read_status = read_status
-        self.vin = vin
-
-    def get_read_status_str(self) -> str:
-        if self.read_status is None:
-            return 'unknown'
-        elif self.read_status == 0:
-            return 'unread'
-        else:
-            return 'read'
-
-    def get_details(self) -> str:
-        return f'ID: {self.message_id}, Time: {self.message_time}, Type: {self.message_type}, Title: {self.title}, '\
-            + f'Content: {self.content}, Status: {self.get_read_status_str()}, Sender: {self.sender}, VIN: {self.vin}'
-
-
-def convert(message: Message) -> SaicMessage:
-    if message.content is not None:
-        content = message.content.decode()
-    else:
-        content = None
-    return SaicMessage(message.message_id, message.message_type, message.title.decode(),
-                       message.message_time.get_timestamp(), message.sender.decode(), content, message.read_status,
-                       message.vin)
-
 
 class VehicleHandler:
     def __init__(self, config: Configuration, saicapi: SaicApi, publisher: Publisher, vin_info: VinInfo,
