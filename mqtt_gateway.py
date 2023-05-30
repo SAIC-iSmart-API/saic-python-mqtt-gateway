@@ -553,8 +553,7 @@ class MessageHandler:
             latest_timestamp = None
             latest_vehicle_start_message = None
             latest_vehicle_start_timestamp = None
-            for msg in message_list:
-                message = convert(msg)
+            for message in message_list:
                 logging.info(message.get_details())
 
                 if message.message_type == '323':
@@ -605,7 +604,7 @@ class EnvDefault(argparse.Action):
 async def periodic(message_handler: MessageHandler, query_messages_interval: int):
     while True:
         message_handler.polling()
-        logging.debug(f'Waiting {query_messages_interval} to check for new messages')
+        logging.debug(f'Waiting {query_messages_interval} seconds to check for new messages')
         await asyncio.sleep(float(query_messages_interval))
 
 
