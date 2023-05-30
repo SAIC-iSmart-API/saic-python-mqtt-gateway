@@ -113,7 +113,7 @@ class VehicleHandler:
             self.force_update = True
         except SaicApiException as e:
             self.publisher.publish_str(result_key, f'Failed: {e.message}')
-            logging.exception(e)
+            logging.exception('update_doors_lock_state failed', exc_info=e)
 
     def update_rear_window_heat_state(self, rear_window_heat_state: str):
         result_key = f'{self.vehicle_prefix}/climate/rearWindowDefrosterHeating/result'
@@ -132,7 +132,7 @@ class VehicleHandler:
                 logging.error(message)
         except SaicApiException as e:
             self.publisher.publish_str(result_key, f'Failed: {e.message}')
-            logging.exception(e)
+            logging.exception('update_rear_window_heat_state failed', exc_info=e)
 
     def update_front_window_heat_state(self, front_window_heat_state: str):
         result_key = f'{self.vehicle_prefix}/climate/frontWindowDefrosterHeating/result'
@@ -150,7 +150,7 @@ class VehicleHandler:
                 self.publisher.publish_str(result_key, message)
         except SaicApiException as e:
             self.publisher.publish_str(result_key, f'Failed: {e.message}')
-            logging.exception(e)
+            logging.exception('update_front_window_heat_state failed', exc_info=e)
 
     def update_ac_state(self, ac_state: str):
         result_key = f'{self.vehicle_prefix}/climate/remoteClimateState/result'
@@ -168,7 +168,7 @@ class VehicleHandler:
                 self.publisher.publish_str(result_key, message)
         except SaicApiException as e:
             self.publisher.publish_str(result_key, f'Failed: {e.message}')
-            logging.exception(e)
+            logging.exception('update_ac_state failed', exc_info=e)
 
     def refresh_required(self):
         refresh_interval = self.inactive_refresh_interval
@@ -223,10 +223,10 @@ class VehicleHandler:
                         self.force_update = True
                         await asyncio.sleep(float(self.active_refresh_interval))
                 except SaicApiException as e:
-                    logging.exception(e)
+                    logging.exception('handle_vehicle loop failed during SaicApi call', exc_info=e)
                     await asyncio.sleep(float(30))
                 except AbrpApiException as ae:
-                    logging.exception(ae)
+                    logging.exception('handle_vehicle loop failed during AbrpApi call', exc_info=ae)
             else:
                 # car not active, wait a second
                 logging.debug(f'sleeping {datetime.datetime.now()}, last car activity: {self.last_car_activity}')
@@ -418,7 +418,7 @@ class MqttGateway:
             login_response_message = self.saic_api.login()
             user_logging_in_response = cast(MpUserLoggingInRsp, login_response_message.application_data)
         except SaicApiException as e:
-            logging.exception(e)
+            logging.exception('MqttGateway crashed due to SaicApiException', exc_info=e)
             raise SystemExit(e)
 
         for alarm_setting_type in MpAlarmSettingType:
@@ -582,11 +582,11 @@ class MessageHandler:
                     self.saicapi.delete_message(message_id)
                     logging.info(f'{latest_vehicle_start_message.title} message with ID {message_id} deleted')
                 except SaicApiException as e:
-                    logging.exception(e)
+                    logging.exception('Could not delete message from server', exc_info=e)
             elif latest_message is not None:
                 self.gateway.notify_message(latest_message)
         except SaicApiException as e:
-            logging.exception(e)
+            logging.exception('MessageHandler poll loop failed', exc_info=e)
 
 
 class EnvDefault(argparse.Action):
@@ -605,15 +605,16 @@ class EnvDefault(argparse.Action):
 async def periodic(message_handler: MessageHandler, query_messages_interval: int):
     while True:
         message_handler.polling()
+        logging.debug(f'Waiting {query_messages_interval} to check for new messages')
         await asyncio.sleep(float(query_messages_interval))
 
 
 async def main(vh_map: dict, message_handler: MessageHandler, query_messages_interval: int):
     tasks = []
     for key in vh_map:
-        logging.debug(f'{key}')
+        logging.debug(f'Starting process for car {key}')
         vh = cast(VehicleHandler, vh_map[key])
-        task = asyncio.create_task(vh.handle_vehicle())
+        task = asyncio.create_task(vh.handle_vehicle(), name=f'handle_vehicle_{key}')
         tasks.append(task)
 
     tasks.append(asyncio.create_task(periodic(message_handler, query_messages_interval)))
