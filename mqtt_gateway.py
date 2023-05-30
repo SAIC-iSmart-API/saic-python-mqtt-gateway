@@ -617,11 +617,30 @@ async def main(vh_map: dict, message_handler: MessageHandler, query_messages_int
         task = asyncio.create_task(vh.handle_vehicle(), name=f'handle_vehicle_{key}')
         tasks.append(task)
 
-    tasks.append(asyncio.create_task(periodic(message_handler, query_messages_interval)))
+    tasks.append(asyncio.create_task(periodic(message_handler, query_messages_interval), name='message_handler'))
 
-    for task in tasks:
-        # make sure we wait on all futures before exiting
-        await task
+    await shutdown_handler(tasks)
+
+
+async def shutdown_handler(tasks):
+    while True:
+        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        for task in done:
+            task_name = task.get_name()
+            if task.cancelled():
+                logging.debug(f'{task_name !r} task was cancelled, this is only supposed if the application is '
+                              f'shutting down')
+            else:
+                exception = task.exception()
+                if exception is not None:
+                    logging.exception(f'{task_name !r} task crashed with an exception', exc_info=exception)
+                    raise SystemExit(-1)
+                else:
+                    logging.warning(f'{task_name !r} task terminated cleanly with result={task.result()}')
+        if len(pending) == 0:
+            break
+        else:
+            logging.warning(f'There are still {len(pending)} tasks... waiting for them to complete')
 
 
 def process_arguments() -> Configuration:
