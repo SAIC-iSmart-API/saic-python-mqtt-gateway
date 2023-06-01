@@ -208,8 +208,11 @@ class VehicleHandler:
 
     def force_update_by_message_time(self, message: SaicMessage):
         # something happened, better check the vehicle state
-        if self.last_car_activity < message.message_time:
-            self.force_update = True
+        # The following check was nice, too bad SAIC messages may have some clock skew, so we can't trust the message TS
+        # TODO: Add some kind of tolerance to this check
+        # if self.last_car_activity < message.message_time:
+        #     self.force_update = True
+        self.force_update = True
 
     def update_vehicle_status(self) -> OtaRvmVehicleStatusResp25857:
         vehicle_status_rsp_msg = self.saic_api.get_vehicle_status_with_retry(self.vin_info)
