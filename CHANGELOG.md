@@ -12,6 +12,9 @@ Vehicle control commands are finally working
 * Using new saic-ismart-client (version 1.2.6)
 * Environment variable to configure log level
 
+### Fixed
+* environment variable overwrites the predefined default value
+
 ## 0.2.1
 
 ### Added
