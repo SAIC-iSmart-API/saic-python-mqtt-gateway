@@ -554,9 +554,8 @@ class MessageHandler:
 
 class EnvDefault(argparse.Action):
     def __init__(self, envvar, required=True, default=None, **kwargs):
-        if not default and envvar:
-            if envvar in os.environ:
-                default = os.environ[envvar]
+        if envvar in os.environ:
+            default = os.environ[envvar]
         if required and default:
             required = False
         super(EnvDefault, self).__init__(default=default, required=required, **kwargs)
@@ -647,9 +646,7 @@ def process_arguments() -> Configuration:
                             dest='open_wp_lp_map', required=False, action=EnvDefault, envvar='OPENWB_LP_MAP')
         parser.add_argument('--saic-relogin-delay', help='How long to wait before attempting another login to the SAIC '
                                                          'API. Environment Variable: SAIC_RELOGIN_DELAY',
-                            dest='saic_relogin_delay', required=False, action=EnvDefault, envvar='SAIC_RELOGIN_DELAY',
-                            type=int)
-
+                            dest='saic_relogin_delay', required=False, action=EnvDefault, envvar='SAIC_RELOGIN_DELAY')
         args = parser.parse_args()
         config.mqtt_user = args.mqtt_user
         config.mqtt_password = args.mqtt_password
@@ -702,6 +699,13 @@ def cfg_value_to_dict(cfg_value: str, result_map: dict):
             key = key_value_pair[0]
             value = key_value_pair[1]
             result_map[key] = value
+
+
+def check_positive(value):
+    ivalue = int(value)
+    if ivalue <= 0:
+        raise argparse.ArgumentTypeError(f'{ivalue} is an invalid positive int value')
+    return ivalue
 
 
 configuration = process_arguments()
