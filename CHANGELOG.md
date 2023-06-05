@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.2.3
+
+### Fixed
+
+* empty environment variables are ignored
+
 ## 0.2.2
 
 Vehicle control commands are finally working

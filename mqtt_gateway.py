@@ -591,7 +591,10 @@ class MessageHandler:
 
 class EnvDefault(argparse.Action):
     def __init__(self, envvar, required=True, default=None, **kwargs):
-        if envvar in os.environ:
+        if (
+            envvar in os.environ
+            and os.environ[envvar]
+        ):
             default = os.environ[envvar]
         if required and default:
             required = False
