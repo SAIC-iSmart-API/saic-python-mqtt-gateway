@@ -33,6 +33,7 @@ def datetime_to_str(dt: datetime.datetime) -> str:
 logging.basicConfig(format='%(asctime)s %(message)s')
 logging.getLogger().setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
 
+
 class VehicleHandler:
     def __init__(self, config: Configuration, saicapi: SaicApi, publisher: Publisher, vin_info: VinInfo,
                  open_wb_lp: str = None):
