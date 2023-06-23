@@ -351,12 +351,6 @@ class VehicleHandler:
             total_battery_capacity = charge_status.total_battery_capacity / 10.0
             self.publisher.publish_float(f'{drivetrain_prefix}/totalBatteryCapacity', total_battery_capacity)
 
-        self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsChrgCtrlDspCmd', charge_mgmt_data.bmsChrgCtrlDspCmd)
-        self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsChrgOtptCrntReq', charge_mgmt_data.bmsChrgOtptCrntReq)
-        self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsChrgSts', charge_mgmt_data.bmsChrgSts)
-        self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsPackVol', charge_mgmt_data.bmsPackVol)
-        self.publisher.publish_int(f'{self.vin_info.vin}/bms/bmsPTCHeatReqDspCmd',
-                                   charge_mgmt_data.bmsPTCHeatReqDspCmd)
         return charge_mgmt_data
 
 
