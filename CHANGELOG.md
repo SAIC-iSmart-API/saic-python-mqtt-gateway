@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.2.4
+
+### Added
+
+* docker support for architecture linux/arm/v7
+
 ## 0.2.3
 
 ### Added
