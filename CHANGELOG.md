@@ -2,8 +2,9 @@
 
 ## 0.2.4
 
-TODO: keep polling for 10 Minutes after engine stop to solve: detect car is charging #20
-TODO: work on (remoteClimateState)[https://github.com/orgs/SAIC-iSmart-API/discussions/6#discussioncomment-5923522] related to  Feature request: A/C control #13 
+### Added
+
+* docker support for architecture linux/arm/v7
 
 ## 0.2.3
 
