@@ -15,5 +15,4 @@ class Configuration:
         self.open_wb_topic = 'openWB'
         self.open_wb_lp_map = {}
         self.anonymized_publishing = False
-        self.inactive_vehicle_state_refresh_interval = 86400  # in seconds (Once a day to protect your 12V battery)
         self.messages_request_interval = 60  # in seconds

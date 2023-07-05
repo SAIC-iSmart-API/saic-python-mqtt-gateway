@@ -8,18 +8,20 @@ import urllib.parse
 from typing import cast
 
 import saic_ismart_client.saic_api
+import paho.mqtt.client as mqtt
 from saic_ismart_client.abrp_api import AbrpApi, AbrpApiException
 from saic_ismart_client.ota_v1_1.data_model import VinInfo, MpUserLoggingInRsp, MpAlarmSettingType
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
-from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp, RvsChargingStatus
-from saic_ismart_client.saic_api import SaicApi, SaicApiException, SaicMessage
+from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp
+from saic_ismart_client.saic_api import SaicApi, SaicApiException
 
+import mqtt_topics
 from configuration import Configuration
 from mqtt_publisher import MqttClient
 from publisher import Publisher
+from vehicle import VehicleState
 
 MSG_CMD_SUCCESSFUL = 'Success'
-PRESSURE_TO_BAR_FACTOR = 0.04
 
 
 def epoch_value_to_str(time_value: int) -> str:
@@ -34,70 +36,28 @@ logging.basicConfig(format='%(asctime)s %(message)s')
 logging.getLogger().setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
 
 
+class MqttGatewayException(Exception):
+    def __init__(self, msg: str):
+        self.message = msg
+
+    def __str__(self):
+        return self.message
+
+
 class VehicleHandler:
     def __init__(self, config: Configuration, saicapi: SaicApi, publisher: Publisher, vin_info: VinInfo,
-                 open_wb_lp: str = None):
+                 vehicle_state: VehicleState):
         self.configuration = config
         self.saic_api = saicapi
         self.publisher = publisher
         self.vin_info = vin_info
-        self.open_wb_lp = open_wb_lp
-        self.last_car_activity = None
-        self.force_update = True
-        self.is_charging_on_openwb = False
+        self.vehicle_prefix = f'{self.configuration.saic_user}/vehicles/{self.vin_info.vin}'
+        self.vehicle_state = vehicle_state
         if vin_info.vin in self.configuration.abrp_token_map:
             abrp_user_token = self.configuration.abrp_token_map[vin_info.vin]
         else:
             abrp_user_token = None
         self.abrp_api = AbrpApi(self.configuration.abrp_api_key, abrp_user_token)
-        self.vehicle_prefix = f'{self.configuration.saic_user}/vehicles/{self.vin_info.vin}'
-        self.refresh_mode = 'periodic'
-        self.inactive_refresh_interval = -1
-        self.active_refresh_interval = -1
-
-    def set_inactive_refresh_interval(self, seconds: int):
-        refresh_prefix = f'{self.vehicle_prefix}/refresh'
-        self.publisher.publish_int(f'{refresh_prefix}/period/inActive', seconds)
-        self.inactive_refresh_interval = seconds
-
-    def set_active_refresh_interval(self, seconds: int):
-        refresh_prefix = f'{self.vehicle_prefix}/refresh'
-        self.publisher.publish_int(f'{refresh_prefix}/period/active', seconds)
-        self.active_refresh_interval = seconds
-
-    def update_doors_lock_state(self, doors_locked: bool):
-        result_key = f'{self.vehicle_prefix}/doors/locked/result'
-        try:
-            if doors_locked:
-                logging.info(f'Vehicle {self.vin_info.vin} will be locked')
-                self.saic_api.lock_vehicle(self.vin_info)
-            else:
-                logging.info(f'Vehicle {self.vin_info.vin} will be unlocked')
-                self.saic_api.unlock_vehicle(self.vin_info)
-            self.publisher.publish_str(result_key, MSG_CMD_SUCCESSFUL)
-            self.force_update = True
-        except SaicApiException as e:
-            self.publisher.publish_str(result_key, f'Failed: {e.message}')
-            logging.exception('update_doors_lock_state failed', exc_info=e)
-
-    def update_rear_window_heat_state(self, rear_window_heat_state: str):
-        result_key = f'{self.vehicle_prefix}/climate/rearWindowDefrosterHeating/result'
-        try:
-            if rear_window_heat_state.lower() == 'on':
-                logging.info('Rear window heating will be switched on')
-                self.saic_api.start_rear_window_heat(self.vin_info)
-                self.publisher.publish_str(result_key, MSG_CMD_SUCCESSFUL)
-            elif rear_window_heat_state.lower() == 'off':
-                logging.info('Rear window heating will be switched off')
-                self.saic_api.stop_rear_window_heat(self.vin_info)
-                self.publisher.publish_str(result_key, MSG_CMD_SUCCESSFUL)
-            else:
-                message = f'Invalid rear window heat state: {rear_window_heat_state}. Valid values are on and off'
-                self.publisher.publish_str(result_key, message)
-                logging.error(message)
-        except SaicApiException as e:
-            self.publisher.publish_str(result_key, f'Failed: {e.message}')
-            logging.exception('update_rear_window_heat_state failed', exc_info=e)
 
     def update_front_window_heat_state(self, front_window_heat_state: str):
         result_key = f'{self.vehicle_prefix}/climate/frontWindowDefrosterHeating/result'
@@ -117,241 +77,127 @@ class VehicleHandler:
             self.publisher.publish_str(result_key, f'Failed: {e.message}')
             logging.exception('update_front_window_heat_state failed', exc_info=e)
 
-    def update_ac_state(self, ac_state: str):
-        result_key = f'{self.vehicle_prefix}/climate/remoteClimateState/result'
-        try:
-            if ac_state.lower() == 'on':
-                logging.info('A/C will be switched on')
-                self.saic_api.start_ac(self.vin_info)
-                self.publisher.publish_str(result_key, MSG_CMD_SUCCESSFUL)
-            elif ac_state.lower() == 'off':
-                logging.info('A/C will be switched off')
-                self.saic_api.stop_ac(self.vin_info)
-                self.publisher.publish_str(result_key, MSG_CMD_SUCCESSFUL)
-            else:
-                message = f'Invalid A/C state: {ac_state}. Valid values are on and off'
-                self.publisher.publish_str(result_key, message)
-        except SaicApiException as e:
-            self.publisher.publish_str(result_key, f'Failed: {e.message}')
-            logging.exception('update_ac_state failed', exc_info=e)
-
-    def refresh_required(self):
-        refresh_interval = self.inactive_refresh_interval
-        now_minus_refresh_interval = datetime.datetime.now() - datetime.timedelta(seconds=float(refresh_interval))
-        if (
-            self.refresh_mode != 'off'
-            and (
-                self.last_car_activity is None
-                or self.force_update
-                or self.last_car_activity < now_minus_refresh_interval
-            )
-        ):
-            return True
-        else:
-            return False
-
     async def handle_vehicle(self) -> None:
-        self.set_inactive_refresh_interval(self.configuration.inactive_vehicle_state_refresh_interval)
-        self.set_active_refresh_interval(30)
-        self.publisher.publish_str(f'{self.vehicle_prefix}/configuration/raw',
-                                   self.vin_info.model_configuration_json_str)
-        configuration_prefix = f'{self.vehicle_prefix}/configuration'
-        for c in self.vin_info.model_configuration_json_str.split(';'):
-            property_map = {}
-            if ',' in c:
-                for e in c.split(','):
-                    if ':' in e:
-                        key_value_pair = e.split(":")
-                        property_map[key_value_pair[0]] = key_value_pair[1]
-                self.publisher.publish_str(f'{configuration_prefix}/{property_map["code"]}', property_map["value"])
+        self.vehicle_state.configure(self.vin_info)
+        start_time = datetime.datetime.now()
+        self.vehicle_state.notify_car_activity_time(start_time, True)
+
         while True:
-            if self.refresh_required():
-                self.force_update = False
-                # reset previous refresh mode
-                self.publisher.reset_force_mode(self.vin_info.vin, self.refresh_mode)
+            if (
+                    not self.vehicle_state.is_complete()
+                    and datetime.datetime.now() > start_time + datetime.timedelta(seconds=10)
+            ):
+                self.vehicle_state.configure_missing()
+
+            if (
+                self.vehicle_state.is_complete()
+                and self.vehicle_state.should_refresh()
+            ):
                 try:
                     vehicle_status = self.update_vehicle_status()
-                    last_vehicle_status = datetime.datetime.now()
                     charge_status = self.update_charge_status()
-                    last_charge_status = datetime.datetime.now()
                     self.abrp_api.update_abrp(vehicle_status, charge_status)
-                    self.notify_car_activity(datetime.datetime.now())
-                    refresh_prefix = f'{self.vehicle_prefix}/refresh'
-                    self.publisher.publish_str(f'{refresh_prefix}/lastVehicleState',
-                                               datetime_to_str(last_vehicle_status))
-                    self.publisher.publish_str(f'{refresh_prefix}/lastChargeState', datetime_to_str(last_charge_status))
-                    if (
-                            vehicle_status.is_charging()
-                            or self.is_charging_on_openwb
-                            or vehicle_status.is_engine_running()
-                    ):
-                        self.force_update = True
-                        await asyncio.sleep(float(self.active_refresh_interval))
+                    # TODO publish ABRP response
+                    self.vehicle_state.mark_successful_refresh()
+                    logging.info('Refreshing vehicle status succeeded...')
                 except SaicApiException as e:
-                    logging.exception('handle_vehicle loop failed during SaicApi call', exc_info=e)
+                    logging.exception('handle_vehicle loop failed during SAIC API call', exc_info=e)
                     await asyncio.sleep(float(30))
                 except AbrpApiException as ae:
-                    logging.exception('handle_vehicle loop failed during AbrpApi call', exc_info=ae)
+                    logging.exception('handle_vehicle loop failed during ABRP API call', exc_info=ae)
             else:
                 # car not active, wait a second
-                logging.debug(f'sleeping {datetime.datetime.now()}, last car activity: {self.last_car_activity}')
                 await asyncio.sleep(1.0)
-
-    def notify_car_activity(self, last_activity_time: datetime):
-        if (
-                self.last_car_activity is None
-                or self.last_car_activity < last_activity_time
-        ):
-            self.last_car_activity = last_activity_time
-            last_activity = datetime_to_str(self.last_car_activity)
-            self.publisher.publish_str(f'{self.vin_info.vin}/last_activity', last_activity)
-            logging.info(f'last activity: {last_activity}')
-
-    def force_update_by_message_time(self, message: SaicMessage):
-        # something happened, better check the vehicle state
-        if self.last_car_activity < message.message_time:
-            self.force_update = True
 
     def update_vehicle_status(self) -> OtaRvmVehicleStatusResp25857:
         vehicle_status_rsp_msg = self.saic_api.get_vehicle_status_with_retry(self.vin_info)
-
         vehicle_status_response = cast(OtaRvmVehicleStatusResp25857, vehicle_status_rsp_msg.application_data)
-        basic_vehicle_status = vehicle_status_response.get_basic_vehicle_status()
-        drivetrain_prefix = f'{self.vehicle_prefix}/drivetrain'
-        self.publisher.publish_bool(f'{drivetrain_prefix}/running', vehicle_status_response.is_engine_running())
-        self.publisher.publish_bool(f'{drivetrain_prefix}/charging', vehicle_status_response.is_charging())
-        battery_voltage = basic_vehicle_status.battery_voltage / 10.0
-        self.publisher.publish_float(f'{drivetrain_prefix}/auxiliaryBatteryVoltage', battery_voltage)
-        if basic_vehicle_status.mileage > 0:
-            mileage = basic_vehicle_status.mileage / 10.0
-            self.publisher.publish_float(f'{drivetrain_prefix}/mileage', mileage)
-        if basic_vehicle_status.fuel_range_elec > 0:
-            electric_range = basic_vehicle_status.fuel_range_elec / 10.0
-            self.publisher.publish_float(f'{drivetrain_prefix}/range', electric_range)
-
-        climate_prefix = f'{self.vehicle_prefix}/climate'
-        interior_temperature = basic_vehicle_status.interior_temperature
-        if interior_temperature > -128:
-            self.publisher.publish_int(f'{climate_prefix}/interiorTemperature', interior_temperature)
-        exterior_temperature = basic_vehicle_status.exterior_temperature
-        if exterior_temperature > -128:
-            self.publisher.publish_int(f'{climate_prefix}/exteriorTemperature', exterior_temperature)
-        self.publisher.publish_int(f'{climate_prefix}/remoteClimateState',
-                                   basic_vehicle_status.remote_climate_status)
-        remote_rear_window_defroster_state = basic_vehicle_status.rmt_htd_rr_wnd_st
-        self.publisher.publish_int(f'{climate_prefix}/rearWindowDefrosterHeating', remote_rear_window_defroster_state)
-
-        location_prefix = f'{self.vehicle_prefix}/location'
-        way_point = vehicle_status_response.get_gps_position().get_way_point()
-        speed = way_point.speed / 10.0
-        self.publisher.publish_float(f'{location_prefix}/speed', speed)
-        self.publisher.publish_int(f'{location_prefix}/heading', way_point.heading)
-        position = way_point.get_position()
-        if abs(position.latitude) > 0:
-            latitude = position.latitude / 1000000.0
-            self.publisher.publish_float(f'{location_prefix}/latitude', latitude)
-        if abs(position.longitude) > 0:
-            longitude = position.longitude / 1000000.0
-            self.publisher.publish_float(f'{location_prefix}/longitude', longitude)
-        self.publisher.publish_int(f'{location_prefix}/elevation', position.altitude)
-
-        windows_prefix = f'{self.vehicle_prefix}/windows'
-        self.publisher.publish_bool(f'{windows_prefix}/driver', basic_vehicle_status.driver_window)
-        self.publisher.publish_bool(f'{windows_prefix}/passenger', basic_vehicle_status.passenger_window)
-        self.publisher.publish_bool(f'{windows_prefix}/rearLeft', basic_vehicle_status.rear_left_window)
-        self.publisher.publish_bool(f'{windows_prefix}/rearRight', basic_vehicle_status.rear_right_window)
-        self.publisher.publish_bool(f'{windows_prefix}/sunRoof', basic_vehicle_status.sun_roof_status)
-
-        doors_prefix = f'{self.vehicle_prefix}/doors'
-        self.publisher.publish_bool(f'{doors_prefix}/locked', basic_vehicle_status.lock_status)
-        self.publisher.publish_bool(f'{doors_prefix}/driver', basic_vehicle_status.driver_door)
-        self.publisher.publish_bool(f'{doors_prefix}/passenger', basic_vehicle_status.passenger_door)
-        self.publisher.publish_bool(f'{doors_prefix}/rearLeft', basic_vehicle_status.rear_left_door)
-        self.publisher.publish_bool(f'{doors_prefix}/rearRight', basic_vehicle_status.rear_right_door)
-        self.publisher.publish_bool(f'{doors_prefix}/bonnet', basic_vehicle_status.bonnet_status)
-        self.publisher.publish_bool(f'{doors_prefix}/boot', basic_vehicle_status.boot_status)
-
-        tyres_prefix = f'{self.vehicle_prefix}/tyres'
-        if (
-                basic_vehicle_status.front_left_tyre_pressure is not None
-                and basic_vehicle_status.front_left_tyre_pressure > 0
-        ):
-            # convert value from psi to bar
-            front_left_tyre_bar = basic_vehicle_status.front_left_tyre_pressure * PRESSURE_TO_BAR_FACTOR
-            self.publisher.publish_float(f'{tyres_prefix}/frontLeftPressure', round(front_left_tyre_bar, 2))
-        if (
-                basic_vehicle_status.front_right_tyre_pressure is not None
-                and basic_vehicle_status.front_right_tyre_pressure > 0
-        ):
-            front_right_tyre_bar = basic_vehicle_status.front_right_tyre_pressure * PRESSURE_TO_BAR_FACTOR
-            self.publisher.publish_float(f'{tyres_prefix}/frontRightPressure', round(front_right_tyre_bar, 2))
-        if (
-                basic_vehicle_status.rear_left_tyre_pressure
-                and basic_vehicle_status.rear_left_tyre_pressure > 0
-        ):
-            rear_left_tyre_bar = basic_vehicle_status.rear_left_tyre_pressure * PRESSURE_TO_BAR_FACTOR
-            self.publisher.publish_float(f'{tyres_prefix}/rearLeftPressure', round(rear_left_tyre_bar, 2))
-        if (
-                basic_vehicle_status.rear_right_tyre_pressure is not None
-                and basic_vehicle_status.rear_right_tyre_pressure > 0
-        ):
-            rear_right_tyre_bar = basic_vehicle_status.rear_right_tyre_pressure * PRESSURE_TO_BAR_FACTOR
-            self.publisher.publish_float(f'{tyres_prefix}/rearRightPressure', round(rear_right_tyre_bar, 2))
-
-        lights_prefix = f'{self.vehicle_prefix}/lights'
-        self.publisher.publish_bool(f'{lights_prefix}/mainBeam', basic_vehicle_status.main_beam_status)
-        self.publisher.publish_bool(f'{lights_prefix}/dippedBeam', basic_vehicle_status.dipped_beam_status)
+        self.vehicle_state.handle_vehicle_status(vehicle_status_response)
 
         return vehicle_status_response
 
     def update_charge_status(self) -> OtaChrgMangDataResp:
         chrg_mgmt_data_rsp_msg = self.saic_api.get_charging_status_with_retry(self.vin_info)
         charge_mgmt_data = cast(OtaChrgMangDataResp, chrg_mgmt_data_rsp_msg.application_data)
-
-        drivetrain_prefix = f'{self.vehicle_prefix}/drivetrain'
-        self.publisher.publish_float(f'{drivetrain_prefix}/current', round(charge_mgmt_data.get_current(), 3))
-        self.publisher.publish_float(f'{drivetrain_prefix}/voltage', round(charge_mgmt_data.get_voltage(), 3))
-        self.publisher.publish_float(f'{drivetrain_prefix}/power', round(charge_mgmt_data.get_power(), 3))
-        soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
-        if soc <= 100.0:
-            self.publisher.publish_float(f'{drivetrain_prefix}/soc', soc)
-            if self.open_wb_lp is not None:
-                # publish SoC to openWB topic
-                topic = f'{self.configuration.open_wb_topic}/set/lp/{self.open_wb_lp}/%Soc'
-                self.publisher.publish_int(topic, int(soc), True)
-        estimated_electrical_range = charge_mgmt_data.bms_estd_elec_rng / 10.0
-        self.publisher.publish_float(f'{drivetrain_prefix}/hybrid_electrical_range', estimated_electrical_range)
-        charge_status = cast(RvsChargingStatus, charge_mgmt_data.chargeStatus)
-        if (
-                charge_status.mileage_of_day is not None
-                and charge_status.mileage_of_day > 0
-        ):
-            mileage_of_the_day = charge_status.mileage_of_day / 10.0
-            self.publisher.publish_float(f'{drivetrain_prefix}/mileageOfTheDay', mileage_of_the_day)
-        if (
-                charge_status.mileage_since_last_charge is not None
-                and charge_status.mileage_since_last_charge > 0
-        ):
-            mileage_since_last_charge = charge_status.mileage_since_last_charge / 10.0
-            self.publisher.publish_float(f'{drivetrain_prefix}/mileageSinceLastCharge', mileage_since_last_charge)
-        soc_kwh = charge_status.real_time_power / 10.0
-        self.publisher.publish_float(f'{drivetrain_prefix}/soc_kwh', soc_kwh)
-        self.publisher.publish_int(f'{drivetrain_prefix}/chargingType', charge_status.charging_type)
-        self.publisher.publish_bool(f'{drivetrain_prefix}/chargerConnected', charge_status.charging_gun_state)
-        if (
-                charge_status.last_charge_ending_power is not None
-                and charge_status.last_charge_ending_power > 0
-        ):
-            last_charge_ending_power = charge_status.last_charge_ending_power / 10.0
-            self.publisher.publish_float(f'{drivetrain_prefix}/lastChargeEndingPower', last_charge_ending_power)
-        if (
-                charge_status.total_battery_capacity is not None
-                and charge_status.total_battery_capacity > 0
-        ):
-            total_battery_capacity = charge_status.total_battery_capacity / 10.0
-            self.publisher.publish_float(f'{drivetrain_prefix}/totalBatteryCapacity', total_battery_capacity)
+        self.vehicle_state.handle_charge_status(charge_mgmt_data)
 
         return charge_mgmt_data
+
+    def handle_mqtt_command(self, msg: mqtt.MQTTMessage):
+        topic = self.get_topic_without_vehicle_prefix(msg.topic)
+        try:
+            if msg.retain:
+                raise MqttGatewayException('Message may not be retained')
+
+            match topic:
+                case mqtt_topics.DRIVETRAIN_HV_BATTERY_ACTIVE:
+                    match msg.payload.decode().strip().lower():
+                        case 'true':
+                            self.vehicle_state.set_hv_battery_active(True)
+                        case 'false':
+                            self.vehicle_state.set_hv_battery_active(False)
+                        case _:
+                            raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
+                case mqtt_topics.DRIVETRAIN_CHARGING:
+                    match msg.payload.decode().strip().lower():
+                        case 'true':
+                            self.send_charging(True)
+                        case 'false':
+                            self.send_charging(False)
+                        case _:
+                            raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
+                case mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE:
+                    match msg.payload.decode().strip().lower():
+                        case 'off':
+                            logging.info('A/C will be switched off')
+                            self.saic_api.stop_ac(self.vin_info)
+                        case 'on':
+                            logging.info('A/C will be switched on')
+                            self.saic_api.start_ac(self.vin_info)
+                        case 'front':
+                            self.saic_api.start_ac_blowing(self.vin_info)
+                        case _:
+                            raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
+                case mqtt_topics.DOORS_LOCKED:
+                    match msg.payload.decode().strip().lower():
+                        case 'true':
+                            logging.info(f'Vehicle {self.vin_info.vin} will be locked')
+                            self.saic_api.lock_vehicle(self.vin_info)
+                        case 'false':
+                            logging.info(f'Vehicle {self.vin_info.vin} will be unlocked')
+                            self.saic_api.unlock_vehicle(self.vin_info)
+                        case _:
+                            raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
+                case mqtt_topics.CLIMATE_BACK_WINDOW_HEAT:
+                    match msg.payload.decode().strip().lower():
+                        case 'off':
+                            logging.info('Rear window heating will be switched off')
+                            self.saic_api.stop_rear_window_heat(self.vin_info)
+                        case 'on':
+                            logging.info('Rear window heating will be switched on')
+                            self.saic_api.start_rear_window_heat(self.vin_info)
+                        case _:
+                            raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
+                case _:
+                    self.vehicle_state.configure(topic, msg)
+            self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', 'Success')
+        except MqttGatewayException as e:
+            self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed: {e.message}')
+            logging.exception(e.message, exc_info=e)
+        except SaicApiException as se:
+            self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed: {se.message}')
+            logging.exception(se.message, exc_info=se)
+
+    def get_topic_without_vehicle_prefix(self, topic: str) -> str:
+        global_topic_removed = topic[len(self.configuration.mqtt_topic) + 1:]
+        elements = global_topic_removed.split('/')
+        result = ''
+        for i in range(3, len(elements) - 1):
+            result += f'/{elements[i]}'
+        return result[1:]
+
+    def send_charging(self, param):
+        pass
 
 
 class MqttGateway:
@@ -359,13 +205,11 @@ class MqttGateway:
         self.configuration = config
         self.vehicle_handler = {}
         self.publisher = MqttClient(self.configuration)
+        self.publisher.on_mqtt_command_received = self.__on_mqtt_command_received
         self.publisher.on_refresh_mode_update = self.__on_refresh_mode_update
         self.publisher.on_inactive_refresh_interval_update = self.__on_inactive_refresh_interval_update
         self.publisher.on_active_refresh_interval_update = self.__on_active_refresh_interval_update
-        self.publisher.on_doors_lock_state_update = self.__on_doors_lock_state_update
-        self.publisher.on_rear_window_heat_state_update = self.__on_rear_window_heat_state_update
         self.publisher.on_front_window_heat_state_update = self.__on_front_window_heat_state_update
-        self.publisher.on_ac_state_update = self.__on_ac_state_update
         self.publisher.on_lp_charging = self.__on_lp_charging
         self.saic_api = SaicApi(config.saic_uri, config.saic_user, config.saic_password, config.saic_relogin_delay)
         self.saic_api.on_publish_json_value = self.__on_publish_json_value
@@ -390,39 +234,21 @@ class MqttGateway:
 
         for info in user_logging_in_response.vin_list:
             vin_info = cast(VinInfo, info)
-            info_prefix = f'{self.configuration.saic_user}/vehicles/{vin_info.vin}/info'
-            self.publisher.publish_str(f'{info_prefix}/brand', vin_info.brand_name.decode())
-            self.publisher.publish_str(f'{info_prefix}/model', vin_info.model_name.decode())
-            self.publisher.publish_str(f'{info_prefix}/year', vin_info.model_year)
-            self.publisher.publish_str(f'{info_prefix}/series', vin_info.series)
-            if vin_info.color_name is not None:
-                self.publisher.publish_str(f'{info_prefix}/color', vin_info.color_name.decode())
+            account_prefix = f'{self.configuration.saic_user}/{mqtt_topics.VEHICLES}/{vin_info.vin}'
+            vehicle_state = VehicleState(self.publisher, account_prefix, vin_info.vin,
+                                         self.get_open_wb_lp(vin_info.vin))
+            vehicle_state.configure(vin_info)
 
             vehicle_handler = VehicleHandler(
                 self.configuration,  # Gateway pointer
                 self.saic_api,
                 self.publisher,
-                info,
-                self.get_open_wb_lp(info.vin))
-            self.vehicle_handler[info.vin] = vehicle_handler
+                vin_info,
+                vehicle_state)
+            self.vehicle_handler[vin_info.vin] = vehicle_handler
 
         message_handler = MessageHandler(self, self.saic_api)
         asyncio.run(main(self.vehicle_handler, message_handler, self.configuration.messages_request_interval))
-
-    def notify_message(self, message: SaicMessage):
-        message_prefix = f'{self.configuration.saic_user}/vehicles/{message.vin}/info/lastMessage'
-        self.publisher.publish_int(f'{message_prefix}/messageId', message.message_id)
-        self.publisher.publish_str(f'{message_prefix}/messageType', message.message_type)
-        self.publisher.publish_str(f'{message_prefix}/title', message.title)
-        self.publisher.publish_str(f'{message_prefix}/messageTime', datetime_to_str(message.message_time))
-        self.publisher.publish_str(f'{message_prefix}/sender', message.sender)
-        if message.content is not None:
-            self.publisher.publish_str(f'{message_prefix}/content', message.content)
-        self.publisher.publish_str(f'{message_prefix}/status', message.get_read_status_str())
-        self.publisher.publish_str(f'{message_prefix}/vin', message.vin)
-        if message.vin is not None:
-            handler = cast(VehicleHandler, self.vehicle_handler[message.vin])
-            handler.force_update_by_message_time(message)
 
     def get_vehicle_handler(self, vin: str) -> VehicleHandler | None:
         if vin in self.vehicle_handler:
@@ -430,6 +256,11 @@ class MqttGateway:
         else:
             logging.error(f'No vehicle handler found for VIN {vin}')
             return None
+
+    def __on_mqtt_command_received(self, vin: str, msg: mqtt.MQTTMessage) -> None:
+        vehicle_handler = self.get_vehicle_handler(vin)
+        if vehicle_handler is not None:
+            vehicle_handler.handle_mqtt_command(msg)
 
     def __on_refresh_mode_update(self, mode: str, vin: str):
         vehicle_handler = self.get_vehicle_handler(vin)
@@ -444,34 +275,17 @@ class MqttGateway:
     def __on_active_refresh_interval_update(self, seconds: int, vin: str):
         vehicle_handler = self.get_vehicle_handler(vin)
         if vehicle_handler is not None:
-            vehicle_handler.set_active_refresh_interval(seconds)
-            logging.info(f'Setting active query interval in vehicle handler for VIN {vin} to {seconds} seconds')
+            vehicle_handler.vehicle_state.set_refresh_period_active(seconds)
 
     def __on_inactive_refresh_interval_update(self, seconds: int, vin: str):
         vehicle_handler = self.get_vehicle_handler(vin)
         if vehicle_handler is not None:
-            vehicle_handler.set_inactive_refresh_interval(seconds)
-            logging.info(f'Setting inactive query interval in vehicle handler for VIN {vin} to {seconds} seconds')
-
-    def __on_doors_lock_state_update(self, doors_locked: bool, vin: str):
-        vehicle_handler = self.get_vehicle_handler(vin)
-        if vehicle_handler is not None:
-            vehicle_handler.update_doors_lock_state(doors_locked)
-
-    def __on_rear_window_heat_state_update(self, rear_window_heat_state: str, vin: str):
-        vehicle_handler = self.get_vehicle_handler(vin)
-        if vehicle_handler is not None:
-            vehicle_handler.update_rear_window_heat_state(rear_window_heat_state)
+            vehicle_handler.vehicle_state.set_refresh_period_inactive(seconds)
 
     def __on_front_window_heat_state_update(self, front_window_heat_state: str, vin: str):
         vehicle_handler = self.get_vehicle_handler(vin)
         if vehicle_handler is not None:
             vehicle_handler.update_front_window_heat_state(front_window_heat_state)
-
-    def __on_ac_state_update(self, ac_state: str, vin: str):
-        vehicle_handler = self.get_vehicle_handler(vin)
-        if vehicle_handler is not None:
-            vehicle_handler.update_ac_state(ac_state)
 
     def __on_lp_charging(self, vin: str, is_charging: bool):
         vehicle_handler = self.get_vehicle_handler(vin)
@@ -533,7 +347,9 @@ class MessageHandler:
             if latest_vehicle_start_message is not None:
                 logging.info(f'{latest_vehicle_start_message.title} detected'
                              + f' at {latest_vehicle_start_message.message_time}')
-                self.gateway.notify_message(latest_vehicle_start_message)
+                vehicle_handler = self.gateway.get_vehicle_handler(latest_vehicle_start_message.vin)
+                if vehicle_handler:
+                    vehicle_handler.vehicle_state.notify_message(latest_vehicle_start_message)
                 # delete the vehicle start message after processing it
                 try:
                     message_id = latest_vehicle_start_message.message_id
@@ -542,7 +358,9 @@ class MessageHandler:
                 except SaicApiException as e:
                     logging.exception('Could not delete message from server', exc_info=e)
             elif latest_message is not None:
-                self.gateway.notify_message(latest_message)
+                vehicle_handler = self.gateway.get_vehicle_handler(latest_message.vin)
+                if vehicle_handler:
+                    vehicle_handler.vehicle_state.notify_message(latest_message)
         except SaicApiException as e:
             logging.exception('MessageHandler poll loop failed', exc_info=e)
 

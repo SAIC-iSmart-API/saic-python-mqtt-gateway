@@ -13,6 +13,7 @@ import mqtt_topics
 from configuration import Configuration
 from mqtt_gateway import VehicleHandler
 from publisher import Publisher
+from vehicle import VehicleState
 
 VIN = 'vin10000000000000'
 
@@ -147,7 +148,9 @@ class TestVehicleHandler(TestCase):
         publisher = Publisher(config)
         vin_info = VinInfo()
         vin_info.vin = VIN
-        self.vehicle_handler = VehicleHandler(config, saicapi, publisher, vin_info)
+        account_prefix = ''
+        vehicle_state = VehicleState(publisher, account_prefix, VIN)
+        self.vehicle_handler = VehicleHandler(config, saicapi, publisher, vin_info, vehicle_state)
 
     @patch.object(SaicApi, 'get_vehicle_status_with_retry')
     def test_update_vehicle_status(self, mocked_vehicle_status):
@@ -165,7 +168,7 @@ class TestVehicleHandler(TestCase):
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.CLIMATE_EXTERIOR_TEMPERATURE),
                                CLIMATE_EXTERIOR_TEMPERATURE)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE),
-                               CLIMATE_REMOTE_CLIMATE_STATE)
+                               'on')
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT),
                                CLIMATE_BACK_WINDOW_HEAT)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.LOCATION_SPEED), LOCATION_SPEED)
@@ -195,7 +198,7 @@ class TestVehicleHandler(TestCase):
                                TYRES_REAR_RIGHT_PRESSURE)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.LIGHTS_MAIN_BEAM), LIGHTS_MAIN_BEAM)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.LIGHTS_DIPPED_BEAM), LIGHTS_DIPPED_BEAM)
-        self.assertEqual(32, len(self.vehicle_handler.publisher.map))
+        self.assertEqual(35, len(self.vehicle_handler.publisher.map))
 
     @patch.object(SaicApi, 'get_charging_status')
     def test_update_charge_status(self, mocked_charge_status):
@@ -221,7 +224,7 @@ class TestVehicleHandler(TestCase):
                                DRIVETRAIN_LAST_CHARGE_ENDING_POWER)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_TOTAL_BATTERY_CAPACITY),
                                DRIVETRAIN_TOTAL_BATTERY_CAPACITY)
-        self.assertEqual(12, len(self.vehicle_handler.publisher.map))
+        self.assertEqual(13, len(self.vehicle_handler.publisher.map))
 
     def assert_mqtt_topic(self, topic: str, value):
         mqtt_map = self.vehicle_handler.publisher.map
