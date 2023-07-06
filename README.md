@@ -26,8 +26,14 @@ Configuration parameters can be provided as command line parameters or environme
 | --abrp-api-key        | ABRP_API_KEY    | API key for the A Better Route Planner telemetry API. Default is the open source telemetry API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.                 |
 | --abrp-user-token     | ABRP_USER_TOKEN | Mapping of VIN to ABRP User Token. Multiple mappings can be provided seperated by ',' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl                 |
 | --openwb-lp-map       | OPENWB_LP_MAP   | Mapping of VIN to openWB charging point. Multiple mappings can be provided seperated by ',' Example: 1=LSJXXXX,2=LSJYYYY                                 |
-|                       | LOG_LEVEL       | Log level: INFO (default), use DEBUG for detailed output, use CRITICAL for no ouput, [more info](https://docs.python.org/3/library/logging.html#levels)  | 
 
+## Advanced configuration options
+
+| CMD param                                | ENV variable                           | Default value | Description                                                                                                                                                |
+|------------------------------------------|----------------------------------------|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| --saic-relogin-delay                     | SAIC_RELOGIN_DELAY                     | 900           | How long to wait, in seconds, before attempting another login to the SAIC API                                                                              |
+| --ignore-vehicle-start-message-timestamp | IGNORE_VEHICLE_START_MESSAGE_TIMESTAMP | False         | Set this to true to always process Vehicle Start Messages while ignoring their timestamp. <br/> Useful in instances where the SAIC server has a clock skew |
+|                                          | LOG_LEVEL                              | INFO          | Log level. Use DEBUG for detailed output, use CRITICAL for no ouput, [more info](https://docs.python.org/3/library/logging.html#levels)                    |
 
 ## Running the service
 

@@ -139,12 +139,12 @@ class VehicleHandler:
         refresh_interval = self.inactive_refresh_interval
         now_minus_refresh_interval = datetime.datetime.now() - datetime.timedelta(seconds=float(refresh_interval))
         if (
-            self.refresh_mode != 'off'
-            and (
+                self.refresh_mode != 'off'
+                and (
                 self.last_car_activity is None
                 or self.force_update
                 or self.last_car_activity < now_minus_refresh_interval
-            )
+        )
         ):
             return True
         else:
@@ -209,7 +209,13 @@ class VehicleHandler:
 
     def force_update_by_message_time(self, message: SaicMessage):
         # something happened, better check the vehicle state
-        if self.last_car_activity < message.message_time:
+        if (
+                self.last_car_activity < message.message_time
+        ) or (
+                is_vehicle_start_message(message)
+                and
+                self.configuration.ignore_vehicle_start_message_timestamp
+        ):
             self.force_update = True
 
     def update_vehicle_status(self) -> OtaRvmVehicleStatusResp25857:
@@ -521,7 +527,7 @@ class MessageHandler:
             for message in message_list:
                 logging.info(message.get_details())
 
-                if message.message_type == '323':
+                if is_vehicle_start_message(message):
                     if latest_vehicle_start_message is None:
                         latest_vehicle_start_timestamp = message.message_time
                         latest_vehicle_start_message = message
@@ -556,8 +562,8 @@ class MessageHandler:
 class EnvDefault(argparse.Action):
     def __init__(self, envvar, required=True, default=None, **kwargs):
         if (
-            envvar in os.environ
-            and os.environ[envvar]
+                envvar in os.environ
+                and os.environ[envvar]
         ):
             default = os.environ[envvar]
         if required and default:
@@ -652,6 +658,11 @@ def process_arguments() -> Configuration:
                                                          'API. Environment Variable: SAIC_RELOGIN_DELAY',
                             dest='saic_relogin_delay', required=False, action=EnvDefault, envvar='SAIC_RELOGIN_DELAY',
                             type=check_positive)
+        parser.add_argument('--ignore-vehicle-start-message-timestamp', help='Ignore message timestamps. Useful when the SAIC API '
+                                                               'has a significant clock skew. Environment Variable: '
+                                                               'IGNORE_VEHICLE_START_MESSAGE_TIMESTAMP',
+                            dest='ignore_vehicle_start_message_timestamp', required=False, action=EnvDefault,
+                            envvar='IGNORE_VEHICLE_START_MESSAGE_TIMESTAMP', type=str_to_bool, default=False)
         args = parser.parse_args()
         config.mqtt_user = args.mqtt_user
         config.mqtt_password = args.mqtt_password
@@ -686,6 +697,8 @@ def process_arguments() -> Configuration:
 
         config.mqtt_host = str(parse_result.hostname)
 
+        config.ignore_vehicle_start_message_timestamp = args.ignore_vehicle_start_message_timestamp
+
         return config
     except argparse.ArgumentError as err:
         parser.print_help()
@@ -706,11 +719,24 @@ def cfg_value_to_dict(cfg_value: str, result_map: dict):
             result_map[key] = value
 
 
+def str_to_bool(value):
+    lowercase_value = value.lower()
+    if lowercase_value in {'false', 'f', '0', 'no', 'n'}:
+        return False
+    elif lowercase_value in {'true', 't', '1', 'yes', 'y'}:
+        return True
+    raise ValueError(f'{value} is not a valid boolean value')
+
+
 def check_positive(value):
     ivalue = int(value)
     if ivalue <= 0:
         raise argparse.ArgumentTypeError(f'{ivalue} is an invalid positive int value')
     return ivalue
+
+
+def is_vehicle_start_message(message):
+    return message.message_type == '323'
 
 
 if __name__ == '__main__':
