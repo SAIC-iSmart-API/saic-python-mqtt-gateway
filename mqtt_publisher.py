@@ -19,11 +19,6 @@ class MqttClient(Publisher):
         self.port = self.configuration.mqtt_port
         self.transport_protocol = self.configuration.mqtt_transport_protocol
         self.on_mqtt_command_received = None
-        self.on_refresh_mode_update = None
-        self.on_inactive_refresh_interval_update = None
-        self.on_active_refresh_interval_update = None
-        self.on_front_window_heat_state_update = None
-        self.on_lp_charging = None
 
         mqtt_client = mqtt.Client(str(self.publisher_id), transport=self.transport_protocol, protocol=mqtt.MQTTv31)
         mqtt_client.on_connect = self.__on_connect
@@ -58,52 +53,20 @@ class MqttClient(Publisher):
     def __on_message(self, client, userdata, msg: mqtt.MQTTMessage) -> None:
         if msg.topic.endswith('/boolChargeStat'):
             index = self.get_index_from_open_wp_topic(msg.topic)
-            vin = self.configuration.open_wb_lp_map[index]
-            self.on_lp_charging(vin, msg.payload.decode() == '1')
+            if index in self.configuration.open_wb_lp_map:
+                vin = self.configuration.open_wb_lp_map[index]
+                if msg.payload.decode() == '1':
+                    m = mqtt.MQTTMessage(msg.mid, mqtt_topics.REFRESH_MODE.encode())
+                    m.payload = str.encode('force')
+                    self.on_mqtt_command_received(vin, msg)
+            else:
+                self.on_mqtt_command_received('', msg)
+
         else:
             vin = self.get_vin_from_topic(msg.topic)
             if self.on_mqtt_command_received is not None:
                 self.on_mqtt_command_received(vin, msg)
         return
-        # if msg.topic.endswith('/refresh/mode/set'):
-        #     vin = self.get_vin_from_topic(msg.topic)
-        #     mode_value = msg.payload.decode().strip().lower()
-        #     if self.on_refresh_mode_update is not None:
-        #         self.mode_by_vin[vin] = mode_value
-        #         self.on_refresh_mode_update(mode_value, vin)
-        # elif msg.topic.endswith('/refresh/period/active/set'):
-        #     vin = self.get_vin_from_topic(msg.topic)
-        #     if self.on_active_refresh_interval_update is not None:
-        #         refresh_interval = msg.payload.decode().strip()
-        #         self.on_active_refresh_interval_update(int(refresh_interval), vin)
-        # elif msg.topic.endswith('/refresh/period/inActive/set'):
-        #     vin = self.get_vin_from_topic(msg.topic)
-        #     if self.on_inactive_refresh_interval_update is not None:
-        #         refresh_interval = msg.payload.decode().strip()
-        #         self.on_inactive_refresh_interval_update(int(refresh_interval), vin)
-        # elif msg.topic.endswith('/doors/locked/set'):
-        #     vin = self.get_vin_from_topic(msg.topic)
-        #     if self.on_doors_lock_state_update is not None:
-        #         lock_value = msg.payload.decode().strip().lower()
-        #         if lock_value == 'true':
-        #             self.on_doors_lock_state_update(True, vin)
-        #         elif lock_value == 'false':
-        #             self.on_doors_lock_state_update(False, vin)
-        #         else:
-        #             topic = msg.topic[len(self.configuration.mqtt_topic) + 1:-4]
-        #             self.publish_str(f'{topic}/result', f'Invalid value: {lock_value}. Valid values are true or false')
-        # elif msg.topic.endswith('/climate/rearWindowDefrosterHeating/set'):
-        #     vin = self.get_vin_from_topic(msg.topic)
-        #     rear_window_heat_state = msg.payload.decode().strip()
-        #     self.on_rear_window_heat_state_update(rear_window_heat_state, vin)
-        # elif msg.topic.endswith('/climate/frontWindowDefrosterHeating/set'):
-        #     vin = self.get_vin_from_topic(msg.topic)
-        #     front_window_heat_state = msg.payload.decode().strip()
-        #     self.on_front_window_heat_state_update(front_window_heat_state, vin)
-        # elif msg.topic.endswith('/climate/remoteClimateState/set'):
-        #     vin = self.get_vin_from_topic(msg.topic)
-        #     ac_state = msg.payload.decode().strip().lower()
-        #     self.on_ac_state_update(ac_state, vin)
 
     def publish(self, msg: mqtt.MQTTMessage) -> None:
         self.client.publish(msg.topic, msg.payload, retain=True)

@@ -16,6 +16,7 @@ from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp
 from saic_ismart_client.saic_api import SaicApi, SaicApiException
 
 import mqtt_topics
+from Exceptions import MqttGatewayException
 from configuration import Configuration
 from mqtt_publisher import MqttClient
 from publisher import Publisher
@@ -34,14 +35,6 @@ def datetime_to_str(dt: datetime.datetime) -> str:
 
 logging.basicConfig(format='%(asctime)s %(message)s')
 logging.getLogger().setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
-
-
-class MqttGatewayException(Exception):
-    def __init__(self, msg: str):
-        self.message = msg
-
-    def __str__(self):
-        return self.message
 
 
 class VehicleHandler:
@@ -96,8 +89,8 @@ class VehicleHandler:
                 try:
                     vehicle_status = self.update_vehicle_status()
                     charge_status = self.update_charge_status()
-                    self.abrp_api.update_abrp(vehicle_status, charge_status)
-                    # TODO publish ABRP response
+                    abrp_response = self.abrp_api.update_abrp(vehicle_status, charge_status)
+                    self.publisher.publish_str(f'{self.vehicle_prefix}/{mqtt_topics.INTERNAL_ABRP}', abrp_response)
                     self.vehicle_state.mark_successful_refresh()
                     logging.info('Refreshing vehicle status succeeded...')
                 except SaicApiException as e:
@@ -141,9 +134,9 @@ class VehicleHandler:
                 case mqtt_topics.DRIVETRAIN_CHARGING:
                     match msg.payload.decode().strip().lower():
                         case 'true':
-                            self.send_charging(True)
+                            self.send_stop_charging_command(False)
                         case 'false':
-                            self.send_charging(False)
+                            self.send_stop_charging_command(True)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
                 case mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE:
@@ -179,7 +172,8 @@ class VehicleHandler:
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
                 case _:
-                    self.vehicle_state.configure(topic, msg)
+                    # set mode, period (in)-active,...
+                    self.vehicle_state.configure_by_message(topic, msg)
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', 'Success')
         except MqttGatewayException as e:
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed: {e.message}')
@@ -196,7 +190,8 @@ class VehicleHandler:
             result += f'/{elements[i]}'
         return result[1:]
 
-    def send_charging(self, param):
+    def send_stop_charging_command(self, stop_charging: bool):
+        self.saic_api.control_charging(stop_charging, self.vin_info)
         pass
 
 
@@ -206,11 +201,6 @@ class MqttGateway:
         self.vehicle_handler = {}
         self.publisher = MqttClient(self.configuration)
         self.publisher.on_mqtt_command_received = self.__on_mqtt_command_received
-        self.publisher.on_refresh_mode_update = self.__on_refresh_mode_update
-        self.publisher.on_inactive_refresh_interval_update = self.__on_inactive_refresh_interval_update
-        self.publisher.on_active_refresh_interval_update = self.__on_active_refresh_interval_update
-        self.publisher.on_front_window_heat_state_update = self.__on_front_window_heat_state_update
-        self.publisher.on_lp_charging = self.__on_lp_charging
         self.saic_api = SaicApi(config.saic_uri, config.saic_user, config.saic_password, config.saic_relogin_delay)
         self.saic_api.on_publish_json_value = self.__on_publish_json_value
         self.saic_api.on_publish_raw_value = self.__on_publish_raw_value
@@ -259,45 +249,10 @@ class MqttGateway:
 
     def __on_mqtt_command_received(self, vin: str, msg: mqtt.MQTTMessage) -> None:
         vehicle_handler = self.get_vehicle_handler(vin)
-        if vehicle_handler is not None:
+        if vehicle_handler:
             vehicle_handler.handle_mqtt_command(msg)
-
-    def __on_refresh_mode_update(self, mode: str, vin: str):
-        vehicle_handler = self.get_vehicle_handler(vin)
-        if vehicle_handler is not None:
-            if mode == 'force':
-                vehicle_handler.force_update = True
-                logging.info(f'Forcing single fetch for VIN {vin}. Refresh mode was: {vehicle_handler.refresh_mode}')
-            else:
-                vehicle_handler.refresh_mode = mode
-                logging.info(f'Setting vehicle handler mode for VIN {vin} to refresh mode: {mode}')
-
-    def __on_active_refresh_interval_update(self, seconds: int, vin: str):
-        vehicle_handler = self.get_vehicle_handler(vin)
-        if vehicle_handler is not None:
-            vehicle_handler.vehicle_state.set_refresh_period_active(seconds)
-
-    def __on_inactive_refresh_interval_update(self, seconds: int, vin: str):
-        vehicle_handler = self.get_vehicle_handler(vin)
-        if vehicle_handler is not None:
-            vehicle_handler.vehicle_state.set_refresh_period_inactive(seconds)
-
-    def __on_front_window_heat_state_update(self, front_window_heat_state: str, vin: str):
-        vehicle_handler = self.get_vehicle_handler(vin)
-        if vehicle_handler is not None:
-            vehicle_handler.update_front_window_heat_state(front_window_heat_state)
-
-    def __on_lp_charging(self, vin: str, is_charging: bool):
-        vehicle_handler = self.get_vehicle_handler(vin)
-        if vehicle_handler is not None:
-            vehicle_handler.is_charging_on_openwb = is_charging
-            if is_charging:
-                logging.info(f'Vehicle {vin} started charging on openWB.')
-                vehicle_handler.force_update = True
-            else:
-                logging.info(f'Vehicle {vin} stopped charging on openWB.')
         else:
-            logging.error(f'No vehicle handler found for VIN {vin}')
+            logging.debug(f'Command for unknown vin {vin} received')
 
     def __on_publish_raw_value(self, key: str, raw: str):
         self.publisher.publish_str(key, raw)

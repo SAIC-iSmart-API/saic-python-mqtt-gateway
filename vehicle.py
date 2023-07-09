@@ -1,15 +1,17 @@
 import datetime
 import logging
 import os
+from enum import Enum
 from typing import cast
 
+import paho.mqtt.client as mqtt
 from saic_ismart_client.ota_v1_1.data_model import VinInfo
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
 from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp, RvsChargingStatus
 from saic_ismart_client.saic_api import SaicMessage
 
 import mqtt_topics
-import refresh_mode
+from Exceptions import MqttGatewayException
 from publisher import Publisher
 
 PRESSURE_TO_BAR_FACTOR = 0.04
@@ -18,11 +20,21 @@ logging.basicConfig(format='%(asctime)s %(message)s')
 logging.getLogger().setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
 
 
+class RefreshMode(Enum):
+    FORCE = 'force'
+    OFF = 'off'
+    PERIODIC = 'periodic'
+
+    @staticmethod
+    def get(mode: str):
+        return RefreshMode[mode.upper()]
+
+
 class VehicleState:
     def __init__(self, publisher: Publisher, account_prefix: str, vin: str, openwb_lp_topic: str = ''):
         self.publisher = publisher
         self.vin = vin
-        self.mqtt_vin_prefix = f'{account_prefix}/{mqtt_topics.VEHICLES}/{self.vin}'
+        self.mqtt_vin_prefix = f'{account_prefix}'
         self.openwb_lp_topic = openwb_lp_topic
         self.last_car_activity = datetime.datetime.min
         self.last_successful_refresh = datetime.datetime.min
@@ -33,8 +45,8 @@ class VehicleState:
         self.refresh_period_active = -1
         self.refresh_period_inactive = -1
         self.refresh_period_after_shutdown = -1
-        self.refresh_mode = ''
-        self.previous_refresh_mode = ''
+        self.refresh_mode = RefreshMode.OFF
+        self.previous_refresh_mode = RefreshMode.OFF
         self.is_charging_on_openwb = False
 
     def set_refresh_period_active(self, seconds: int):
@@ -204,12 +216,12 @@ class VehicleState:
 
     def should_refresh(self) -> bool:
         match self.refresh_mode:
-            case refresh_mode.OFF:
+            case RefreshMode.OFF:
                 return False
-            case refresh_mode.FORCE:
+            case RefreshMode.FORCE:
                 self.set_refresh_mode(self.previous_refresh_mode)
                 return True
-            # refresh_mode.PERIODIC is treated like default
+            # RefreshMode.PERIODIC is treated like default
             case _:
                 last_shutdown_plus_refresh = self.last_car_shutdown\
                                              + datetime.timedelta(seconds=float(self.refresh_period_after_shutdown))
@@ -236,12 +248,12 @@ class VehicleState:
     def configure(self, vin_info: VinInfo):
         self.publisher.publish_str(self.get_topic(mqtt_topics.INTERNAL_CONFIGURATION_RAW),
                                    vin_info.model_configuration_json_str)
-        self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_BRAND), vin_info.brand_name)
-        self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_MODEL), vin_info.model_name)
+        self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_BRAND), vin_info.brand_name.decode())
+        self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_MODEL), vin_info.model_name.decode())
         self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_YEAR), vin_info.model_year)
         self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_SERIES), vin_info.series)
         if vin_info.color_name:
-            self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_COLOR), vin_info.color_name)
+            self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_COLOR), vin_info.color_name.decode())
         for c in vin_info.model_configuration_json_str.split(';'):
             property_map = {}
             if ',' in c:
@@ -260,22 +272,38 @@ class VehicleState:
             self.set_refresh_period_inactive(86400)
         if self.refresh_period_after_shutdown == -1:
             self.set_refresh_period_after_shutdown(600)
-        if not self.refresh_mode:
-            self.set_refresh_mode(refresh_mode.PERIODIC)
+        if self.refresh_mode == RefreshMode.OFF:
+            self.set_refresh_mode(RefreshMode.PERIODIC)
 
-    def configure(self, topic: str, message):
+    def configure_by_message(self, topic: str, msg: mqtt.MQTTMessage):
+        payload = msg.payload.decode().lower()
         match topic:
             case mqtt_topics.REFRESH_MODE:
-                logging.debug('Setting refresh mode')
-                # TODO check for known value and set refresh mode
+                try:
+                    refresh_mode = RefreshMode.get(payload)
+                    self.set_refresh_mode(refresh_mode)
+                except KeyError:
+                    raise MqttGatewayException(f'Unsupported payload {payload}')
             case mqtt_topics.REFRESH_PERIOD_ACTIVE:
-                logging.debug('')
+                try:
+                    seconds = int(payload)
+                    self.set_refresh_period_active(seconds)
+                except ValueError:
+                    raise MqttGatewayException(f'Error setting value for payload {payload}')
             case mqtt_topics.REFRESH_PERIOD_INACTIVE:
-                logging.debug('')
+                try:
+                    seconds = int(payload)
+                    self.set_refresh_period_inactive(seconds)
+                except ValueError:
+                    raise MqttGatewayException(f'Error setting value for payload {payload}')
             case mqtt_topics.REFRESH_PERIOD_INACTIVE_GRACE:
-                logging.debug('')
+                try:
+                    seconds = int(payload)
+                    self.set_refresh_period_after_shutdown(seconds)
+                except ValueError:
+                    raise MqttGatewayException(f'Error setting value for payload {payload}')
             case _:
-                logging.debug('')
+                raise MqttGatewayException(f'Unsupported topic {topic}')
 
     def handle_charge_status(self, charge_mgmt_data: OtaChrgMangDataResp) -> None:
         self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_CURRENT),
@@ -348,11 +376,11 @@ class VehicleState:
     def datetime_to_str(dt: datetime.datetime) -> str:
         return dt.strftime('%Y-%m-%d %H:%M:%S')
 
-    def set_refresh_mode(self, mode: str):
+    def set_refresh_mode(self, mode: RefreshMode):
         if (
                 self.refresh_mode is None
                 or self.refresh_mode != mode
         ):
-            self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_MODE), mode)
+            self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_MODE), mode.value)
             self.previous_refresh_mode = self.refresh_mode
             self.refresh_mode = mode
