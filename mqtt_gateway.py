@@ -7,13 +7,12 @@ import time
 import urllib.parse
 from typing import cast
 
-import saic_ismart_client.saic_api
 import paho.mqtt.client as mqtt
 from saic_ismart_client.abrp_api import AbrpApi, AbrpApiException
 from saic_ismart_client.ota_v1_1.data_model import VinInfo, MpUserLoggingInRsp, MpAlarmSettingType
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
 from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp
-from saic_ismart_client.saic_api import SaicApi, SaicApiException
+from saic_ismart_client.saic_api import SaicApi, SaicApiException, TargetBatteryCode, create_alarm_switch
 
 import mqtt_topics
 from Exceptions import MqttGatewayException
@@ -171,6 +170,41 @@ class VehicleHandler:
                             self.saic_api.start_rear_window_heat(self.vin_info)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
+                case mqtt_topics.CLIMATE_FRONT_WINDOW_HEAT:
+                    match msg.payload.decode().strip().lower():
+                        case 'off':
+                            logging.info('Front window heating will be switched off')
+                            self.saic_api.stop_front_defrost(self.vin_info)
+                        case 'on':
+                            logging.info('Front window heating will be switched on')
+                            self.saic_api.start_front_defrost(self.vin_info)
+                        case _:
+                            raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
+                case mqtt_topics.DRIVETRAIN_SOC_TARGET:
+                    payload = msg.payload.decode().strip()
+                    try:
+                        target_soc = int(payload)
+                        match target_soc:
+                            case 40:
+                                target_battery_code = TargetBatteryCode.P_40
+                            case 50:
+                                target_battery_code = TargetBatteryCode.P_50
+                            case 60:
+                                target_battery_code = TargetBatteryCode.P_60
+                            case 70:
+                                target_battery_code = TargetBatteryCode.P_70
+                            case 80:
+                                target_battery_code = TargetBatteryCode.P_80
+                            case 90:
+                                target_battery_code = TargetBatteryCode.P_90
+                            case 100:
+                                target_battery_code = TargetBatteryCode.P_100
+                            case _:
+                                raise MqttGatewayException(f'Invalid target SoC value {target_soc}')
+                        self.vehicle_state.set_target_soc(target_battery_code)
+                        self.saic_api.set_target_battery_soc(target_battery_code, self.vin_info)
+                    except ValueError:
+                        raise MqttGatewayException(f'Error setting value for payload {payload}')
                 case _:
                     # set mode, period (in)-active,...
                     self.vehicle_state.configure_by_message(topic, msg)
@@ -216,7 +250,7 @@ class MqttGateway:
 
         for alarm_setting_type in MpAlarmSettingType:
             try:
-                alarm_switches = [saic_ismart_client.saic_api.create_alarm_switch(alarm_setting_type)]
+                alarm_switches = [create_alarm_switch(alarm_setting_type)]
                 self.saic_api.set_alarm_switches(alarm_switches)
                 logging.info(f'Registering for {alarm_setting_type.value} messages')
             except SaicApiException:

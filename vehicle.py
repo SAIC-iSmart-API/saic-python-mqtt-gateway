@@ -8,7 +8,7 @@ import paho.mqtt.client as mqtt
 from saic_ismart_client.ota_v1_1.data_model import VinInfo
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
 from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp, RvsChargingStatus
-from saic_ismart_client.saic_api import SaicMessage
+from saic_ismart_client.saic_api import SaicMessage, TargetBatteryCode
 
 import mqtt_topics
 from Exceptions import MqttGatewayException
@@ -45,9 +45,9 @@ class VehicleState:
         self.refresh_period_active = -1
         self.refresh_period_inactive = -1
         self.refresh_period_after_shutdown = -1
+        self.target_soc = None
         self.refresh_mode = RefreshMode.OFF
         self.previous_refresh_mode = RefreshMode.OFF
-        self.is_charging_on_openwb = False
 
     def set_refresh_period_active(self, seconds: int):
         self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_ACTIVE), seconds)
@@ -68,10 +68,16 @@ class VehicleState:
                                        refresh_period_after_shutdown)
             self.refresh_period_after_shutdown = refresh_period_after_shutdown
 
+    def set_target_soc(self, target_soc: TargetBatteryCode):
+        if self.target_soc != target_soc:
+            self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_TARGET), target_soc.value)
+            self.target_soc = target_soc
+
     def is_complete(self) -> bool:
         return self.refresh_period_active != -1 \
-            and self.refresh_period_inactive != -1\
-            and self.refresh_period_after_shutdown != 1\
+            and self.refresh_period_inactive != -1 \
+            and self.refresh_period_after_shutdown != -1 \
+            and self.target_soc != -1 \
             and self.refresh_mode
 
     def handle_vehicle_status(self, vehicle_status: OtaRvmVehicleStatusResp25857) -> None:
@@ -272,6 +278,8 @@ class VehicleState:
             self.set_refresh_period_inactive(86400)
         if self.refresh_period_after_shutdown == -1:
             self.set_refresh_period_after_shutdown(600)
+        if self.target_soc is None:
+            self.set_target_soc(TargetBatteryCode.P_100)
         if self.refresh_mode == RefreshMode.OFF:
             self.set_refresh_mode(RefreshMode.PERIODIC)
 
