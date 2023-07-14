@@ -185,6 +185,7 @@ class VehicleHandler:
                     payload = msg.payload.decode().strip()
                     try:
                         target_soc = int(payload)
+                        # FIXME: Remove this once https://github.com/SAIC-iSmart-API/saic-python-client/pull/4 is merged
                         match target_soc:
                             case 40:
                                 target_battery_code = TargetBatteryCode.P_40
@@ -202,7 +203,7 @@ class VehicleHandler:
                                 target_battery_code = TargetBatteryCode.P_100
                             case _:
                                 raise MqttGatewayException(f'Invalid target SoC value {target_soc}')
-                        self.vehicle_state.set_target_soc(target_battery_code)
+                        self.vehicle_state.update_target_soc(target_battery_code)
                         self.saic_api.set_target_battery_soc(target_battery_code, self.vin_info)
                     except ValueError:
                         raise MqttGatewayException(f'Error setting value for payload {payload}')

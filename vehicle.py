@@ -69,9 +69,29 @@ class VehicleState:
                                        refresh_period_after_shutdown)
             self.refresh_period_after_shutdown = refresh_period_after_shutdown
 
-    def set_target_soc(self, target_soc: TargetBatteryCode):
+    def update_target_soc(self, target_soc: TargetBatteryCode):
         if self.target_soc != target_soc:
-            self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_TARGET), target_soc.value)
+            target_percentage = None
+            # FIXME: Remove this once https://github.com/SAIC-iSmart-API/saic-python-client/pull/4 is merged
+            match target_soc:
+                case TargetBatteryCode.P_40:
+                    target_percentage = 40
+                case TargetBatteryCode.P_50:
+                    target_percentage = 50
+                case TargetBatteryCode.P_60:
+                    target_percentage = 60
+                case TargetBatteryCode.P_70:
+                    target_percentage = 70
+                case TargetBatteryCode.P_80:
+                    target_percentage = 80
+                case TargetBatteryCode.P_90:
+                    target_percentage = 90
+                case TargetBatteryCode.P_100:
+                    target_percentage = 100
+                case _:
+                    logging.warning(f'Unknown target battery code {target_soc}')
+            if target_percentage is not None:
+                self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_TARGET), target_percentage)
             self.target_soc = target_soc
 
     def is_complete(self) -> bool:
@@ -279,8 +299,6 @@ class VehicleState:
             self.set_refresh_period_inactive(86400)
         if self.refresh_period_after_shutdown == -1:
             self.set_refresh_period_after_shutdown(600)
-        if self.target_soc is None:
-            self.set_target_soc(TargetBatteryCode.P_100)
         if self.refresh_mode == RefreshMode.OFF:
             self.set_refresh_mode(RefreshMode.PERIODIC)
 
@@ -321,6 +339,12 @@ class VehicleState:
                                      round(charge_mgmt_data.get_voltage(), 3))
         self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_POWER),
                                      round(charge_mgmt_data.get_power(), 3))
+        raw_target_soc = charge_mgmt_data.bmsOnBdChrgTrgtSOCDspCmd
+        if raw_target_soc is not None:
+            try:
+                self.update_target_soc(TargetBatteryCode(raw_target_soc))
+            except ValueError:
+                logging.warning(f'Invalid target SOC received: {raw_target_soc}')
 
         soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
         if soc <= 100.0:
