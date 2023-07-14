@@ -125,13 +125,20 @@ class VehicleState:
         self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_SPEED), speed)
         self.publisher.publish_int(self.get_topic(mqtt_topics.LOCATION_HEADING), way_point.heading)
         position = way_point.get_position()
+        latitude = None
         if abs(position.latitude) > 0:
             latitude = position.latitude / 1000000.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_LATITUDE), latitude)
+        longitude = None
         if abs(position.longitude) > 0:
             longitude = position.longitude / 1000000.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_LONGITUDE), longitude)
         self.publisher.publish_int(self.get_topic(mqtt_topics.LOCATION_ELEVATION), position.altitude)
+        if latitude is not None and longitude is not None:
+            self.publisher.publish_json(self.get_topic(mqtt_topics.LOCATION_POSITION), {
+                'latitude': latitude,
+                'longitude': longitude,
+            })
 
         self.publisher.publish_bool(self.get_topic(mqtt_topics.WINDOWS_DRIVER), basic_vehicle_status.driver_window)
         self.publisher.publish_bool(self.get_topic(mqtt_topics.WINDOWS_PASSENGER),
