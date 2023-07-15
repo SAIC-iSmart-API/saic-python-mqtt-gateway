@@ -25,6 +25,9 @@ class MqttClient(Publisher):
         mqtt_client.on_message = self.__on_message
         self.client = mqtt_client
 
+    def get_mqtt_account_prefix(self) -> str:
+        return f'{self.configuration.mqtt_topic}/{self.configuration.saic_user}'
+
     def connect(self):
         if self.configuration.mqtt_user is not None:
             if self.configuration.mqtt_password is not None:
@@ -41,7 +44,7 @@ class MqttClient(Publisher):
         if rc == mqtt.CONNACK_ACCEPTED:
             self.is_connected.set()
 
-            mqtt_account_prefix = f'{self.configuration.mqtt_topic}/{self.configuration.saic_user}'
+            mqtt_account_prefix = self.get_mqtt_account_prefix()
             self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/+/+/set')
             self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/+/+/+/set')
             self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/{mqtt_topics.REFRESH_MODE}/set')
@@ -56,9 +59,11 @@ class MqttClient(Publisher):
             if index in self.configuration.open_wb_lp_map:
                 vin = self.configuration.open_wb_lp_map[index]
                 if msg.payload.decode() == '1':
-                    m = mqtt.MQTTMessage(msg.mid, mqtt_topics.REFRESH_MODE.encode())
+                    mqtt_account_prefix = self.get_mqtt_account_prefix()
+                    topic = f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/{vin}/{mqtt_topics.REFRESH_MODE}/set'
+                    m = mqtt.MQTTMessage(msg.mid, topic.encode())
                     m.payload = str.encode('force')
-                    self.on_mqtt_command_received(vin, msg)
+                    self.on_mqtt_command_received(vin, m)
             else:
                 self.on_mqtt_command_received('', msg)
 
