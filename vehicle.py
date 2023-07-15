@@ -17,7 +17,8 @@ from publisher import Publisher
 PRESSURE_TO_BAR_FACTOR = 0.04
 
 logging.basicConfig(format='%(asctime)s %(message)s')
-logging.getLogger().setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
+LOG = logging.getLogger(__name__)
+LOG.setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
 
 
 class RefreshMode(Enum):
@@ -51,12 +52,12 @@ class VehicleState:
 
     def set_refresh_period_active(self, seconds: int):
         self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_ACTIVE), seconds)
-        logging.info(f'Setting active query interval in vehicle handler for VIN {self.vin} to {seconds} seconds')
+        LOG.info(f'Setting active query interval in vehicle handler for VIN {self.vin} to {seconds} seconds')
         self.refresh_period_active = seconds
 
     def set_refresh_period_inactive(self, seconds: int):
         self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_INACTIVE), seconds)
-        logging.info(f'Setting inactive query interval in vehicle handler for VIN {self.vin} to {seconds} seconds')
+        LOG.info(f'Setting inactive query interval in vehicle handler for VIN {self.vin} to {seconds} seconds')
         self.refresh_period_inactive = seconds
 
     def set_refresh_period_after_shutdown(self, refresh_period_after_shutdown: int):
@@ -240,11 +241,11 @@ class VehicleState:
                     self.hv_battery_active
                     or last_shutdown_plus_refresh > datetime.datetime.now()
                 ):
-                    logging.debug('HV battery is active or refresh period after shutdown has passed')
+                    LOG.debug('HV battery is active or refresh period after shutdown has passed')
                     return self.last_successful_refresh < datetime.datetime.now()\
                         - datetime.timedelta(seconds=float(self.refresh_period_active))
                 else:
-                    logging.debug('HV battery is inactive or refresh period after shutdown is not over yet')
+                    LOG.debug('HV battery is inactive or refresh period after shutdown is not over yet')
                     return self.last_successful_refresh < datetime.datetime.now()\
                         - datetime.timedelta(seconds=float(self.refresh_period_inactive))
 

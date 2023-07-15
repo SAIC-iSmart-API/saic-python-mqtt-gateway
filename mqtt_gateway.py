@@ -33,7 +33,8 @@ def datetime_to_str(dt: datetime.datetime) -> str:
 
 
 logging.basicConfig(format='%(asctime)s %(message)s')
-logging.getLogger().setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
+LOG = logging.getLogger(__name__)
+LOG.setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
 
 
 class VehicleHandler:
@@ -55,11 +56,11 @@ class VehicleHandler:
         result_key = f'{self.vehicle_prefix}/climate/frontWindowDefrosterHeating/result'
         try:
             if front_window_heat_state.lower() == 'on':
-                logging.info('Front window heating will be switched on')
+                LOG.info('Front window heating will be switched on')
                 self.saic_api.start_front_defrost(self.vin_info)
                 self.publisher.publish_str(result_key, MSG_CMD_SUCCESSFUL)
             elif front_window_heat_state.lower() == 'off':
-                logging.info('Front window heating will be switched off')
+                LOG.info('Front window heating will be switched off')
                 self.saic_api.stop_front_defrost(self.vin_info)
                 self.publisher.publish_str(result_key, MSG_CMD_SUCCESSFUL)
             else:
@@ -67,7 +68,7 @@ class VehicleHandler:
                 self.publisher.publish_str(result_key, message)
         except SaicApiException as e:
             self.publisher.publish_str(result_key, f'Failed: {e.message}')
-            logging.exception('update_front_window_heat_state failed', exc_info=e)
+            LOG.exception('update_front_window_heat_state failed', exc_info=e)
 
     async def handle_vehicle(self) -> None:
         self.vehicle_state.configure(self.vin_info)
@@ -91,12 +92,12 @@ class VehicleHandler:
                     abrp_response = self.abrp_api.update_abrp(vehicle_status, charge_status)
                     self.publisher.publish_str(f'{self.vehicle_prefix}/{mqtt_topics.INTERNAL_ABRP}', abrp_response)
                     self.vehicle_state.mark_successful_refresh()
-                    logging.info('Refreshing vehicle status succeeded...')
+                    LOG.info('Refreshing vehicle status succeeded...')
                 except SaicApiException as e:
-                    logging.exception('handle_vehicle loop failed during SAIC API call', exc_info=e)
+                    LOG.exception('handle_vehicle loop failed during SAIC API call', exc_info=e)
                     await asyncio.sleep(float(30))
                 except AbrpApiException as ae:
-                    logging.exception('handle_vehicle loop failed during ABRP API call', exc_info=ae)
+                    LOG.exception('handle_vehicle loop failed during ABRP API call', exc_info=ae)
             else:
                 # car not active, wait a second
                 await asyncio.sleep(1.0)
@@ -141,10 +142,10 @@ class VehicleHandler:
                 case mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE:
                     match msg.payload.decode().strip().lower():
                         case 'off':
-                            logging.info('A/C will be switched off')
+                            LOG.info('A/C will be switched off')
                             self.saic_api.stop_ac(self.vin_info)
                         case 'on':
-                            logging.info('A/C will be switched on')
+                            LOG.info('A/C will be switched on')
                             self.saic_api.start_ac(self.vin_info)
                         case 'front':
                             self.saic_api.start_ac_blowing(self.vin_info)
@@ -153,30 +154,30 @@ class VehicleHandler:
                 case mqtt_topics.DOORS_LOCKED:
                     match msg.payload.decode().strip().lower():
                         case 'true':
-                            logging.info(f'Vehicle {self.vin_info.vin} will be locked')
+                            LOG.info(f'Vehicle {self.vin_info.vin} will be locked')
                             self.saic_api.lock_vehicle(self.vin_info)
                         case 'false':
-                            logging.info(f'Vehicle {self.vin_info.vin} will be unlocked')
+                            LOG.info(f'Vehicle {self.vin_info.vin} will be unlocked')
                             self.saic_api.unlock_vehicle(self.vin_info)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
                 case mqtt_topics.CLIMATE_BACK_WINDOW_HEAT:
                     match msg.payload.decode().strip().lower():
                         case 'off':
-                            logging.info('Rear window heating will be switched off')
+                            LOG.info('Rear window heating will be switched off')
                             self.saic_api.stop_rear_window_heat(self.vin_info)
                         case 'on':
-                            logging.info('Rear window heating will be switched on')
+                            LOG.info('Rear window heating will be switched on')
                             self.saic_api.start_rear_window_heat(self.vin_info)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
                 case mqtt_topics.CLIMATE_FRONT_WINDOW_HEAT:
                     match msg.payload.decode().strip().lower():
                         case 'off':
-                            logging.info('Front window heating will be switched off')
+                            LOG.info('Front window heating will be switched off')
                             self.saic_api.stop_front_defrost(self.vin_info)
                         case 'on':
-                            logging.info('Front window heating will be switched on')
+                            LOG.info('Front window heating will be switched on')
                             self.saic_api.start_front_defrost(self.vin_info)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
@@ -211,10 +212,10 @@ class VehicleHandler:
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', 'Success')
         except MqttGatewayException as e:
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed: {e.message}')
-            logging.exception(e.message, exc_info=e)
+            LOG.exception(e.message, exc_info=e)
         except SaicApiException as se:
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed: {se.message}')
-            logging.exception(se.message, exc_info=se)
+            LOG.exception(se.message, exc_info=se)
 
     def get_topic_without_vehicle_prefix(self, topic: str) -> str:
         global_topic_removed = topic[len(self.configuration.mqtt_topic) + 1:]
@@ -245,16 +246,16 @@ class MqttGateway:
             login_response_message = self.saic_api.login()
             user_logging_in_response = cast(MpUserLoggingInRsp, login_response_message.application_data)
         except SaicApiException as e:
-            logging.exception('MqttGateway crashed due to SaicApiException', exc_info=e)
+            LOG.exception('MqttGateway crashed due to SaicApiException', exc_info=e)
             raise SystemExit(e)
 
         for alarm_setting_type in MpAlarmSettingType:
             try:
                 alarm_switches = [create_alarm_switch(alarm_setting_type)]
                 self.saic_api.set_alarm_switches(alarm_switches)
-                logging.info(f'Registering for {alarm_setting_type.value} messages')
+                LOG.info(f'Registering for {alarm_setting_type.value} messages')
             except SaicApiException:
-                logging.warning(f'Failed to register for {alarm_setting_type.value} messages')
+                LOG.warning(f'Failed to register for {alarm_setting_type.value} messages')
 
         for info in user_logging_in_response.vin_list:
             vin_info = cast(VinInfo, info)
@@ -278,7 +279,7 @@ class MqttGateway:
         if vin in self.vehicle_handler:
             return self.vehicle_handler[vin]
         else:
-            logging.error(f'No vehicle handler found for VIN {vin}')
+            LOG.error(f'No vehicle handler found for VIN {vin}')
             return None
 
     def __on_mqtt_command_received(self, vin: str, msg: mqtt.MQTTMessage) -> None:
@@ -286,7 +287,7 @@ class MqttGateway:
         if vehicle_handler:
             vehicle_handler.handle_mqtt_command(msg)
         else:
-            logging.debug(f'Command for unknown vin {vin} received')
+            LOG.debug(f'Command for unknown vin {vin} received')
 
     def __on_publish_raw_value(self, key: str, raw: str):
         self.publisher.publish_str(key, raw)
@@ -309,14 +310,14 @@ class MessageHandler:
     def polling(self):
         try:
             message_list = self.saicapi.get_message_list_with_retry()
-            logging.info(f'{len(message_list)} messages received')
+            LOG.info(f'{len(message_list)} messages received')
 
             latest_message = None
             latest_timestamp = None
             latest_vehicle_start_message = None
             latest_vehicle_start_timestamp = None
             for message in message_list:
-                logging.info(message.get_details())
+                LOG.info(message.get_details())
 
                 if message.message_type == '323':
                     if latest_vehicle_start_message is None:
@@ -334,8 +335,8 @@ class MessageHandler:
                     latest_message = message
 
             if latest_vehicle_start_message is not None:
-                logging.info(f'{latest_vehicle_start_message.title} detected'
-                             + f' at {latest_vehicle_start_message.message_time}')
+                LOG.info(f'{latest_vehicle_start_message.title} detected'
+                         + f' at {latest_vehicle_start_message.message_time}')
                 vehicle_handler = self.gateway.get_vehicle_handler(latest_vehicle_start_message.vin)
                 if vehicle_handler:
                     vehicle_handler.vehicle_state.notify_message(latest_vehicle_start_message)
@@ -343,15 +344,15 @@ class MessageHandler:
                 try:
                     message_id = latest_vehicle_start_message.message_id
                     self.saicapi.delete_message(message_id)
-                    logging.info(f'{latest_vehicle_start_message.title} message with ID {message_id} deleted')
+                    LOG.info(f'{latest_vehicle_start_message.title} message with ID {message_id} deleted')
                 except SaicApiException as e:
-                    logging.exception('Could not delete message from server', exc_info=e)
+                    LOG.exception('Could not delete message from server', exc_info=e)
             elif latest_message is not None:
                 vehicle_handler = self.gateway.get_vehicle_handler(latest_message.vin)
                 if vehicle_handler:
                     vehicle_handler.vehicle_state.notify_message(latest_message)
         except SaicApiException as e:
-            logging.exception('MessageHandler poll loop failed', exc_info=e)
+            LOG.exception('MessageHandler poll loop failed', exc_info=e)
 
 
 class EnvDefault(argparse.Action):
@@ -372,14 +373,14 @@ class EnvDefault(argparse.Action):
 async def periodic(message_handler: MessageHandler, query_messages_interval: int):
     while True:
         message_handler.polling()
-        logging.debug(f'Waiting {query_messages_interval} seconds to check for new messages')
+        LOG.debug(f'Waiting {query_messages_interval} seconds to check for new messages')
         await asyncio.sleep(float(query_messages_interval))
 
 
 async def main(vh_map: dict, message_handler: MessageHandler, query_messages_interval: int):
     tasks = []
     for key in vh_map:
-        logging.debug(f'Starting process for car {key}')
+        LOG.debug(f'Starting process for car {key}')
         vh = cast(VehicleHandler, vh_map[key])
         task = asyncio.create_task(vh.handle_vehicle(), name=f'handle_vehicle_{key}')
         tasks.append(task)
@@ -395,19 +396,19 @@ async def shutdown_handler(tasks):
         for task in done:
             task_name = task.get_name()
             if task.cancelled():
-                logging.debug(f'{task_name !r} task was cancelled, this is only supposed if the application is '
-                              f'shutting down')
+                LOG.debug(f'{task_name !r} task was cancelled, this is only supposed if the application is '
+                          + f'shutting down')
             else:
                 exception = task.exception()
                 if exception is not None:
-                    logging.exception(f'{task_name !r} task crashed with an exception', exc_info=exception)
+                    LOG.exception(f'{task_name !r} task crashed with an exception', exc_info=exception)
                     raise SystemExit(-1)
                 else:
-                    logging.warning(f'{task_name !r} task terminated cleanly with result={task.result()}')
+                    LOG.warning(f'{task_name !r} task terminated cleanly with result={task.result()}')
         if len(pending) == 0:
             break
         else:
-            logging.warning(f'There are still {len(pending)} tasks... waiting for them to complete')
+            LOG.warning(f'There are still {len(pending)} tasks... waiting for them to complete')
 
 
 def process_arguments() -> Configuration:
