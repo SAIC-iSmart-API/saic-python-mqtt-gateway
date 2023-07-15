@@ -260,7 +260,12 @@ class MqttGateway:
         for info in user_logging_in_response.vin_list:
             vin_info = cast(VinInfo, info)
             account_prefix = f'{self.configuration.saic_user}/{mqtt_topics.VEHICLES}/{vin_info.vin}'
-            wallbox_soc_topic = f'{self.configuration.open_wb_topic}/set/lp/{self.get_open_wb_lp(vin_info.vin)}/%Soc'
+            wb_lp = self.get_open_wb_lp(vin_info.vin)
+            if wb_lp:
+                wallbox_soc_topic = f'{self.configuration.open_wb_topic}/set/lp/{wb_lp}/%Soc'
+                LOG.debug(f'SoC for wallbox is published over MQTT topic: {wallbox_soc_topic}')
+            else:
+                wallbox_soc_topic = ''
             vehicle_state = VehicleState(self.publisher, account_prefix, vin_info.vin, wallbox_soc_topic)
             vehicle_state.configure(vin_info)
 
