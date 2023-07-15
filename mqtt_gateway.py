@@ -259,8 +259,8 @@ class MqttGateway:
         for info in user_logging_in_response.vin_list:
             vin_info = cast(VinInfo, info)
             account_prefix = f'{self.configuration.saic_user}/{mqtt_topics.VEHICLES}/{vin_info.vin}'
-            vehicle_state = VehicleState(self.publisher, account_prefix, vin_info.vin,
-                                         self.get_open_wb_lp(vin_info.vin))
+            wallbox_soc_topic = f'{self.configuration.open_wb_topic}/set/lp/{self.get_open_wb_lp(vin_info.vin)}/%Soc'
+            vehicle_state = VehicleState(self.publisher, account_prefix, vin_info.vin, wallbox_soc_topic)
             vehicle_state.configure(vin_info)
 
             vehicle_handler = VehicleHandler(

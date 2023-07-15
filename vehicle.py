@@ -31,11 +31,11 @@ class RefreshMode(Enum):
 
 
 class VehicleState:
-    def __init__(self, publisher: Publisher, account_prefix: str, vin: str, openwb_lp_topic: str = ''):
+    def __init__(self, publisher: Publisher, account_prefix: str, vin: str, wallbox_soc_topic: str = ''):
         self.publisher = publisher
         self.vin = vin
         self.mqtt_vin_prefix = f'{account_prefix}'
-        self.openwb_lp_topic = openwb_lp_topic
+        self.wallbox_soc_topic = wallbox_soc_topic
         self.last_car_activity = datetime.datetime.min
         self.last_successful_refresh = datetime.datetime.min
         self.last_car_shutdown = datetime.datetime.now()
@@ -324,8 +324,8 @@ class VehicleState:
         soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
         if soc <= 100.0:
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC), soc)
-            if self.openwb_lp_topic:
-                self.publisher.publish_int(self.openwb_lp_topic, int(soc), True)
+            if self.wallbox_soc_topic:
+                self.publisher.publish_int(self.wallbox_soc_topic, int(soc), True)
         estimated_electrical_range = charge_mgmt_data.bms_estd_elec_rng / 10.0
         self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_HYBRID_ELECTRICAL_RANGE),
                                      estimated_electrical_range)
