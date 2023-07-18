@@ -39,7 +39,8 @@ class HomeAssistantDiscovery():
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE_SINCE_LAST_CHARGE, 'Mileage since last charge',
                               device_class='distance', state_class='total_increasing', unit_of_measurement='km')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE, 'Auxiliary battery voltage',
-                              device_class='voltage', state_class='measurement', unit_of_measurement='V')
+                              device_class='voltage', state_class='measurement', unit_of_measurement='V',
+                              icon='mdi:car-battery')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_RANGE, 'Range', device_class='distance', unit_of_measurement='km')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_CURRENT, 'Current', device_class='current',
                               state_class='measurement', unit_of_measurement='A')
@@ -51,7 +52,8 @@ class HomeAssistantDiscovery():
                               device_class='temperature', state_class='measurement', unit_of_measurement='°C')
         self.__publish_sensor(mqtt_topics.CLIMATE_EXTERIOR_TEMPERATURE, 'Exterior temperature',
                               device_class='temperature', state_class='measurement', unit_of_measurement='°C')
-        self.__publish_sensor(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE, 'Remote climate state')
+        self.__publish_sensor(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE, 'Remote climate state',
+                              icon='mdi:car-connected')
         self.__publish_sensor(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT, 'Rear window defroster heating',
                               icon='mdi:car-defrost-rear')
         self.__publish_sensor(mqtt_topics.CLIMATE_FRONT_WINDOW_HEAT, 'Front window defroster heating',
@@ -84,7 +86,7 @@ class HomeAssistantDiscovery():
         self.__publish_binary_sensor(mqtt_topics.DOORS_BONNET, 'Bonnet', device_class='door', icon='mdi:car-door')
         self.__publish_binary_sensor(mqtt_topics.DOORS_BOOT, 'Boot', device_class='door', icon='mdi:car-door')
         self.__publish_binary_sensor(mqtt_topics.LIGHTS_MAIN_BEAM, 'Lights Main Beam', device_class='light',
-                                     icon='mdi:car-highbeam')
+                                     icon='mdi:car-light-high')
         self.__publish_binary_sensor(mqtt_topics.LIGHTS_DIPPED_BEAM, 'Lights Dipped Beam', device_class='light',
                                      icon='mdi:car-light-dimmed')
 
@@ -197,6 +199,7 @@ class HomeAssistantDiscovery():
             'max': 100,
             'step': 10,
             'mode': 'slider',
+            'icon': 'mdi:battery-charging-70',
         })
 
     def __get_common_attributes(self, id, name):
