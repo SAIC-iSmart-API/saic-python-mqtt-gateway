@@ -1,3 +1,3 @@
-saic-ismart-client~=1.4.3
+saic-ismart-client~=1.4.4
 requests~=2.31.0
 paho-mqtt~=1.6.1
