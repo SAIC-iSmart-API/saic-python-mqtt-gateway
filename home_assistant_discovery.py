@@ -8,10 +8,9 @@ from vehicle import VehicleState
 class HomeAssistantDiscovery():
     def __init__(self, vehicle_state: VehicleState):
         self.vehicle_state = vehicle_state
-        self.already_ran = False
 
     def publish_ha_discovery_messages(self):
-        if (not self.vehicle_state.is_complete()) or self.already_ran:
+        if not self.vehicle_state.is_complete():
             return
         # AC
         self.__publish_remote_ac()
@@ -89,8 +88,6 @@ class HomeAssistantDiscovery():
                                      icon='mdi:car-light-high')
         self.__publish_binary_sensor(mqtt_topics.LIGHTS_DIPPED_BEAM, 'Lights Dipped Beam', device_class='light',
                                      icon='mdi:car-light-dimmed')
-
-        self.already_ran = True
 
     def __publish_vehicle_tracker(self):
         self.__publish_ha_discovery_message('device_tracker', 'Vehicle position', {
