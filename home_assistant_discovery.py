@@ -2,7 +2,6 @@ import inflection as inflection
 
 import mqtt_topics
 from mqtt_publisher import MqttClient
-from saic_ismart_client.common_model import TargetBatteryCode
 from vehicle import VehicleState
 
 
@@ -20,11 +19,11 @@ class HomeAssistantDiscovery():
         self.__publish_switch(mqtt_topics.DRIVETRAIN_CHARGING, 'Charging')
         self.__publish_switch(mqtt_topics.WINDOWS_DRIVER, 'Window driver')
         self.__publish_switch(mqtt_topics.WINDOWS_PASSENGER, 'Window passenger')
-        self.__publish_switch(mqtt_topics.WINDOWS_REAR_LEFT, 'Window rearLeft')
-        self.__publish_switch(mqtt_topics.WINDOWS_REAR_RIGHT, 'Window rearRight')
+        self.__publish_switch(mqtt_topics.WINDOWS_REAR_LEFT, 'Window rear left')
+        self.__publish_switch(mqtt_topics.WINDOWS_REAR_RIGHT, 'Window rear right')
         self.__publish_switch(mqtt_topics.WINDOWS_SUN_ROOF, 'Sun roof')
         # Locks
-        self.__publish_lock(mqtt_topics.DOORS_LOCKED, 'Doors Lock')
+        self.__publish_lock(mqtt_topics.DOORS_LOCKED, 'Doors Lock', icon='mdi:car-door-lock')
         # Number
         self.__publish_target_soc()
 
@@ -53,51 +52,51 @@ class HomeAssistantDiscovery():
         self.__publish_sensor(mqtt_topics.CLIMATE_EXTERIOR_TEMPERATURE, 'Exterior temperature',
                               device_class='temperature', state_class='measurement', unit_of_measurement='°C')
         self.__publish_sensor(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE, 'Remote climate state')
-        self.__publish_sensor(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT, 'Rear window defroster heating')
-        self.__publish_sensor(mqtt_topics.CLIMATE_FRONT_WINDOW_HEAT, 'Front window defroster heating')
-        self.__publish_sensor(mqtt_topics.LOCATION_HEADING, 'Heading')
+        self.__publish_sensor(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT, 'Rear window defroster heating',
+                              icon='mdi:car-defrost-rear')
+        self.__publish_sensor(mqtt_topics.CLIMATE_FRONT_WINDOW_HEAT, 'Front window defroster heating',
+                              icon='mdi:car-defrost-front')
+        self.__publish_sensor(mqtt_topics.LOCATION_HEADING, 'Heading', icon='mdi:compass')
         self.__publish_sensor(mqtt_topics.LOCATION_SPEED, 'Vehicle speed', device_class='speed',
                               unit_of_measurement='km/h')
         self.__publish_sensor(mqtt_topics.TYRES_FRONT_LEFT_PRESSURE, 'Tyres front left pressure',
-                              device_class='pressure', unit_of_measurement='bar')
+                              device_class='pressure', unit_of_measurement='bar', icon='mdi:tire')
         self.__publish_sensor(mqtt_topics.TYRES_FRONT_RIGHT_PRESSURE, 'Tyres front right pressure',
-                              device_class='pressure', unit_of_measurement='bar')
+                              device_class='pressure', unit_of_measurement='bar', icon='mdi:tire')
         self.__publish_sensor(mqtt_topics.TYRES_REAR_LEFT_PRESSURE, 'Tyres rear left pressure', device_class='pressure',
-                              unit_of_measurement='bar')
+                              unit_of_measurement='bar', icon='mdi:tire')
         self.__publish_sensor(mqtt_topics.TYRES_REAR_RIGHT_PRESSURE, 'Tyres rear right pressure',
-                              device_class='pressure', unit_of_measurement='bar')
+                              device_class='pressure', unit_of_measurement='bar', icon='mdi:tire')
         # Binary sensors
-        self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_CHARGER_CONNECTED, 'Charger connected', device_class='plug')
+        self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_CHARGER_CONNECTED, 'Charger connected', device_class='plug',
+                                     icon='mdi:power-plug-battery')
         self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_CHARGING, 'Battery Charging',
-                                     device_class='battery_charging')
-        self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_RUNNING, 'Vehicle Running', device_class='running')
-        self.__publish_binary_sensor(mqtt_topics.DOORS_DRIVER, 'Door driver', device_class='door')
-        self.__publish_binary_sensor(mqtt_topics.DOORS_PASSENGER, 'Door passenger', device_class='door')
-        self.__publish_binary_sensor(mqtt_topics.DOORS_REAR_LEFT, 'Door rear left', device_class='door')
-        self.__publish_binary_sensor(mqtt_topics.DOORS_REAR_RIGHT, 'Door rear right', device_class='door')
-        self.__publish_binary_sensor(mqtt_topics.DOORS_BONNET, 'Bonnet', device_class='door')
-        self.__publish_binary_sensor(mqtt_topics.DOORS_BOOT, 'Boot', device_class='door')
-        self.__publish_binary_sensor(mqtt_topics.LIGHTS_MAIN_BEAM, 'Lights Main Beam', device_class='light')
-        self.__publish_binary_sensor(mqtt_topics.LIGHTS_DIPPED_BEAM, 'Lights Dipped Beam', device_class='light')
+                                     device_class='battery_charging', icon='mdi:battery-charging')
+        self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_RUNNING, 'Vehicle Running', device_class='running',
+                                     icon='mdi:car-side')
+        self.__publish_binary_sensor(mqtt_topics.DOORS_DRIVER, 'Door driver', device_class='door', icon='mdi:car-door')
+        self.__publish_binary_sensor(mqtt_topics.DOORS_PASSENGER, 'Door passenger', device_class='door',
+                                     icon='mdi:car-door')
+        self.__publish_binary_sensor(mqtt_topics.DOORS_REAR_LEFT, 'Door rear left', device_class='door',
+                                     icon='mdi:car-door')
+        self.__publish_binary_sensor(mqtt_topics.DOORS_REAR_RIGHT, 'Door rear right', device_class='door',
+                                     icon='mdi:car-door')
+        self.__publish_binary_sensor(mqtt_topics.DOORS_BONNET, 'Bonnet', device_class='door', icon='mdi:car-door')
+        self.__publish_binary_sensor(mqtt_topics.DOORS_BOOT, 'Boot', device_class='door', icon='mdi:car-door')
+        self.__publish_binary_sensor(mqtt_topics.LIGHTS_MAIN_BEAM, 'Lights Main Beam', device_class='light',
+                                     icon='mdi:car-highbeam')
+        self.__publish_binary_sensor(mqtt_topics.LIGHTS_DIPPED_BEAM, 'Lights Dipped Beam', device_class='light',
+                                     icon='mdi:car-light-dimmed')
 
         self.already_ran = True
 
     def __publish_vehicle_tracker(self):
-        vin = self.__get_vin()
-        self.__publish_ha_discovery_message(f'device_tracker/{vin}_mg/{vin}_gps_position/config', {
-            'name': 'Vehicle position',
-            'device': self.__get_device_node(),
-            'unique_id': f'{vin}_gps_position',
+        self.__publish_ha_discovery_message('device_tracker', 'Vehicle position', {
             'json_attributes_topic': self.__get_vehicle_topic(mqtt_topics.LOCATION_POSITION)
         })
 
     def __publish_remote_ac(self):
-        vin = self.__get_vin()
-        unique_id = f'{vin}_climate'
-        self.__publish_ha_discovery_message(f'climate/{vin}_mg/{unique_id}/config', {
-            'name': 'Vehicle climate',
-            'device': self.__get_device_node(),
-            'unique_id': unique_id,
+        self.__publish_ha_discovery_message('climate', 'Vehicle climate', {
             'precision': 1.0,
             'temperature_unit': 'C',
             'mode_command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE) + '/set',
@@ -112,14 +111,9 @@ class HomeAssistantDiscovery():
     def __publish_switch(
             self,
             topic: str,
-            switch_name: str,
+            name: str,
     ):
-        vin = self.__get_vin()
-        unique_id = f'{vin}_{snake_case(switch_name)}'
-        self.__publish_ha_discovery_message(f'switch/{vin}_mg/{unique_id}/config', {
-            'name': switch_name,
-            'device': self.__get_device_node(),
-            'unique_id': unique_id,
+        self.__publish_ha_discovery_message('switch', name, {
             'state_topic': self.__get_vehicle_topic(topic),
             'command_topic': self.__get_vehicle_topic(topic) + '/set',
             'payload_on': 'true',
@@ -132,36 +126,31 @@ class HomeAssistantDiscovery():
             self,
             topic: str,
             name: str,
+            icon: str | None = None,
     ):
-        vin = self.__get_vin()
-        unique_id = f'{vin}_{snake_case(name)}'
-        self.__publish_ha_discovery_message(f'lock/{vin}_mg/{unique_id}/config', {
-            'name': name,
-            'device': self.__get_device_node(),
-            'unique_id': unique_id,
+        payload = {
             'state_topic': self.__get_vehicle_topic(topic),
             'command_topic': self.__get_vehicle_topic(topic) + '/set',
             'payload_lock': 'true',
             'payload_unlock': 'false',
             'optimistic': False,
             'qos': 0,
-        })
+        }
+        if icon is not None:
+            payload['icon'] = icon
+        self.__publish_ha_discovery_message('lock', name, payload)
 
     def __publish_sensor(
             self,
             topic: str,
             name: str,
-            device_class: str = None,
-            state_class: str = None,
-            unit_of_measurement: str = None,
+            device_class: str | None = None,
+            state_class: str | None = None,
+            unit_of_measurement: str | None = None,
+            icon: str | None = None,
             value_template: str = '{{ value }}',
     ):
-        vin = self.__get_vin()
-        unique_id = f'{vin}_{snake_case(name)}'
         payload = {
-            'name': name,
-            'device': self.__get_device_node(),
-            'unique_id': unique_id,
             'state_topic': self.__get_vehicle_topic(topic),
             'value_template': value_template,
         }
@@ -171,22 +160,20 @@ class HomeAssistantDiscovery():
             payload['state_class'] = state_class
         if unit_of_measurement is not None:
             payload['unit_of_measurement'] = unit_of_measurement
+        if icon is not None:
+            payload['icon'] = icon
 
-        self.__publish_ha_discovery_message(f'sensor/{vin}_mg/{unique_id}/config', payload)
+        self.__publish_ha_discovery_message('sensor', name, payload)
 
     def __publish_binary_sensor(
             self,
             topic: str,
             name: str,
-            device_class: str = None,
+            device_class: str | None = None,
             value_template: str = '{{ value }}',
+            icon: str | None = None,
     ):
-        vin = self.__get_vin()
-        unique_id = f'{vin}_{snake_case(name)}'
         payload = {
-            'name': name,
-            'device': self.__get_device_node(),
-            'unique_id': unique_id,
             'state_topic': self.__get_vehicle_topic(topic),
             'value_template': value_template,
             'payload_on': 'True',
@@ -194,39 +181,43 @@ class HomeAssistantDiscovery():
         }
         if device_class is not None:
             payload['device_class'] = device_class
+        if icon is not None:
+            payload['icon'] = icon
 
-        self.__publish_ha_discovery_message(f'binary_sensor/{vin}_mg/{unique_id}/config', payload)
+        self.__publish_ha_discovery_message('binary_sensor', name, payload)
 
     def __publish_target_soc(self):
-        vin = self.__get_vin()
-        unique_id = f'{vin}_target_soc'
-        self.__publish_ha_discovery_message(f'number/{vin}_mg/{unique_id}/config', {
-            'name': 'Target SoC',
-            'device': self.__get_device_node(),
-            'unique_id': unique_id,
+        self.__publish_ha_discovery_message('number', 'Target SoC', {
             'state_topic': self.__get_vehicle_topic(mqtt_topics.DRIVETRAIN_SOC_TARGET),
             'command_topic': self.__get_vehicle_topic(mqtt_topics.DRIVETRAIN_SOC_TARGET) + '/set',
             'value_template': '{{ value }}',
             'device_class': 'battery',
             'unit_of_measurement': '%',
-            'min': TargetBatteryCode.P_40.get_percentage(),
-            'max': TargetBatteryCode.P_100.get_percentage(),
+            'min': 40,
+            'max': 100,
             'step': 10,
             'mode': 'slider',
         })
 
-    def __get_vin(self):
-        vin = self.vehicle_state.vin
-        return vin
+    def __get_common_attributes(self, id, name):
+        return {
+            'name': name,
+            'device': self.__get_device_node(),
+            'unique_id': id,
+            'object_id': id,
+        }
 
     def __get_device_node(self):
         vin = self.__get_vin()
-        device_node = {
+        return {
             'name': f'MG {vin}',
             'manufacturer': 'SAIC Motor',
             'identifiers': [vin],
         }
-        return device_node
+
+    def __get_vin(self):
+        vin = self.vehicle_state.vin
+        return vin
 
     def __get_vehicle_topic(self, topic: str) -> str:
         vehicle_topic = self.vehicle_state.get_topic(topic)
@@ -235,10 +226,14 @@ class HomeAssistantDiscovery():
             return str(publisher.get_topic(vehicle_topic, no_prefix=False), encoding='utf8')
         return vehicle_topic
 
-    def __publish_ha_discovery_message(self, topic: str, payload: dict):
+    def __publish_ha_discovery_message(self, sensor_type: str, sensor_name: str, payload: dict):
+        vin = self.__get_vin()
+        unique_id = f'{vin}_{snake_case(sensor_name)}'
+        final_payload = self.__get_common_attributes(unique_id, sensor_name) | payload
         discovery_prefix = self.vehicle_state.publisher.configuration.ha_discovery_prefix
-        self.vehicle_state.publisher.publish_json(f'{discovery_prefix}/{topic}', payload, no_prefix=True)
+        ha_topic = f'{discovery_prefix}/{sensor_type}/{vin}_mg/{unique_id}/config'
+        self.vehicle_state.publisher.publish_json(ha_topic, final_payload, no_prefix=True)
 
 
 def snake_case(s):
-    return inflection.underscore(s).replace(' ', '_')
+    return inflection.underscore(s.lower()).replace(' ', '_')
