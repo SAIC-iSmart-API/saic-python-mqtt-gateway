@@ -8,6 +8,8 @@ import urllib.parse
 from typing import cast
 
 import paho.mqtt.client as mqtt
+
+from home_assistant_discovery import HomeAssistantDiscovery
 from saic_ismart_client.abrp_api import AbrpApi, AbrpApiException
 from saic_ismart_client.ota_v1_1.data_model import VinInfo, MpUserLoggingInRsp, MpAlarmSettingType
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
@@ -46,6 +48,7 @@ class VehicleHandler:
         self.vin_info = vin_info
         self.vehicle_prefix = f'{self.configuration.saic_user}/vehicles/{self.vin_info.vin}'
         self.vehicle_state = vehicle_state
+        self.ha_discovery = HomeAssistantDiscovery(vehicle_state)
         if vin_info.vin in self.configuration.abrp_token_map:
             abrp_user_token = self.configuration.abrp_token_map[vin_info.vin]
         else:
@@ -81,7 +84,11 @@ class VehicleHandler:
                     and datetime.datetime.now() > start_time + datetime.timedelta(seconds=10)
             ):
                 self.vehicle_state.configure_missing()
-
+            if (
+                    self.vehicle_state.is_complete()
+                    and self.configuration.ha_discovery_enabled
+            ):
+                self.ha_discovery.publish_ha_discovery_messages()
             if (
                     self.vehicle_state.is_complete()
                     and self.vehicle_state.should_refresh()
@@ -459,6 +466,14 @@ def process_arguments() -> Configuration:
                                                          'API. Environment Variable: SAIC_RELOGIN_DELAY',
                             dest='saic_relogin_delay', required=False, action=EnvDefault, envvar='SAIC_RELOGIN_DELAY',
                             type=check_positive)
+        parser.add_argument('--ha-discovery', help='Enable Home Assistant Discovery. Environment Variable: '
+                                                   'HA_DISCOVERY_ENABLED', dest='ha_discovery_enabled', required=False,
+                            action=EnvDefault,
+                            envvar='HA_DISCOVERY_ENABLED', default=True, type=check_bool)
+        parser.add_argument('--ha-discovery-prefix', help='Home Assistant Discovery Prefix. Environment Variable: '
+                                                          'HA_DISCOVERY_PREFIX', dest='ha_discovery_prefix',
+                            required=False, action=EnvDefault,
+                            envvar='HA_DISCOVERY_PREFIX', default='homeassistant')
         args = parser.parse_args()
         config.mqtt_user = args.mqtt_user
         config.mqtt_password = args.mqtt_password
@@ -474,6 +489,12 @@ def process_arguments() -> Configuration:
         if args.open_wp_lp_map:
             cfg_value_to_dict(args.open_wp_lp_map, config.open_wb_lp_map)
         config.saic_password = args.saic_password
+
+        if args.ha_discovery_enabled:
+            config.ha_discovery_enabled = args.ha_discovery_enabled
+
+        if args.ha_discovery_prefix:
+            config.ha_discovery_prefix = args.ha_discovery_prefix
 
         parse_result = urllib.parse.urlparse(args.mqtt_uri)
         if parse_result.scheme == 'tcp':
@@ -518,6 +539,10 @@ def check_positive(value):
     if ivalue <= 0:
         raise argparse.ArgumentTypeError(f'{ivalue} is an invalid positive int value')
     return ivalue
+
+
+def check_bool(value):
+    return str(value).lower() in ['true', '1', 'yes', 'y']
 
 
 if __name__ == '__main__':

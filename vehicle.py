@@ -5,6 +5,7 @@ from enum import Enum
 from typing import cast
 
 import paho.mqtt.client as mqtt
+
 from saic_ismart_client.ota_v1_1.data_model import VinInfo
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
 from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp, RvsChargingStatus
