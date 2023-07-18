@@ -28,8 +28,8 @@ class Publisher:
     def reset_force_mode(self, vin: str, refresh_mode: str) -> None:
         topic = f'{self.configuration.saic_user}/vehicles/{vin}/refresh/mode/set'
         if (
-            vin in self.mode_by_vin
-            and self.mode_by_vin[vin] == 'force'
+                vin in self.mode_by_vin
+                and self.mode_by_vin[vin] == 'force'
         ):
             self.publish_str(topic, refresh_mode)
 
@@ -59,7 +59,7 @@ class Publisher:
                         data[key] = Publisher.anonymize_str(data[key])
                     case 'pin':
                         data[key] = Publisher.anonymize_str(data[key])
-                    case'token':
+                    case 'token':
                         data[key] = Publisher.anonymize_str(data[key])
                     case 'refreshToken':
                         data[key] = Publisher.anonymize_str(data[key])
