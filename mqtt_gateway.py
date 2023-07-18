@@ -49,7 +49,7 @@ class VehicleHandler:
         self.vin_info = vin_info
         self.vehicle_prefix = f'{self.configuration.saic_user}/vehicles/{self.vin_info.vin}'
         self.vehicle_state = vehicle_state
-        self.ha_discovery = HomeAssistantDiscovery(vehicle_state)
+        self.ha_discovery = HomeAssistantDiscovery(vehicle_state, vin_info)
         if vin_info.vin in self.configuration.abrp_token_map:
             abrp_user_token = self.configuration.abrp_token_map[vin_info.vin]
         else:
