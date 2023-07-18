@@ -118,8 +118,8 @@ class HomeAssistantDiscovery():
         self.__publish_ha_discovery_message('switch', name, {
             'state_topic': self.__get_vehicle_topic(topic),
             'command_topic': self.__get_vehicle_topic(topic) + '/set',
-            'payload_on': 'true',
-            'payload_off': 'false',
+            'payload_on': 'True',
+            'payload_off': 'False',
             'optimistic': False,
             'qos': 0,
         })
@@ -133,8 +133,10 @@ class HomeAssistantDiscovery():
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
             'command_topic': self.__get_vehicle_topic(topic) + '/set',
-            'payload_lock': 'true',
-            'payload_unlock': 'false',
+            'payload_lock': 'True',
+            'payload_unlock': 'False',
+            'state_locked': 'True',
+            'state_unlocked': 'False',
             'optimistic': False,
             'qos': 0,
         }
