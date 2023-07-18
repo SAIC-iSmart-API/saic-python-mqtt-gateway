@@ -6,7 +6,7 @@ from mqtt_publisher import MqttClient
 from vehicle import VehicleState
 
 
-class HomeAssistantDiscovery():
+class HomeAssistantDiscovery:
     def __init__(self, vehicle_state: VehicleState, vin_info: VinInfo):
         self.__vehicle_state = vehicle_state
         self.__vin_info = vin_info
@@ -22,7 +22,7 @@ class HomeAssistantDiscovery():
         self.__publish_switch(mqtt_topics.WINDOWS_PASSENGER, 'Window passenger')
         self.__publish_switch(mqtt_topics.WINDOWS_REAR_LEFT, 'Window rear left')
         self.__publish_switch(mqtt_topics.WINDOWS_REAR_RIGHT, 'Window rear right')
-        self.__publish_switch(mqtt_topics.WINDOWS_SUN_ROOF, 'Sun roof')
+        self.__publish_switch(mqtt_topics.WINDOWS_SUN_ROOF, 'Sun roof', enabled=self.__vehicle_state.has_sunroof())
         # Locks
         self.__publish_lock(mqtt_topics.DOORS_LOCKED, 'Doors Lock', icon='mdi:car-door-lock')
         # Number
@@ -113,6 +113,7 @@ class HomeAssistantDiscovery():
             self,
             topic: str,
             name: str,
+            enabled=True,
     ):
         self.__publish_ha_discovery_message('switch', name, {
             'state_topic': self.__get_vehicle_topic(topic),
@@ -121,6 +122,7 @@ class HomeAssistantDiscovery():
             'payload_off': 'False',
             'optimistic': False,
             'qos': 0,
+            'enabled_by_default': enabled,
         })
 
     def __publish_lock(
