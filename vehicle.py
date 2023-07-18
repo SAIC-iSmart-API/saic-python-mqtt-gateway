@@ -71,27 +71,7 @@ class VehicleState:
 
     def update_target_soc(self, target_soc: TargetBatteryCode):
         if self.target_soc != target_soc:
-            target_percentage = None
-            # FIXME: Remove this once https://github.com/SAIC-iSmart-API/saic-python-client/pull/4 is merged
-            match target_soc:
-                case TargetBatteryCode.P_40:
-                    target_percentage = 40
-                case TargetBatteryCode.P_50:
-                    target_percentage = 50
-                case TargetBatteryCode.P_60:
-                    target_percentage = 60
-                case TargetBatteryCode.P_70:
-                    target_percentage = 70
-                case TargetBatteryCode.P_80:
-                    target_percentage = 80
-                case TargetBatteryCode.P_90:
-                    target_percentage = 90
-                case TargetBatteryCode.P_100:
-                    target_percentage = 100
-                case _:
-                    logging.warning(f'Unknown target battery code {target_soc}')
-            if target_percentage is not None:
-                self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_TARGET), target_percentage)
+            self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_TARGET), target_soc.get_percentage())
             self.target_soc = target_soc
 
     def is_complete(self) -> bool:

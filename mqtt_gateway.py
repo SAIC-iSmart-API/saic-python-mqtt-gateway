@@ -184,29 +184,11 @@ class VehicleHandler:
                 case mqtt_topics.DRIVETRAIN_SOC_TARGET:
                     payload = msg.payload.decode().strip()
                     try:
-                        target_soc = int(payload)
-                        # FIXME: Remove this once https://github.com/SAIC-iSmart-API/saic-python-client/pull/4 is merged
-                        match target_soc:
-                            case 40:
-                                target_battery_code = TargetBatteryCode.P_40
-                            case 50:
-                                target_battery_code = TargetBatteryCode.P_50
-                            case 60:
-                                target_battery_code = TargetBatteryCode.P_60
-                            case 70:
-                                target_battery_code = TargetBatteryCode.P_70
-                            case 80:
-                                target_battery_code = TargetBatteryCode.P_80
-                            case 90:
-                                target_battery_code = TargetBatteryCode.P_90
-                            case 100:
-                                target_battery_code = TargetBatteryCode.P_100
-                            case _:
-                                raise MqttGatewayException(f'Invalid target SoC value {target_soc}')
+                        target_battery_code = TargetBatteryCode.from_percentage(int(payload))
                         self.vehicle_state.update_target_soc(target_battery_code)
                         self.saic_api.set_target_battery_soc(target_battery_code, self.vin_info)
-                    except ValueError:
-                        raise MqttGatewayException(f'Error setting value for payload {payload}')
+                    except ValueError as e:
+                        raise MqttGatewayException(f'Error setting SoC target: {e}')
                 case _:
                     # set mode, period (in)-active,...
                     self.vehicle_state.configure_by_message(topic, msg)
