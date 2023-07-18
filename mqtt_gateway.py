@@ -19,7 +19,7 @@ from Exceptions import MqttGatewayException
 from configuration import Configuration
 from mqtt_publisher import MqttClient
 from publisher import Publisher
-from vehicle import VehicleState
+from vehicle import RefreshMode, VehicleState
 
 MSG_CMD_SUCCESSFUL = 'Success'
 
@@ -83,8 +83,8 @@ class VehicleHandler:
                 self.vehicle_state.configure_missing()
 
             if (
-                self.vehicle_state.is_complete()
-                and self.vehicle_state.should_refresh()
+                    self.vehicle_state.is_complete()
+                    and self.vehicle_state.should_refresh()
             ):
                 try:
                     vehicle_status = self.update_vehicle_status()
@@ -233,7 +233,7 @@ class VehicleHandler:
 class MqttGateway:
     def __init__(self, config: Configuration):
         self.configuration = config
-        self.vehicle_handler = {}
+        self.vehicle_handler: dict[str, VehicleHandler] = {}
         self.publisher = MqttClient(self.configuration)
         self.publisher.on_mqtt_command_received = self.__on_mqtt_command_received
         self.saic_api = SaicApi(config.saic_uri, config.saic_user, config.saic_password, config.saic_relogin_delay)
@@ -277,8 +277,8 @@ class MqttGateway:
                 vehicle_state)
             self.vehicle_handler[vin_info.vin] = vehicle_handler
 
-        message_handler = MessageHandler(self, self.saic_api)
-        asyncio.run(main(self.vehicle_handler, message_handler, self.configuration.messages_request_interval))
+        message_handler = MessageHandler(self, self.saic_api, self.configuration.messages_request_interval)
+        asyncio.run(main(self.vehicle_handler, message_handler))
 
     def get_vehicle_handler(self, vin: str) -> VehicleHandler | None:
         if vin in self.vehicle_handler:
@@ -308,11 +308,22 @@ class MqttGateway:
 
 
 class MessageHandler:
-    def __init__(self, gateway: MqttGateway, saicapi: SaicApi):
+    def __init__(self, gateway: MqttGateway, saicapi: SaicApi, refresh_interval: int):
         self.gateway = gateway
         self.saicapi = saicapi
+        self.refresh_interval = refresh_interval
 
-    def polling(self):
+    async def check_for_new_messages(self) -> None:
+        while True:
+            if self.__should_poll():
+                LOG.debug("Checking for new messages")
+                self.__polling()
+            else:
+                LOG.debug("Not checking for new messages since all cars have RefreshMode.OFF")
+            LOG.debug(f'Waiting {self.refresh_interval} seconds to check for new messages')
+            await asyncio.sleep(float(self.refresh_interval))
+
+    def __polling(self):
         try:
             message_list = self.saicapi.get_message_list_with_retry()
             LOG.info(f'{len(message_list)} messages received')
@@ -359,12 +370,25 @@ class MessageHandler:
         except SaicApiException as e:
             LOG.exception('MessageHandler poll loop failed', exc_info=e)
 
+    def __should_poll(self):
+        vehicle_handlers = self.gateway.vehicle_handler or dict()
+        refresh_modes = [
+            vh.vehicle_state.refresh_mode
+            for vh in vehicle_handlers.values()
+            if vh.vehicle_state is not None
+        ]
+        # We do not poll if we have no cars or all cars have RefreshMode.OFF
+        if len(refresh_modes) == 0 or all(mode == RefreshMode.OFF for mode in refresh_modes):
+            return False
+        else:
+            return True
+
 
 class EnvDefault(argparse.Action):
     def __init__(self, envvar, required=True, default=None, **kwargs):
         if (
-            envvar in os.environ
-            and os.environ[envvar]
+                envvar in os.environ
+                and os.environ[envvar]
         ):
             default = os.environ[envvar]
         if required and default:
@@ -375,22 +399,15 @@ class EnvDefault(argparse.Action):
         setattr(namespace, self.dest, values)
 
 
-async def periodic(message_handler: MessageHandler, query_messages_interval: int):
-    while True:
-        message_handler.polling()
-        LOG.debug(f'Waiting {query_messages_interval} seconds to check for new messages')
-        await asyncio.sleep(float(query_messages_interval))
-
-
-async def main(vh_map: dict, message_handler: MessageHandler, query_messages_interval: int):
+async def main(vh_map: dict[str, VehicleHandler], message_handler: MessageHandler):
     tasks = []
     for key in vh_map:
         LOG.debug(f'Starting process for car {key}')
-        vh = cast(VehicleHandler, vh_map[key])
+        vh = vh_map[key]
         task = asyncio.create_task(vh.handle_vehicle(), name=f'handle_vehicle_{key}')
         tasks.append(task)
 
-    tasks.append(asyncio.create_task(periodic(message_handler, query_messages_interval), name='message_handler'))
+    tasks.append(asyncio.create_task(message_handler.check_for_new_messages(), name='message_handler'))
 
     await shutdown_handler(tasks)
 
