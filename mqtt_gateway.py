@@ -9,10 +9,11 @@ from typing import cast
 
 import paho.mqtt.client as mqtt
 from saic_ismart_client.abrp_api import AbrpApi, AbrpApiException
+from saic_ismart_client.common_model import TargetBatteryCode
 from saic_ismart_client.ota_v1_1.data_model import VinInfo, MpUserLoggingInRsp, MpAlarmSettingType
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
 from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp
-from saic_ismart_client.saic_api import SaicApi, SaicApiException, TargetBatteryCode, create_alarm_switch
+from saic_ismart_client.saic_api import SaicApi, SaicApiException, create_alarm_switch
 
 import mqtt_topics
 from Exceptions import MqttGatewayException
@@ -134,9 +135,9 @@ class VehicleHandler:
                 case mqtt_topics.DRIVETRAIN_CHARGING:
                     match msg.payload.decode().strip().lower():
                         case 'true':
-                            self.send_stop_charging_command(False)
+                            self.saic_api.start_charging_with_retry(self.vin_info)
                         case 'false':
-                            self.send_stop_charging_command(True)
+                            self.saic_api.control_charging(True, self.vin_info)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
                 case mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE:
@@ -207,10 +208,6 @@ class VehicleHandler:
         for i in range(3, len(elements) - 1):
             result += f'/{elements[i]}'
         return result[1:]
-
-    def send_stop_charging_command(self, stop_charging: bool):
-        self.saic_api.control_charging(stop_charging, self.vin_info)
-        pass
 
 
 class MqttGateway:
