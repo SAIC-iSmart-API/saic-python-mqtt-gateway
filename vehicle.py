@@ -5,7 +5,6 @@ from enum import Enum
 from typing import cast
 
 import paho.mqtt.client as mqtt
-
 from saic_ismart_client.ota_v1_1.data_model import VinInfo
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
 from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp, RvsChargingStatus
@@ -50,6 +49,7 @@ class VehicleState:
         self.target_soc = None
         self.refresh_mode = RefreshMode.OFF
         self.previous_refresh_mode = RefreshMode.OFF
+        self.properties = {}
 
     def set_refresh_period_active(self, seconds: int):
         self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_ACTIVE), seconds)
@@ -202,9 +202,9 @@ class VehicleState:
 
     def notify_car_activity_time(self, now: datetime.datetime, force: bool):
         if (
-            self.last_car_activity == datetime.datetime.min
-            or force
-            or self.last_car_activity < now
+                self.last_car_activity == datetime.datetime.min
+                or force
+                or self.last_car_activity < now
         ):
             self.last_car_activity = datetime.datetime.now()
             self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_ACTIVITY),
@@ -212,8 +212,8 @@ class VehicleState:
 
     def notify_message(self, message: SaicMessage):
         if (
-            self.last_car_vehicle_message == datetime.datetime.min
-            or message.message_time > self.last_car_vehicle_message
+                self.last_car_vehicle_message == datetime.datetime.min
+                or message.message_time > self.last_car_vehicle_message
         ):
             self.last_car_vehicle_message = message.message_time
             self.publisher.publish_int(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_ID), message.message_id)
@@ -238,7 +238,7 @@ class VehicleState:
                 return True
             # RefreshMode.PERIODIC is treated like default
             case _:
-                last_shutdown_plus_refresh = self.last_car_shutdown\
+                last_shutdown_plus_refresh = self.last_car_shutdown \
                                              + datetime.timedelta(seconds=float(self.refresh_period_after_shutdown))
                 if self.last_successful_refresh is None:
                     self.mark_successful_refresh()
@@ -246,15 +246,15 @@ class VehicleState:
                 if self.last_car_activity > self.last_successful_refresh:
                     return True
                 if (
-                    self.hv_battery_active
-                    or last_shutdown_plus_refresh > datetime.datetime.now()
+                        self.hv_battery_active
+                        or last_shutdown_plus_refresh > datetime.datetime.now()
                 ):
                     LOG.debug('HV battery is active or refresh period after shutdown has passed')
-                    return self.last_successful_refresh < datetime.datetime.now()\
+                    return self.last_successful_refresh < datetime.datetime.now() \
                         - datetime.timedelta(seconds=float(self.refresh_period_active))
                 else:
                     LOG.debug('HV battery is inactive or refresh period after shutdown is not over yet')
-                    return self.last_successful_refresh < datetime.datetime.now()\
+                    return self.last_successful_refresh < datetime.datetime.now() \
                         - datetime.timedelta(seconds=float(self.refresh_period_inactive))
 
     def mark_successful_refresh(self):
@@ -269,6 +269,7 @@ class VehicleState:
         self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_SERIES), vin_info.series)
         if vin_info.color_name:
             self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_COLOR), vin_info.color_name.decode())
+        self.properties = {}
         for c in vin_info.model_configuration_json_str.split(';'):
             property_map = {}
             if ',' in c:
@@ -276,8 +277,14 @@ class VehicleState:
                     if ':' in e:
                         key_value_pair = e.split(":")
                         property_map[key_value_pair[0]] = key_value_pair[1]
-                self.publisher.publish_str(self.get_topic(f'{mqtt_topics.INFO_CONFIGURATION}/{property_map["code"]}'),
-                                           property_map["value"])
+                property_name = property_map["name"]
+                property_code = property_map["code"]
+                property_value = property_map["value"]
+                property_code_topic = f'{mqtt_topics.INFO_CONFIGURATION}/{property_code}'
+                property_name_topic = f'{mqtt_topics.INFO_CONFIGURATION}/{property_name}'
+                self.properties[property_name] = {'code': property_code, 'value': property_value}
+                self.publisher.publish_str(self.get_topic(property_code_topic), property_value)
+                self.publisher.publish_str(self.get_topic(property_name_topic), property_value)
 
     def configure_missing(self):
         if self.refresh_period_active == -1:
@@ -405,3 +412,16 @@ class VehicleState:
             self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_MODE), mode.value)
             self.previous_refresh_mode = self.refresh_mode
             self.refresh_mode = mode
+
+    def has_sunroof(self):
+        return self.__get_property_value('Sunroof') != '0'
+
+    def has_heated_seats(self):
+        return self.__get_property_value('HeatedSeat') == '0'
+
+    def __get_property_value(self, property_name: str) -> str | None:
+        if property_name in self.properties:
+            pdict = self.properties[property_name]
+            if pdict is not None and isinstance(pdict, dict) and 'value' in pdict:
+                return pdict['value']
+        return None

@@ -1,17 +1,18 @@
 import inflection as inflection
+from saic_ismart_client.ota_v1_1.data_model import VinInfo
 
 import mqtt_topics
 from mqtt_publisher import MqttClient
 from vehicle import VehicleState
 
 
-class HomeAssistantDiscovery():
-    def __init__(self, vehicle_state: VehicleState):
-        self.vehicle_state = vehicle_state
-        self.already_ran = False
+class HomeAssistantDiscovery:
+    def __init__(self, vehicle_state: VehicleState, vin_info: VinInfo):
+        self.__vehicle_state = vehicle_state
+        self.__vin_info = vin_info
 
     def publish_ha_discovery_messages(self):
-        if (not self.vehicle_state.is_complete()) or self.already_ran:
+        if not self.__vehicle_state.is_complete():
             return
         # AC
         self.__publish_remote_ac()
@@ -21,7 +22,7 @@ class HomeAssistantDiscovery():
         self.__publish_switch(mqtt_topics.WINDOWS_PASSENGER, 'Window passenger')
         self.__publish_switch(mqtt_topics.WINDOWS_REAR_LEFT, 'Window rear left')
         self.__publish_switch(mqtt_topics.WINDOWS_REAR_RIGHT, 'Window rear right')
-        self.__publish_switch(mqtt_topics.WINDOWS_SUN_ROOF, 'Sun roof')
+        self.__publish_switch(mqtt_topics.WINDOWS_SUN_ROOF, 'Sun roof', enabled=self.__vehicle_state.has_sunroof())
         # Locks
         self.__publish_lock(mqtt_topics.DOORS_LOCKED, 'Doors Lock', icon='mdi:car-door-lock')
         # Number
@@ -90,8 +91,6 @@ class HomeAssistantDiscovery():
         self.__publish_binary_sensor(mqtt_topics.LIGHTS_DIPPED_BEAM, 'Lights Dipped Beam', device_class='light',
                                      icon='mdi:car-light-dimmed')
 
-        self.already_ran = True
-
     def __publish_vehicle_tracker(self):
         self.__publish_ha_discovery_message('device_tracker', 'Vehicle position', {
             'json_attributes_topic': self.__get_vehicle_topic(mqtt_topics.LOCATION_POSITION)
@@ -114,14 +113,16 @@ class HomeAssistantDiscovery():
             self,
             topic: str,
             name: str,
+            enabled=True,
     ):
         self.__publish_ha_discovery_message('switch', name, {
             'state_topic': self.__get_vehicle_topic(topic),
             'command_topic': self.__get_vehicle_topic(topic) + '/set',
-            'payload_on': 'true',
-            'payload_off': 'false',
+            'payload_on': 'True',
+            'payload_off': 'False',
             'optimistic': False,
             'qos': 0,
+            'enabled_by_default': enabled,
         })
 
     def __publish_lock(
@@ -133,8 +134,10 @@ class HomeAssistantDiscovery():
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
             'command_topic': self.__get_vehicle_topic(topic) + '/set',
-            'payload_lock': 'true',
-            'payload_unlock': 'false',
+            'payload_lock': 'True',
+            'payload_unlock': 'False',
+            'state_locked': 'True',
+            'state_unlocked': 'False',
             'optimistic': False,
             'qos': 0,
         }
@@ -212,19 +215,26 @@ class HomeAssistantDiscovery():
 
     def __get_device_node(self):
         vin = self.__get_vin()
+        brand_name = str(self.__vin_info.brand_name, encoding='utf8')
+        model_name = str(self.__vin_info.model_name, encoding='utf8')
+        model_year = str(self.__vin_info.model_year)
+        color_name = str(self.__vin_info.color_name, encoding='utf8')
+        series = str(self.__vin_info.series)
         return {
-            'name': f'MG {vin}',
-            'manufacturer': 'SAIC Motor',
+            'name': f'{brand_name} {model_name} {vin}',
+            'manufacturer': brand_name,
+            'model': f'{model_name} {model_year} {color_name}',
+            'hw_version': series,
             'identifiers': [vin],
         }
 
     def __get_vin(self):
-        vin = self.vehicle_state.vin
+        vin = self.__vehicle_state.vin
         return vin
 
     def __get_vehicle_topic(self, topic: str) -> str:
-        vehicle_topic = self.vehicle_state.get_topic(topic)
-        publisher = self.vehicle_state.publisher
+        vehicle_topic = self.__vehicle_state.get_topic(topic)
+        publisher = self.__vehicle_state.publisher
         if isinstance(publisher, MqttClient):
             return str(publisher.get_topic(vehicle_topic, no_prefix=False), encoding='utf8')
         return vehicle_topic
@@ -233,9 +243,9 @@ class HomeAssistantDiscovery():
         vin = self.__get_vin()
         unique_id = f'{vin}_{snake_case(sensor_name)}'
         final_payload = self.__get_common_attributes(unique_id, sensor_name) | payload
-        discovery_prefix = self.vehicle_state.publisher.configuration.ha_discovery_prefix
+        discovery_prefix = self.__vehicle_state.publisher.configuration.ha_discovery_prefix
         ha_topic = f'{discovery_prefix}/{sensor_type}/{vin}_mg/{unique_id}/config'
-        self.vehicle_state.publisher.publish_json(ha_topic, final_payload, no_prefix=True)
+        self.__vehicle_state.publisher.publish_json(ha_topic, final_payload, no_prefix=True)
 
 
 def snake_case(s):
