@@ -148,7 +148,7 @@ class TestVehicleHandler(TestCase):
         publisher = Publisher(config)
         vin_info = VinInfo()
         vin_info.vin = VIN
-        account_prefix = ''
+        account_prefix = f'/vehicles/{VIN}'
         vehicle_state = VehicleState(publisher, account_prefix, VIN)
         self.vehicle_handler = VehicleHandler(config, saicapi, publisher, vin_info, vehicle_state)
 
@@ -198,7 +198,7 @@ class TestVehicleHandler(TestCase):
                                TYRES_REAR_RIGHT_PRESSURE)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.LIGHTS_MAIN_BEAM), LIGHTS_MAIN_BEAM)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.LIGHTS_DIPPED_BEAM), LIGHTS_DIPPED_BEAM)
-        self.assertEqual(35, len(self.vehicle_handler.publisher.map))
+        self.assertEqual(36, len(self.vehicle_handler.publisher.map))
 
     @patch.object(SaicApi, 'get_charging_status')
     def test_update_charge_status(self, mocked_charge_status):
