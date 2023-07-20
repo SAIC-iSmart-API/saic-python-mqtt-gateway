@@ -4,6 +4,7 @@ CLIMATE_FRONT_WINDOW_HEAT = CLIMATE + '/frontWindowDefrosterHeating'
 CLIMATE_EXTERIOR_TEMPERATURE = CLIMATE + '/exteriorTemperature'
 CLIMATE_INTERIOR_TEMPERATURE = CLIMATE + '/interiorTemperature'
 CLIMATE_REMOTE_CLIMATE_STATE = CLIMATE + '/remoteClimateState'
+CLIMATE_REMOTE_TEMPERATURE = CLIMATE + '/remoteTemperature'
 
 WINDOWS = 'windows'
 WINDOWS_DRIVER = WINDOWS + '/driver'

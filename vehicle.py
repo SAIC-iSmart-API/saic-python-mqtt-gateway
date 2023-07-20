@@ -418,6 +418,8 @@ class VehicleState:
         match rmt_htd_rr_wnd_st:
             case 0:
                 return 'off'
+            case 1:
+                return 'blowingOnly'
             case 2:
                 return 'on'
             case 5:

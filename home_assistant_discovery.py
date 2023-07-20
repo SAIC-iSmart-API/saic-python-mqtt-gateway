@@ -102,10 +102,10 @@ class HomeAssistantDiscovery:
             'temperature_unit': 'C',
             'mode_command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE) + '/set',
             'mode_state_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE),
-            'modes': ['off', 'on', 'front'],
+            'modes': ['off', 'on', 'blowingOnly', 'front'],
             'current_temperature_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_INTERIOR_TEMPERATURE),
             'current_temperature_template': '{{ value }}',
-            'temperature_command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE) + '/remoteTemperature/set',
+            'temperature_command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_TEMPERATURE) + '/set',
             'temperature_state_template': '{{ value | int }}',
         })
 
