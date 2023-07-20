@@ -33,6 +33,8 @@ class HomeAssistantDiscovery:
         # Standard sensors
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_SOC, 'SoC', device_class='battery', state_class='measurement',
                               unit_of_measurement='%')
+        self.__publish_sensor(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME, 'Remaining charging time',
+                              device_class='duration', state_class='measurement', unit_of_measurement='s')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE, 'Mileage', device_class='distance',
                               state_class='total_increasing', unit_of_measurement='km')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE_OF_DAY, 'Mileage of the day', device_class='distance',
@@ -102,10 +104,10 @@ class HomeAssistantDiscovery:
             'temperature_unit': 'C',
             'mode_command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE) + '/set',
             'mode_state_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE),
-            'modes': ['off', 'on', 'front'],
+            'modes': ['off', 'on', 'blowingOnly', 'front'],
             'current_temperature_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_INTERIOR_TEMPERATURE),
             'current_temperature_template': '{{ value }}',
-            'temperature_command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE) + '/remoteTemperature/set',
+            'temperature_command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_TEMPERATURE) + '/set',
             'temperature_state_template': '{{ value | int }}',
         })
 

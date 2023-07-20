@@ -393,6 +393,10 @@ class VehicleState:
         self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_TYPE), charge_status.charging_type)
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGER_CONNECTED),
                                     charge_status.charging_gun_state)
+        # Only pubslish remaining charging time if the car is charging and we have current flowing
+        if charge_status.charging_gun_state and charge_mgmt_data.get_current() < 0:
+            self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME),
+                                         charge_mgmt_data.chrgngRmnngTime * 60)
         self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_CHARGE_STATE),
                                    VehicleState.datetime_to_str(datetime.datetime.now()))
         if (
@@ -418,6 +422,8 @@ class VehicleState:
         match rmt_htd_rr_wnd_st:
             case 0:
                 return 'off'
+            case 1:
+                return 'blowingOnly'
             case 2:
                 return 'on'
             case 5:
