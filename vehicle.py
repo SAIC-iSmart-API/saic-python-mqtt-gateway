@@ -46,6 +46,7 @@ class VehicleState:
         self.refresh_period_active = -1
         self.refresh_period_inactive = -1
         self.refresh_period_after_shutdown = -1
+        self.refresh_period_inactive_grace = -1
         self.target_soc = None
         self.refresh_mode = RefreshMode.OFF
         self.previous_refresh_mode = RefreshMode.OFF
@@ -61,14 +62,20 @@ class VehicleState:
         LOG.info(f'Setting inactive query interval in vehicle handler for VIN {self.vin} to {seconds} seconds')
         self.refresh_period_inactive = seconds
 
-    def set_refresh_period_after_shutdown(self, refresh_period_after_shutdown: int):
+    def set_refresh_period_after_shutdown(self, seconds: int):
+        self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_AFTER_SHUTDOWN), seconds)
+        LOG.info(
+            f'Setting after shutdown query interval in vehicle handler for VIN {self.vin} to {seconds} seconds')
+        self.refresh_period_after_shutdown = seconds
+
+    def set_refresh_period_inactive_grace(self, refresh_period_inactive_grace: int):
         if (
-                self.refresh_period_after_shutdown == -1
-                or self.refresh_period_after_shutdown != refresh_period_after_shutdown
+                self.refresh_period_inactive_grace == -1
+                or self.refresh_period_inactive_grace != refresh_period_inactive_grace
         ):
             self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_INACTIVE_GRACE),
-                                       refresh_period_after_shutdown)
-            self.refresh_period_after_shutdown = refresh_period_after_shutdown
+                                       refresh_period_inactive_grace)
+            self.refresh_period_inactive_grace = refresh_period_inactive_grace
 
     def update_target_soc(self, target_soc: TargetBatteryCode):
         if self.target_soc != target_soc:
@@ -79,6 +86,7 @@ class VehicleState:
         return self.refresh_period_active != -1 \
             and self.refresh_period_inactive != -1 \
             and self.refresh_period_after_shutdown != -1 \
+            and self.refresh_period_inactive_grace != -1 \
             and self.target_soc != -1 \
             and self.refresh_mode
 
@@ -239,23 +247,32 @@ class VehicleState:
             # RefreshMode.PERIODIC is treated like default
             case _:
                 last_shutdown_plus_refresh = self.last_car_shutdown \
-                                             + datetime.timedelta(seconds=float(self.refresh_period_after_shutdown))
+                                             + datetime.timedelta(seconds=float(self.refresh_period_inactive_grace))
                 if self.last_successful_refresh is None:
                     self.mark_successful_refresh()
                     return True
+
                 if self.last_car_activity > self.last_successful_refresh:
                     return True
-                if (
-                        self.hv_battery_active
-                        or last_shutdown_plus_refresh > datetime.datetime.now()
-                ):
-                    LOG.debug('HV battery is active or refresh period after shutdown has passed')
-                    return self.last_successful_refresh < datetime.datetime.now() \
-                        - datetime.timedelta(seconds=float(self.refresh_period_active))
-                else:
-                    LOG.debug('HV battery is inactive or refresh period after shutdown is not over yet')
-                    return self.last_successful_refresh < datetime.datetime.now() \
-                        - datetime.timedelta(seconds=float(self.refresh_period_inactive))
+
+                if self.hv_battery_active:
+                    result = self.last_successful_refresh < datetime.datetime.now() - datetime.timedelta(
+                        seconds=float(self.refresh_period_active))
+                    LOG.debug(f'HV battery is active. Should refresh: {result}')
+                    return result
+
+                if last_shutdown_plus_refresh > datetime.datetime.now():
+                    result = self.last_successful_refresh < datetime.datetime.now() - datetime.timedelta(
+                        seconds=float(self.refresh_period_after_shutdown))
+                    LOG.debug(f'Refresh grace period after shutdown has not passed. Should refresh: {result}')
+                    return result
+
+                result = self.last_successful_refresh < datetime.datetime.now() - datetime.timedelta(
+                    seconds=float(self.refresh_period_inactive))
+                LOG.debug(
+                    f'HV battery is inactive and refresh period after shutdown is over. Should refresh: {result}'
+                )
+                return result
 
     def mark_successful_refresh(self):
         self.last_successful_refresh = datetime.datetime.now()
@@ -289,11 +306,13 @@ class VehicleState:
     def configure_missing(self):
         if self.refresh_period_active == -1:
             self.set_refresh_period_active(30)
+        if self.refresh_period_after_shutdown == -1:
+            self.set_refresh_period_after_shutdown(120)
         if self.refresh_period_inactive == -1:
             # in seconds (Once a day to protect your 12V battery)
             self.set_refresh_period_inactive(86400)
-        if self.refresh_period_after_shutdown == -1:
-            self.set_refresh_period_after_shutdown(600)
+        if self.refresh_period_inactive_grace == -1:
+            self.set_refresh_period_inactive_grace(600)
         if self.refresh_mode == RefreshMode.OFF:
             self.set_refresh_mode(RefreshMode.PERIODIC)
 
@@ -318,10 +337,16 @@ class VehicleState:
                     self.set_refresh_period_inactive(seconds)
                 except ValueError:
                     raise MqttGatewayException(f'Error setting value for payload {payload}')
-            case mqtt_topics.REFRESH_PERIOD_INACTIVE_GRACE:
+            case mqtt_topics.REFRESH_PERIOD_AFTER_SHUTDOWN:
                 try:
                     seconds = int(payload)
                     self.set_refresh_period_after_shutdown(seconds)
+                except ValueError:
+                    raise MqttGatewayException(f'Error setting value for payload {payload}')
+            case mqtt_topics.REFRESH_PERIOD_INACTIVE_GRACE:
+                try:
+                    seconds = int(payload)
+                    self.set_refresh_period_inactive_grace(seconds)
                 except ValueError:
                     raise MqttGatewayException(f'Error setting value for payload {payload}')
             case _:
