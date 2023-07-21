@@ -134,16 +134,20 @@ class VehicleHandler:
                 case mqtt_topics.DRIVETRAIN_HV_BATTERY_ACTIVE:
                     match msg.payload.decode().strip().lower():
                         case 'true':
+                            LOG.info("HV battery is now active")
                             self.vehicle_state.set_hv_battery_active(True)
                         case 'false':
+                            LOG.info("HV battery is now inactive")
                             self.vehicle_state.set_hv_battery_active(False)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
                 case mqtt_topics.DRIVETRAIN_CHARGING:
                     match msg.payload.decode().strip().lower():
                         case 'true':
+                            LOG.info("Charging will be started")
                             self.saic_api.start_charging_with_retry(self.vin_info)
                         case 'false':
+                            LOG.info("Charging will be stopped")
                             self.saic_api.control_charging(True, self.vin_info)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
@@ -159,6 +163,7 @@ class VehicleHandler:
                             LOG.info('A/C will be switched on')
                             self.saic_api.start_ac(self.vin_info)
                         case 'front':
+                            LOG.info("A/C will be set to front seats only")
                             self.saic_api.start_ac_blowing(self.vin_info)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
@@ -195,6 +200,7 @@ class VehicleHandler:
                 case mqtt_topics.DRIVETRAIN_SOC_TARGET:
                     payload = msg.payload.decode().strip()
                     try:
+                        LOG.info("Setting SoC target to %s", payload)
                         target_battery_code = TargetBatteryCode.from_percentage(int(payload))
                         self.vehicle_state.update_target_soc(target_battery_code)
                         self.saic_api.set_target_battery_soc(target_battery_code, self.vin_info)
