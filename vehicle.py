@@ -443,6 +443,7 @@ class VehicleState:
             self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_MODE), mode.value)
             self.previous_refresh_mode = self.refresh_mode
             self.refresh_mode = mode
+            LOG.debug(f'Refresh mode set to {mode.value}')
 
     def has_sunroof(self):
         return self.__get_property_value('Sunroof') != '0'
