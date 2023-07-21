@@ -37,6 +37,12 @@ class HomeAssistantDiscovery:
                               unit_of_measurement='%')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME, 'Remaining charging time',
                               device_class='duration', state_class='measurement', unit_of_measurement='s')
+        self.__publish_sensor(mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE, 'Scheduled Charging Start',
+                              value_template='{{ value_json["startTime"] }}', icon='mdi:clock-start')
+        self.__publish_sensor(mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE, 'Scheduled Charging End',
+                              value_template='{{ value_json["endTime"] }}', icon='mdi:clock-end')
+        self.__publish_sensor(mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE, 'Scheduled Charging Mode',
+                              value_template='{{ value_json["mode"] }}')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE, 'Mileage', device_class='distance',
                               state_class='total_increasing', unit_of_measurement='km')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE_OF_DAY, 'Mileage of the day', device_class='distance',
