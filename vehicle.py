@@ -446,7 +446,7 @@ class VehicleState:
 
     @staticmethod
     def datetime_to_str(dt: datetime.datetime) -> str:
-        return dt.strftime('%Y-%m-%d %H:%M:%S')
+        return datetime.datetime.astimezone(dt, tz=datetime.timezone.utc).isoformat()
 
     def set_refresh_mode(self, mode: RefreshMode):
         if (
