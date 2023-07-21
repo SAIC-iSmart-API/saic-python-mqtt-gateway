@@ -23,6 +23,8 @@ class HomeAssistantDiscovery:
         self.__publish_switch(mqtt_topics.WINDOWS_REAR_LEFT, 'Window rear left')
         self.__publish_switch(mqtt_topics.WINDOWS_REAR_RIGHT, 'Window rear right')
         self.__publish_switch(mqtt_topics.WINDOWS_SUN_ROOF, 'Sun roof', enabled=self.__vehicle_state.has_sunroof())
+        self.__publish_switch(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT, 'Rear window defroster heating',
+                              icon='mdi:car-defrost-rear', payload_on='on', payload_off='off')
         # Locks
         self.__publish_lock(mqtt_topics.DOORS_LOCKED, 'Doors Lock', icon='mdi:car-door-lock')
         # Number
@@ -121,16 +123,22 @@ class HomeAssistantDiscovery:
             topic: str,
             name: str,
             enabled=True,
+            icon: str | None = None,
+            payload_on='True',
+            payload_off='False',
     ):
-        self.__publish_ha_discovery_message('switch', name, {
+        payload = {
             'state_topic': self.__get_vehicle_topic(topic),
             'command_topic': self.__get_vehicle_topic(topic) + '/set',
-            'payload_on': 'True',
-            'payload_off': 'False',
+            'payload_on': payload_on,
+            'payload_off': payload_off,
             'optimistic': False,
             'qos': 0,
             'enabled_by_default': enabled,
-        })
+        }
+        if icon is not None:
+            payload['icon'] = icon
+        self.__publish_ha_discovery_message('switch', name, payload)
 
     def __publish_lock(
             self,
@@ -183,13 +191,15 @@ class HomeAssistantDiscovery:
             name: str,
             device_class: str | None = None,
             value_template: str = '{{ value }}',
+            payload_on: str = 'True',
+            payload_off: str = 'True',
             icon: str | None = None,
     ):
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
             'value_template': value_template,
-            'payload_on': 'True',
-            'payload_off': 'False',
+            'payload_on': payload_on,
+            'payload_off': payload_off,
         }
         if device_class is not None:
             payload['device_class'] = device_class
