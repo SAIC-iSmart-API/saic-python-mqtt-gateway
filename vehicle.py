@@ -394,13 +394,16 @@ class VehicleState:
         self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_TYPE), charge_status.charging_type)
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGER_CONNECTED),
                                     charge_status.charging_gun_state)
-        self.publisher.publish_json(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE), {
-            'startTime': "{:02d}:{:02d}".format(charge_mgmt_data.bmsReserStHourDspCmd,
-                                                charge_mgmt_data.bmsReserStMintueDspCmd),
-            'endTime': "{:02d}:{:02d}".format(charge_mgmt_data.bmsReserSpHourDspCmd,
-                                              charge_mgmt_data.bmsReserSpMintueDspCmd),
-            'mode': charge_mgmt_data.bmsReserCtrlDspCmd,
-        })
+
+        if has_scheduled_charging_info(charge_mgmt_data):
+            self.publisher.publish_json(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE), {
+                'startTime': "{:02d}:{:02d}".format(charge_mgmt_data.bmsReserStHourDspCmd,
+                                                    charge_mgmt_data.bmsReserStMintueDspCmd),
+                'endTime': "{:02d}:{:02d}".format(charge_mgmt_data.bmsReserSpHourDspCmd,
+                                                  charge_mgmt_data.bmsReserSpMintueDspCmd),
+                'mode': charge_mgmt_data.bmsReserCtrlDspCmd,
+            })
+
         # Only publish remaining charging time if the car is charging and we have current flowing
         if charge_status.charging_gun_state and charge_mgmt_data.get_current() < 0:
             self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME),
@@ -466,3 +469,10 @@ class VehicleState:
             if pdict is not None and isinstance(pdict, dict) and 'value' in pdict:
                 return pdict['value']
         return None
+
+
+def has_scheduled_charging_info(charge_mgmt_data: OtaChrgMangDataResp):
+    return charge_mgmt_data.bmsReserStHourDspCmd is not None \
+        and charge_mgmt_data.bmsReserStMintueDspCmd is not None \
+        and charge_mgmt_data.bmsReserSpHourDspCmd is not None \
+        and charge_mgmt_data.bmsReserSpMintueDspCmd is not None
