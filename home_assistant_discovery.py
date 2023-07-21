@@ -303,6 +303,9 @@ class HomeAssistantDiscovery:
             'device': self.__get_device_node(),
             'unique_id': id,
             'object_id': id,
+            'availability_topic': self.__get_system_topic(mqtt_topics.INTERNAL_LWT),
+            'payload_available': 'online',
+            'payload_not_available': 'offline',
         }
 
     def __get_device_node(self):
@@ -323,6 +326,12 @@ class HomeAssistantDiscovery:
     def __get_vin(self):
         vin = self.__vehicle_state.vin
         return vin
+
+    def __get_system_topic(self, topic: str) -> str:
+        publisher = self.__vehicle_state.publisher
+        if isinstance(publisher, MqttClient):
+            return str(publisher.get_topic(topic, no_prefix=False), encoding='utf8')
+        return topic
 
     def __get_vehicle_topic(self, topic: str) -> str:
         vehicle_topic = self.__vehicle_state.get_topic(topic)
