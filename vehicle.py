@@ -398,6 +398,8 @@ class VehicleState:
         if charge_status.charging_gun_state and charge_mgmt_data.get_current() < 0:
             self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME),
                                        charge_mgmt_data.chrgngRmnngTime * 60)
+        else:
+            self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME), 0)
         self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_CHARGE_STATE),
                                    VehicleState.datetime_to_str(datetime.datetime.now()))
         if (
