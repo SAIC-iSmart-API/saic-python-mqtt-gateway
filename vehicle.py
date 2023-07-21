@@ -31,6 +31,17 @@ class RefreshMode(Enum):
         return RefreshMode[mode.upper()]
 
 
+def to_charging_schedule_mode(charging_schedule_mode: int):
+    if charging_schedule_mode == 1:
+        return 'UNTIL_CONFIGURED_TIME'
+    if charging_schedule_mode == 2:
+        return 'DISABLED'
+    if charging_schedule_mode == 3:
+        return 'UNTIL_CONFIGURED_SOC'
+    else:
+        return f'UNKNOWN MODE {charging_schedule_mode}'
+
+
 class VehicleState:
     def __init__(self, publisher: Publisher, account_prefix: str, vin: str, wallbox_soc_topic: str = ''):
         self.publisher = publisher
@@ -401,7 +412,7 @@ class VehicleState:
                                                     charge_mgmt_data.bmsReserStMintueDspCmd),
                 'endTime': "{:02d}:{:02d}".format(charge_mgmt_data.bmsReserSpHourDspCmd,
                                                   charge_mgmt_data.bmsReserSpMintueDspCmd),
-                'mode': charge_mgmt_data.bmsReserCtrlDspCmd,
+                'mode': to_charging_schedule(charge_mgmt_data.bmsReserCtrlDspCmd),
             })
 
         # Only publish remaining charging time if the car is charging and we have current flowing
