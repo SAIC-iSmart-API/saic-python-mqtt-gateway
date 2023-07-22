@@ -263,7 +263,7 @@ class HomeAssistantDiscovery:
             device_class: str | None = None,
             value_template: str = '{{ value }}',
             payload_on: str = 'True',
-            payload_off: str = 'True',
+            payload_off: str = 'False',
             icon: str | None = None,
     ):
         payload = {
