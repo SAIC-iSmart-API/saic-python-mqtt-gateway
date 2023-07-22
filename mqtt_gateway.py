@@ -87,11 +87,6 @@ class VehicleHandler:
                 self.vehicle_state.configure_missing()
             if (
                     self.vehicle_state.is_complete()
-                    and self.configuration.ha_discovery_enabled
-            ):
-                self.ha_discovery.publish_ha_discovery_messages()
-            if (
-                    self.vehicle_state.is_complete()
                     and self.vehicle_state.should_refresh()
             ):
                 try:
@@ -106,6 +101,9 @@ class VehicleHandler:
                     await asyncio.sleep(float(30))
                 except AbrpApiException as ae:
                     LOG.exception('handle_vehicle loop failed during ABRP API call', exc_info=ae)
+                finally:
+                    if self.configuration.ha_discovery_enabled:
+                        self.ha_discovery.publish_ha_discovery_messages()
             else:
                 # car not active, wait a second
                 await asyncio.sleep(1.0)
