@@ -219,6 +219,7 @@ class VehicleHandler:
                     # set mode, period (in)-active,...
                     self.vehicle_state.configure_by_message(topic, msg)
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', 'Success')
+            self.vehicle_state.set_refresh_mode(RefreshMode.FORCE)
         except MqttGatewayException as e:
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed: {e.message}')
             LOG.exception(e.message, exc_info=e)
