@@ -314,7 +314,8 @@ class VehicleState:
             self.set_refresh_period_inactive(86400)
         if self.refresh_period_inactive_grace == -1:
             self.set_refresh_period_inactive_grace(600)
-        if self.refresh_mode == RefreshMode.OFF:
+        # Make sure the only refresh mode that is not supported at start is RefreshMode.PERIODIC
+        if self.refresh_mode in [RefreshMode.OFF, RefreshMode.FORCE]:
             self.set_refresh_mode(RefreshMode.PERIODIC)
 
     def configure_by_message(self, topic: str, msg: mqtt.MQTTMessage):
@@ -453,7 +454,7 @@ class VehicleState:
                 self.refresh_mode is None
                 or self.refresh_mode != mode
         ):
-            self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_MODE), mode.value)
+            LOG.info(f"Setting refresh mode to {mode.value}")
             self.previous_refresh_mode = self.refresh_mode
             self.refresh_mode = mode
 
