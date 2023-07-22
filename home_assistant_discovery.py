@@ -44,7 +44,8 @@ class HomeAssistantDiscovery:
                               icon='mdi:car-defrost-rear', payload_on='on', payload_off='off')
         # Locks
         self.__publish_lock(mqtt_topics.DOORS_LOCKED, 'Doors Lock', icon='mdi:car-door-lock')
-        self.__publish_lock(mqtt_topics.DOORS_BOOT, 'Boot Lock', icon='mdi:car-door-lock')
+        self.__publish_lock(mqtt_topics.DOORS_BOOT, 'Boot Lock', icon='mdi:car-door-lock', state_locked='False',
+                            state_unlocked='True')
 
         # Target SoC
         self.__publish_number(
@@ -180,14 +181,18 @@ class HomeAssistantDiscovery:
             topic: str,
             name: str,
             icon: str | None = None,
+            payload_lock: str = 'True',
+            payload_unlock: str = 'False',
+            state_locked: str = 'True',
+            state_unlocked: str = 'False',
     ):
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
             'command_topic': self.__get_vehicle_topic(topic) + '/set',
-            'payload_lock': 'True',
-            'payload_unlock': 'False',
-            'state_locked': 'True',
-            'state_unlocked': 'False',
+            'payload_lock': payload_lock,
+            'payload_unlock': payload_unlock,
+            'state_locked': state_locked,
+            'state_unlocked': state_unlocked,
             'optimistic': False,
             'qos': 0,
         }
