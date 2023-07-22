@@ -1,8 +1,11 @@
 import argparse
 import asyncio
 import datetime
+import faulthandler
 import logging
 import os
+import signal
+import sys
 import time
 import urllib.parse
 from typing import cast
@@ -128,7 +131,9 @@ class VehicleHandler:
         topic = self.get_topic_without_vehicle_prefix(msg.topic)
         try:
             if msg.retain:
-                raise MqttGatewayException('Message may not be retained')
+                raise MqttGatewayException(
+                    f'Message may not be retained but received a retained message on topic {topic}'
+                )
 
             match topic:
                 case mqtt_topics.DRIVETRAIN_HV_BATTERY_ACTIVE:
@@ -562,6 +567,10 @@ def check_bool(value):
 
 
 if __name__ == '__main__':
+    # Enable fault handler to get a thread dump on SIGQUIT
+    faulthandler.enable(file=sys.stderr, all_threads=True)
+    if hasattr(faulthandler, 'register'):
+        faulthandler.register(signal.SIGQUIT, chain=False)
     configuration = process_arguments()
 
     mqtt_gateway = MqttGateway(configuration)
