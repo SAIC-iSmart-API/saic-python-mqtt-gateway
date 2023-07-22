@@ -44,6 +44,7 @@ class HomeAssistantDiscovery:
                               icon='mdi:car-defrost-rear', payload_on='on', payload_off='off')
         # Locks
         self.__publish_lock(mqtt_topics.DOORS_LOCKED, 'Doors Lock', icon='mdi:car-door-lock')
+        self.__publish_lock(mqtt_topics.DOORS_BOOT, 'Boot Lock', icon='mdi:car-door-lock')
 
         # Target SoC
         self.__publish_number(

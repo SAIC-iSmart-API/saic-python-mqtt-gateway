@@ -167,6 +167,15 @@ class VehicleHandler:
                             self.saic_api.start_ac_blowing(self.vin_info)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
+                case mqtt_topics.DOORS_BOOT:
+                    match msg.payload.decode().strip().lower():
+                        case 'true':
+                            LOG.info(f'We cannot lock vehicle {self.vin_info.vin} boot remotely')
+                        case 'false':
+                            LOG.info(f'Vehicle {self.vin_info.vin} boot will be unlocked')
+                            self.saic_api.open_tailgate(self.vin_info)
+                        case _:
+                            raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
                 case mqtt_topics.DOORS_LOCKED:
                     match msg.payload.decode().strip().lower():
                         case 'true':
