@@ -109,6 +109,7 @@ class VehicleHandler:
                 await asyncio.sleep(1.0)
 
     def update_vehicle_status(self) -> OtaRvmVehicleStatusResp25857:
+        LOG.info('Updating vehicle status')
         vehicle_status_rsp_msg = self.saic_api.get_vehicle_status_with_retry(self.vin_info)
         vehicle_status_response = cast(OtaRvmVehicleStatusResp25857, vehicle_status_rsp_msg.application_data)
         self.vehicle_state.handle_vehicle_status(vehicle_status_response)
@@ -116,6 +117,7 @@ class VehicleHandler:
         return vehicle_status_response
 
     def update_charge_status(self) -> OtaChrgMangDataResp:
+        LOG.info('Updating charging status')
         chrg_mgmt_data_rsp_msg = self.saic_api.get_charging_status_with_retry(self.vin_info)
         charge_mgmt_data = cast(OtaChrgMangDataResp, chrg_mgmt_data_rsp_msg.application_data)
         self.vehicle_state.handle_charge_status(charge_mgmt_data)
