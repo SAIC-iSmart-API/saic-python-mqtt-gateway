@@ -18,14 +18,14 @@ class HomeAssistantDiscovery:
         self.__publish_select(mqtt_topics.REFRESH_MODE, 'Gateway refresh mode', [m.value for m in RefreshMode],
                               icon='mdi:refresh')
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_ACTIVE, 'Gateway active refresh period',
-                              unit_of_measurement='s', icon='mdi:timer', retain=True, min=30, max=60 * 60, step=1)
+                              unit_of_measurement='s', icon='mdi:timer', min=30, max=60 * 60, step=1)
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_INACTIVE, 'Gateway inactive refresh period',
-                              unit_of_measurement='s', icon='mdi:timer', retain=True, min=1 * 60 * 60,
+                              unit_of_measurement='s', icon='mdi:timer', min=1 * 60 * 60,
                               max=5 * 24 * 60 * 60, step=1)
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_AFTER_SHUTDOWN, 'Gateway refresh period after car shutdown',
-                              unit_of_measurement='s', icon='mdi:timer', retain=True, min=30, max=12 * 60 * 60, step=1)
+                              unit_of_measurement='s', icon='mdi:timer', min=30, max=12 * 60 * 60, step=1)
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_INACTIVE_GRACE, 'Gateway grace period after car shutdown',
-                              unit_of_measurement='s', icon='mdi:timer', retain=True, min=30, max=12 * 60 * 60, step=1)
+                              unit_of_measurement='s', icon='mdi:timer', min=30, max=12 * 60 * 60, step=1)
 
         self.__publish_sensor(mqtt_topics.REFRESH_LAST_ACTIVITY, 'Last car activity', device_class='timestamp', )
         self.__publish_sensor(mqtt_topics.REFRESH_LAST_CHARGE_STATE, 'Last charge state', device_class='timestamp', )
