@@ -1,3 +1,5 @@
+import logging
+import os
 import threading
 import uuid
 import paho.mqtt.client as mqtt
@@ -5,6 +7,10 @@ import paho.mqtt.client as mqtt
 import mqtt_topics
 from configuration import Configuration
 from publisher import Publisher
+
+logging.basicConfig(format='%(asctime)s %(message)s')
+LOG = logging.getLogger(__name__)
+LOG.setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
 
 
 class MqttClient(Publisher):
@@ -40,22 +46,28 @@ class MqttClient(Publisher):
         self.client.loop_start()
         # wait until we've connected
         self.is_connected.wait()
-        self.publish_str(mqtt_topics.INTERNAL_LWT, 'online', False)
 
     def __on_connect(self, client, userdata, flags, rc) -> None:
         if rc == mqtt.CONNACK_ACCEPTED:
+            LOG.info('Connected to MQTT broker')
             self.is_connected.set()
-
             mqtt_account_prefix = self.get_mqtt_account_prefix()
             self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/+/+/set')
             self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/+/+/+/set')
             self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/{mqtt_topics.REFRESH_MODE}/set')
             self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/{mqtt_topics.REFRESH_PERIOD}/+/set')
             self.client.subscribe(f'{self.configuration.open_wb_topic}/lp/+/boolChargeStat')
+            self.refresh_lwt()
         else:
             SystemExit(f'Unable to connect to MQTT broker. Return code: {rc}')
 
     def __on_message(self, client, userdata, msg: mqtt.MQTTMessage) -> None:
+        try:
+            self.__on_message_real(client, userdata, msg)
+        except Exception as e:
+            LOG.exception(f'Error while processing MQTT message: {e}')
+
+    def __on_message_real(self, client, userdata, msg: mqtt.MQTTMessage) -> None:
         if msg.topic.endswith('/boolChargeStat'):
             index = self.get_index_from_open_wp_topic(msg.topic)
             if index in self.configuration.open_wb_lp_map:
@@ -119,3 +131,7 @@ class MqttClient(Publisher):
         open_wb_topic_removed = topic[len(f'{self.configuration.open_wb_topic}') + 1:]
         elements = open_wb_topic_removed.split('/')
         return elements[1]
+
+    def refresh_lwt(self):
+        self.publish_str(mqtt_topics.INTERNAL_LWT, 'online', False)
+
