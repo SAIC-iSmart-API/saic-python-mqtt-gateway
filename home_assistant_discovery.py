@@ -151,6 +151,7 @@ class HomeAssistantDiscovery:
             'current_temperature_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_INTERIOR_TEMPERATURE),
             'current_temperature_template': '{{ value }}',
             'temperature_command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_TEMPERATURE) + '/set',
+            'temperature_command_template': '{{ value | int }}',
             'temperature_state_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_TEMPERATURE),
             'temperature_state_template': '{{ value | int }}',
             'min_temp': self.__vehicle_state.get_min_ac_temperature(),
