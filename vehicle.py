@@ -32,9 +32,10 @@ class RefreshMode(Enum):
 
 
 class VehicleState:
-    def __init__(self, publisher: Publisher, account_prefix: str, vin: str, wallbox_soc_topic: str = ''):
+    def __init__(self, publisher: Publisher, account_prefix: str, vin: VinInfo, wallbox_soc_topic: str = ''):
         self.publisher = publisher
-        self.vin = vin
+        self.vin = vin.vin
+        self.series = str(vin.series).strip().upper()
         self.mqtt_vin_prefix = f'{account_prefix}'
         self.wallbox_soc_topic = wallbox_soc_topic
         self.last_car_activity = datetime.datetime.min
@@ -51,6 +52,8 @@ class VehicleState:
         self.refresh_mode = RefreshMode.OFF
         self.previous_refresh_mode = RefreshMode.OFF
         self.properties = {}
+        self.__remote_ac_temp = None
+        self.__remote_ac_running = False
 
     def set_refresh_period_active(self, seconds: int):
         self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_ACTIVE), seconds)
@@ -182,6 +185,8 @@ class VehicleState:
 
         self.publisher.publish_str(self.get_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE),
                                    VehicleState.to_remote_climate(remote_climate_status))
+        self.__remote_ac_running = remote_climate_status == 2
+
         rear_window_heat_state = basic_vehicle_status.rmt_htd_rr_wnd_st
         self.publisher.publish_str(self.get_topic(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT),
                                    'off' if rear_window_heat_state == 0 else 'on')
@@ -317,6 +322,8 @@ class VehicleState:
         # Make sure the only refresh mode that is not supported at start is RefreshMode.PERIODIC
         if self.refresh_mode in [RefreshMode.OFF, RefreshMode.FORCE]:
             self.set_refresh_mode(RefreshMode.PERIODIC)
+        if self.__remote_ac_temp is None:
+            self.set_ac_temperature(22)
 
     def configure_by_message(self, topic: str, msg: mqtt.MQTTMessage):
         payload = msg.payload.decode().lower()
@@ -471,6 +478,35 @@ class VehicleState:
             if pdict is not None and isinstance(pdict, dict) and 'value' in pdict:
                 return pdict['value']
         return None
+
+    def set_ac_temperature(self, temp) -> bool:
+        temp = max(self.get_min_ac_temperature(), min(self.get_max_ac_temperature(), temp))
+        if (self.__remote_ac_temp is None) or (self.__remote_ac_temp != temp):
+            self.__remote_ac_temp = temp
+            self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_REMOTE_TEMPERATURE), temp)
+            return True
+        return False
+
+    def get_ac_temperature_idx(self):
+        if self.series.startswith('EH32'):
+            return 3 + self.__remote_ac_temp - self.get_min_ac_temperature()
+        else:
+            return 2 + self.__remote_ac_temp - self.get_min_ac_temperature()
+
+    def get_min_ac_temperature(self):
+        if self.series.startswith('EH32'):
+            return 17
+        else:
+            return 16
+
+    def get_max_ac_temperature(self):
+        if self.series.startswith('EH32'):
+            return 33
+        else:
+            return 28
+
+    def is_remote_ac_running(self):
+        return self.__remote_ac_running
 
 
 def has_scheduled_charging_info(charge_mgmt_data: OtaChrgMangDataResp):
