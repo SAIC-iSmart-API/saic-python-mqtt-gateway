@@ -288,7 +288,7 @@ class MqttGateway:
                 LOG.debug(f'SoC for wallbox is published over MQTT topic: {wallbox_soc_topic}')
             else:
                 wallbox_soc_topic = ''
-            vehicle_state = VehicleState(self.publisher, account_prefix, vin_info.vin, wallbox_soc_topic)
+            vehicle_state = VehicleState(self.publisher, account_prefix, vin_info, wallbox_soc_topic)
             vehicle_state.configure(vin_info)
 
             vehicle_handler = VehicleHandler(
