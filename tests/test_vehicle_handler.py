@@ -32,13 +32,14 @@ DRIVETRAIN_MILEAGE_SINCE_LAST_CHARGE = 5
 DRIVETRAIN_SOC_KWH = 42
 DRIVETRAIN_CHARGING_TYPE = 1
 DRIVETRAIN_CHARGER_CONNECTED = True
+DRIVETRAIN_REMAINING_CHARGING_TIME = 0
 DRIVETRAIN_LAST_CHARGE_ENDING_POWER = 200
 DRIVETRAIN_TOTAL_BATTERY_CAPACITY = 500
 
 CLIMATE_INTERIOR_TEMPERATURE = 22
 CLIMATE_EXTERIOR_TEMPERATURE = 18
 CLIMATE_REMOTE_CLIMATE_STATE = 2
-CLIMATE_BACK_WINDOW_HEAT = 7
+CLIMATE_BACK_WINDOW_HEAT = 'on'
 
 LOCATION_SPEED = 0.0
 LOCATION_HEADING = 42
@@ -148,8 +149,9 @@ class TestVehicleHandler(TestCase):
         publisher = Publisher(config)
         vin_info = VinInfo()
         vin_info.vin = VIN
+        vin_info.series = 'EH32 S'
         account_prefix = f'/vehicles/{VIN}'
-        vehicle_state = VehicleState(publisher, account_prefix, VIN)
+        vehicle_state = VehicleState(publisher, account_prefix, vin_info)
         self.vehicle_handler = VehicleHandler(config, saicapi, publisher, vin_info, vehicle_state)
 
     @patch.object(SaicApi, 'get_vehicle_status_with_retry')
@@ -220,11 +222,13 @@ class TestVehicleHandler(TestCase):
                                DRIVETRAIN_CHARGING_TYPE)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_CHARGER_CONNECTED),
                                DRIVETRAIN_CHARGER_CONNECTED)
+        self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME),
+                               DRIVETRAIN_REMAINING_CHARGING_TIME)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_LAST_CHARGE_ENDING_POWER),
                                DRIVETRAIN_LAST_CHARGE_ENDING_POWER)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_TOTAL_BATTERY_CAPACITY),
                                DRIVETRAIN_TOTAL_BATTERY_CAPACITY)
-        self.assertEqual(13, len(self.vehicle_handler.publisher.map))
+        self.assertEqual(14, len(self.vehicle_handler.publisher.map))
 
     def assert_mqtt_topic(self, topic: str, value):
         mqtt_map = self.vehicle_handler.publisher.map

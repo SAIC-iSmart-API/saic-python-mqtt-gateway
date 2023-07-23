@@ -156,6 +156,17 @@ class VehicleHandler:
                             self.saic_api.control_charging(True, self.vin_info)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
+                case mqtt_topics.CLIMATE_REMOTE_TEMPERATURE:
+                    payload = msg.payload.decode().strip()
+                    try:
+                        LOG.info("Setting remote climate target temperature to %s", payload)
+                        temp = int(payload)
+                        changed = self.vehicle_state.set_ac_temperature(temp)
+                        if changed and self.vehicle_state.is_remote_ac_running():
+                            self.saic_api.start_ac(self.vin_info, temperature_idx=self.vehicle_state.get_ac_temperature_idx())
+
+                    except ValueError as e:
+                        raise MqttGatewayException(f'Error setting SoC target: {e}')
                 case mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE:
                     match msg.payload.decode().strip().lower():
                         case 'off':
@@ -166,7 +177,7 @@ class VehicleHandler:
                             self.saic_api.start_ac_blowing(self.vin_info)
                         case 'on':
                             LOG.info('A/C will be switched on')
-                            self.saic_api.start_ac(self.vin_info)
+                            self.saic_api.start_ac(self.vin_info, temperature_idx=self.vehicle_state.get_ac_temperature_idx())
                         case 'front':
                             LOG.info("A/C will be set to front seats only")
                             self.saic_api.start_ac_blowing(self.vin_info)
