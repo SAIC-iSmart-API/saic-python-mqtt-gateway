@@ -35,10 +35,12 @@ class MqttClient(Publisher):
                                             password=self.configuration.mqtt_password)
             else:
                 self.client.username_pw_set(username=self.configuration.mqtt_user)
+        self.client.will_set(self.get_topic(mqtt_topics.INTERNAL_LWT, False).decode('utf8'), payload='offline', retain=True)
         self.client.connect(host=self.host, port=self.port)
         self.client.loop_start()
         # wait until we've connected
         self.is_connected.wait()
+        self.publish_str(mqtt_topics.INTERNAL_LWT, 'online', False)
 
     def __on_connect(self, client, userdata, flags, rc) -> None:
         if rc == mqtt.CONNACK_ACCEPTED:

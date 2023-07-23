@@ -1,8 +1,11 @@
 import argparse
 import asyncio
 import datetime
+import faulthandler
 import logging
 import os
+import signal
+import sys
 import time
 import urllib.parse
 from typing import cast
@@ -87,11 +90,6 @@ class VehicleHandler:
                 self.vehicle_state.configure_missing()
             if (
                     self.vehicle_state.is_complete()
-                    and self.configuration.ha_discovery_enabled
-            ):
-                self.ha_discovery.publish_ha_discovery_messages()
-            if (
-                    self.vehicle_state.is_complete()
                     and self.vehicle_state.should_refresh()
             ):
                 try:
@@ -106,11 +104,15 @@ class VehicleHandler:
                     await asyncio.sleep(float(30))
                 except AbrpApiException as ae:
                     LOG.exception('handle_vehicle loop failed during ABRP API call', exc_info=ae)
+                finally:
+                    if self.configuration.ha_discovery_enabled:
+                        self.ha_discovery.publish_ha_discovery_messages()
             else:
                 # car not active, wait a second
                 await asyncio.sleep(1.0)
 
     def update_vehicle_status(self) -> OtaRvmVehicleStatusResp25857:
+        LOG.info('Updating vehicle status')
         vehicle_status_rsp_msg = self.saic_api.get_vehicle_status_with_retry(self.vin_info)
         vehicle_status_response = cast(OtaRvmVehicleStatusResp25857, vehicle_status_rsp_msg.application_data)
         self.vehicle_state.handle_vehicle_status(vehicle_status_response)
@@ -118,6 +120,7 @@ class VehicleHandler:
         return vehicle_status_response
 
     def update_charge_status(self) -> OtaChrgMangDataResp:
+        LOG.info('Updating charging status')
         chrg_mgmt_data_rsp_msg = self.saic_api.get_charging_status_with_retry(self.vin_info)
         charge_mgmt_data = cast(OtaChrgMangDataResp, chrg_mgmt_data_rsp_msg.application_data)
         self.vehicle_state.handle_charge_status(charge_mgmt_data)
@@ -128,22 +131,28 @@ class VehicleHandler:
         topic = self.get_topic_without_vehicle_prefix(msg.topic)
         try:
             if msg.retain:
-                raise MqttGatewayException('Message may not be retained')
+                raise MqttGatewayException(
+                    f'Message may not be retained but received a retained message on topic {topic}'
+                )
 
             match topic:
                 case mqtt_topics.DRIVETRAIN_HV_BATTERY_ACTIVE:
                     match msg.payload.decode().strip().lower():
                         case 'true':
+                            LOG.info("HV battery is now active")
                             self.vehicle_state.set_hv_battery_active(True)
                         case 'false':
+                            LOG.info("HV battery is now inactive")
                             self.vehicle_state.set_hv_battery_active(False)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
                 case mqtt_topics.DRIVETRAIN_CHARGING:
                     match msg.payload.decode().strip().lower():
                         case 'true':
+                            LOG.info("Charging will be started")
                             self.saic_api.start_charging_with_retry(self.vin_info)
                         case 'false':
+                            LOG.info("Charging will be stopped")
                             self.saic_api.control_charging(True, self.vin_info)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
@@ -159,7 +168,17 @@ class VehicleHandler:
                             LOG.info('A/C will be switched on')
                             self.saic_api.start_ac(self.vin_info)
                         case 'front':
+                            LOG.info("A/C will be set to front seats only")
                             self.saic_api.start_ac_blowing(self.vin_info)
+                        case _:
+                            raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
+                case mqtt_topics.DOORS_BOOT:
+                    match msg.payload.decode().strip().lower():
+                        case 'true':
+                            LOG.info(f'We cannot lock vehicle {self.vin_info.vin} boot remotely')
+                        case 'false':
+                            LOG.info(f'Vehicle {self.vin_info.vin} boot will be unlocked')
+                            self.saic_api.open_tailgate(self.vin_info)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
                 case mqtt_topics.DOORS_LOCKED:
@@ -195,6 +214,7 @@ class VehicleHandler:
                 case mqtt_topics.DRIVETRAIN_SOC_TARGET:
                     payload = msg.payload.decode().strip()
                     try:
+                        LOG.info("Setting SoC target to %s", payload)
                         target_battery_code = TargetBatteryCode.from_percentage(int(payload))
                         self.vehicle_state.update_target_soc(target_battery_code)
                         self.saic_api.set_target_battery_soc(target_battery_code, self.vin_info)
@@ -204,6 +224,7 @@ class VehicleHandler:
                     # set mode, period (in)-active,...
                     self.vehicle_state.configure_by_message(topic, msg)
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', 'Success')
+            self.vehicle_state.set_refresh_mode(RefreshMode.FORCE)
         except MqttGatewayException as e:
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed: {e.message}')
             LOG.exception(e.message, exc_info=e)
@@ -546,6 +567,10 @@ def check_bool(value):
 
 
 if __name__ == '__main__':
+    # Enable fault handler to get a thread dump on SIGQUIT
+    faulthandler.enable(file=sys.stderr, all_threads=True)
+    if hasattr(faulthandler, 'register'):
+        faulthandler.register(signal.SIGQUIT, chain=False)
     configuration = process_arguments()
 
     mqtt_gateway = MqttGateway(configuration)

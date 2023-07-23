@@ -182,8 +182,9 @@ class VehicleState:
 
         self.publisher.publish_str(self.get_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE),
                                    VehicleState.to_remote_climate(remote_climate_status))
-        self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT),
-                                   basic_vehicle_status.rmt_htd_rr_wnd_st)
+        rear_window_heat_state = basic_vehicle_status.rmt_htd_rr_wnd_st
+        self.publisher.publish_str(self.get_topic(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT),
+                                   'off' if rear_window_heat_state == 0 else 'on')
 
         if basic_vehicle_status.mileage > 0:
             mileage = basic_vehicle_status.mileage / 10.0
@@ -313,7 +314,8 @@ class VehicleState:
             self.set_refresh_period_inactive(86400)
         if self.refresh_period_inactive_grace == -1:
             self.set_refresh_period_inactive_grace(600)
-        if self.refresh_mode == RefreshMode.OFF:
+        # Make sure the only refresh mode that is not supported at start is RefreshMode.PERIODIC
+        if self.refresh_mode in [RefreshMode.OFF, RefreshMode.FORCE]:
             self.set_refresh_mode(RefreshMode.PERIODIC)
 
     def configure_by_message(self, topic: str, msg: mqtt.MQTTMessage):
@@ -393,10 +395,22 @@ class VehicleState:
         self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_TYPE), charge_status.charging_type)
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGER_CONNECTED),
                                     charge_status.charging_gun_state)
-        # Only pubslish remaining charging time if the car is charging and we have current flowing
+
+        if has_scheduled_charging_info(charge_mgmt_data):
+            self.publisher.publish_json(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE), {
+                'startTime': "{:02d}:{:02d}".format(charge_mgmt_data.bmsReserStHourDspCmd,
+                                                    charge_mgmt_data.bmsReserStMintueDspCmd),
+                'endTime': "{:02d}:{:02d}".format(charge_mgmt_data.bmsReserSpHourDspCmd,
+                                                  charge_mgmt_data.bmsReserSpMintueDspCmd),
+                'mode': to_charging_schedule_mode(charge_mgmt_data.bmsReserCtrlDspCmd),
+            })
+
+        # Only publish remaining charging time if the car is charging and we have current flowing
         if charge_status.charging_gun_state and charge_mgmt_data.get_current() < 0:
             self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME),
-                                         charge_mgmt_data.chrgngRmnngTime * 60)
+                                       charge_mgmt_data.chrgngRmnngTime * 60)
+        else:
+            self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME), 0)
         self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_CHARGE_STATE),
                                    VehicleState.datetime_to_str(datetime.datetime.now()))
         if (
@@ -433,14 +447,14 @@ class VehicleState:
 
     @staticmethod
     def datetime_to_str(dt: datetime.datetime) -> str:
-        return dt.strftime('%Y-%m-%d %H:%M:%S')
+        return datetime.datetime.astimezone(dt, tz=datetime.timezone.utc).isoformat()
 
     def set_refresh_mode(self, mode: RefreshMode):
         if (
                 self.refresh_mode is None
                 or self.refresh_mode != mode
         ):
-            self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_MODE), mode.value)
+            LOG.info(f"Setting refresh mode to {mode.value}")
             self.previous_refresh_mode = self.refresh_mode
             self.refresh_mode = mode
             LOG.debug(f'Refresh mode set to {mode.value}')
@@ -457,3 +471,21 @@ class VehicleState:
             if pdict is not None and isinstance(pdict, dict) and 'value' in pdict:
                 return pdict['value']
         return None
+
+
+def has_scheduled_charging_info(charge_mgmt_data: OtaChrgMangDataResp):
+    return charge_mgmt_data.bmsReserStHourDspCmd is not None \
+        and charge_mgmt_data.bmsReserStMintueDspCmd is not None \
+        and charge_mgmt_data.bmsReserSpHourDspCmd is not None \
+        and charge_mgmt_data.bmsReserSpMintueDspCmd is not None
+
+
+def to_charging_schedule_mode(charging_schedule_mode: int):
+    if charging_schedule_mode == 1:
+        return 'UNTIL_CONFIGURED_TIME'
+    if charging_schedule_mode == 2:
+        return 'DISABLED'
+    if charging_schedule_mode == 3:
+        return 'UNTIL_CONFIGURED_SOC'
+    else:
+        return f'UNKNOWN MODE {charging_schedule_mode}'
