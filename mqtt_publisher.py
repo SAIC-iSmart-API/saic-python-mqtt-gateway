@@ -26,7 +26,7 @@ class MqttClient(Publisher):
         self.on_ac_state_update = None
         self.on_lp_charging = None
 
-        mqtt_client = mqtt.Client(str(self.publisher_id), transport=self.transport_protocol, protocol=mqtt.MQTTv31)
+        mqtt_client = mqtt.Client(str(self.publisher_id), transport=self.transport_protocol, protocol=mqtt.MQTTv311)
         mqtt_client.on_connect = self.__on_connect
         mqtt_client.on_message = self.__on_message
         self.client = mqtt_client
