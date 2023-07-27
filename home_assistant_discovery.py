@@ -1,5 +1,6 @@
 import inflection as inflection
 from saic_ismart_client.ota_v1_1.data_model import VinInfo
+from saic_ismart_client.common_model import ChargeCurrentLimitCode
 
 import mqtt_topics
 from mqtt_publisher import MqttClient
@@ -17,6 +18,8 @@ class HomeAssistantDiscovery:
         # Gateway Control
         self.__publish_select(mqtt_topics.REFRESH_MODE, 'Gateway refresh mode', [m.value for m in RefreshMode],
                               icon='mdi:refresh')
+        self.__publish_select(mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT, 'Charging current limit',
+                              [m.get_limit() for m in ChargeCurrentLimitCode], icon='mdi:current-ac')
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_ACTIVE, 'Gateway active refresh period',
                               unit_of_measurement='s', icon='mdi:timer', min=30, max=60 * 60, step=1)
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_INACTIVE, 'Gateway inactive refresh period',
