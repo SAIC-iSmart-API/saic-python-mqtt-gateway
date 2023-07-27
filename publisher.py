@@ -1,6 +1,7 @@
 import json
 import re
 
+import mqtt_topics
 from configuration import Configuration
 
 
@@ -82,6 +83,9 @@ class Publisher:
                     if isinstance(item, dict):
                         data[key] = self.anonymize(item)
         return data
+
+    def keepalive(self):
+        self.publish_str(mqtt_topics.INTERNAL_LWT, 'online', False)
 
     @staticmethod
     def anonymize_str(value: str) -> str:
