@@ -226,6 +226,7 @@ class VehicleHandler:
                     payload = msg.payload.decode().strip().upper()
                     if self.vehicle_state.target_soc is not None:
                         try:
+                            LOG.info("Setting charging current limit to %s", payload)
                             raw_charge_current_limit = str(payload)
                             charge_current_limit = ChargeCurrentLimitCode.to_code(raw_charge_current_limit)
                             self.saic_api.set_target_battery_soc(self.vehicle_state.target_soc, self.vin_info, charge_current_limit)
@@ -240,8 +241,8 @@ class VehicleHandler:
                     try:
                         LOG.info("Setting SoC target to %s", payload)
                         target_battery_code = TargetBatteryCode.from_percentage(int(payload))
-                        self.vehicle_state.update_target_soc(target_battery_code)
                         self.saic_api.set_target_battery_soc(target_battery_code, self.vin_info)
+                        self.vehicle_state.update_target_soc(target_battery_code)
                     except ValueError as e:
                         raise MqttGatewayException(f'Error setting SoC target: {e}')
                 case _:

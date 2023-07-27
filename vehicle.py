@@ -88,7 +88,7 @@ class VehicleState:
 
     def update_charge_current_limit(self, charge_current_limit: ChargeCurrentLimitCode):
         if self.charge_current_limit != charge_current_limit:
-            self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT), charge_current_limit.get_limit())
+            self.publisher.publish_str(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT), charge_current_limit.get_limit())
             self.charge_current_limit = charge_current_limit
 
     def is_complete(self) -> bool:
@@ -379,7 +379,7 @@ class VehicleState:
             try:
                 self.update_charge_current_limit(ChargeCurrentLimitCode(raw_charge_current_limit))
             except ValueError:
-                logging.warnint(f'Invalid charge current limit received: {raw_charge_current_limit}')
+                logging.warning(f'Invalid charge current limit received: {raw_charge_current_limit}')
 
         raw_target_soc = charge_mgmt_data.bmsOnBdChrgTrgtSOCDspCmd
         if raw_target_soc is not None:
