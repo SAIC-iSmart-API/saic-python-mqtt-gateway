@@ -82,12 +82,12 @@ class VehicleState:
             self.refresh_period_inactive_grace = refresh_period_inactive_grace
 
     def update_target_soc(self, target_soc: TargetBatteryCode):
-        if self.target_soc != target_soc:
+        if self.target_soc != target_soc and target_soc is not None:
             self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_TARGET), target_soc.get_percentage())
             self.target_soc = target_soc
 
     def update_charge_current_limit(self, charge_current_limit: ChargeCurrentLimitCode):
-        if self.charge_current_limit != charge_current_limit:
+        if self.charge_current_limit != charge_current_limit and charge_current_limit is not None:
             self.publisher.publish_str(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT), charge_current_limit.get_limit())
             self.charge_current_limit = charge_current_limit
 
@@ -96,7 +96,6 @@ class VehicleState:
             and self.refresh_period_inactive != -1 \
             and self.refresh_period_after_shutdown != -1 \
             and self.refresh_period_inactive_grace != -1 \
-            and self.target_soc != -1 \
             and self.refresh_mode
 
     def handle_vehicle_status(self, vehicle_status: OtaRvmVehicleStatusResp25857) -> None:
