@@ -458,8 +458,11 @@ class VehicleState:
 
     def set_refresh_mode(self, mode: RefreshMode):
         if (
-                self.refresh_mode is None
-                or self.refresh_mode != mode
+                mode is not None and
+                (
+                        self.refresh_mode is None
+                        or self.refresh_mode != mode
+                )
         ):
             new_mode_value = mode.value
             LOG.info(f"Setting refresh mode to {new_mode_value}")
