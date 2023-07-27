@@ -88,8 +88,14 @@ class VehicleState:
 
     def update_charge_current_limit(self, charge_current_limit: ChargeCurrentLimitCode):
         if self.charge_current_limit != charge_current_limit and charge_current_limit is not None:
-            self.publisher.publish_str(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT), charge_current_limit.get_limit())
-            self.charge_current_limit = charge_current_limit
+            try:
+                self.publisher.publish_str(
+                    self.get_topic(mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT),
+                    charge_current_limit.get_limit()
+                )
+                self.charge_current_limit = charge_current_limit
+            except ValueError:
+                LOG.exception(f'Unhandled charge current limit {charge_current_limit}')
 
     def is_complete(self) -> bool:
         return self.refresh_period_active != -1 \

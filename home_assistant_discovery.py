@@ -19,7 +19,8 @@ class HomeAssistantDiscovery:
         self.__publish_select(mqtt_topics.REFRESH_MODE, 'Gateway refresh mode', [m.value for m in RefreshMode],
                               icon='mdi:refresh')
         self.__publish_select(mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT, 'Charge current limit',
-                              [m.get_limit() for m in ChargeCurrentLimitCode], icon='mdi:current-ac')
+                              [m.get_limit() for m in ChargeCurrentLimitCode if m != ChargeCurrentLimitCode.C_IGNORE],
+                              icon='mdi:current-ac')
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_ACTIVE, 'Gateway active refresh period',
                               unit_of_measurement='s', icon='mdi:timer', min=30, max=60 * 60, step=1)
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_INACTIVE, 'Gateway inactive refresh period',
