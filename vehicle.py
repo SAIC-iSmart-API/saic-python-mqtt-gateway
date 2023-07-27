@@ -464,7 +464,9 @@ class VehicleState:
             new_mode_value = mode.value
             LOG.info(f"Setting refresh mode to {new_mode_value}")
             self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_MODE), new_mode_value)
-            self.previous_refresh_mode = self.refresh_mode
+            # Make sure we never store FORCE as previous refresh mode
+            if self.refresh_mode != RefreshMode.FORCE:
+                self.previous_refresh_mode = self.refresh_mode
             self.refresh_mode = mode
             LOG.debug(f'Refresh mode set to {new_mode_value}')
 
