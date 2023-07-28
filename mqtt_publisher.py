@@ -41,7 +41,11 @@ class MqttClient(Publisher):
                                             password=self.configuration.mqtt_password)
             else:
                 self.client.username_pw_set(username=self.configuration.mqtt_user)
-        self.client.will_set(self.get_topic(mqtt_topics.INTERNAL_LWT, False).decode('utf8'), payload='offline', retain=True)
+        self.client.will_set(
+            self.get_topic(mqtt_topics.INTERNAL_LWT, False).decode('utf8'),
+            payload='offline',
+            retain=True
+        )
         self.client.connect(host=self.host, port=self.port)
         self.client.loop_start()
         # wait until we've connected
@@ -57,7 +61,7 @@ class MqttClient(Publisher):
             self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/{mqtt_topics.REFRESH_MODE}/set')
             self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/{mqtt_topics.REFRESH_PERIOD}/+/set')
             self.client.subscribe(f'{self.configuration.open_wb_topic}/lp/+/boolChargeStat')
-            self.refresh_lwt()
+            self.keepalive()
         else:
             SystemExit(f'Unable to connect to MQTT broker. Return code: {rc}')
 
@@ -131,7 +135,3 @@ class MqttClient(Publisher):
         open_wb_topic_removed = topic[len(f'{self.configuration.open_wb_topic}') + 1:]
         elements = open_wb_topic_removed.split('/')
         return elements[1]
-
-    def refresh_lwt(self):
-        self.publish_str(mqtt_topics.INTERNAL_LWT, 'online', False)
-
