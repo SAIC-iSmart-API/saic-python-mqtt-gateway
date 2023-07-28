@@ -25,14 +25,6 @@ class Publisher:
     def publish_float(self, key: str, value: float, no_prefix: bool = False) -> None:
         self.map[key] = value
 
-    def reset_force_mode(self, vin: str, refresh_mode: str) -> None:
-        topic = f'{self.configuration.saic_user}/vehicles/{vin}/refresh/mode/set'
-        if (
-                vin in self.mode_by_vin
-                and self.mode_by_vin[vin] == 'force'
-        ):
-            self.publish_str(topic, refresh_mode)
-
     def remove_byte_strings(self, data: dict) -> dict:
         for key in data.keys():
             if isinstance(data[key], bytes):

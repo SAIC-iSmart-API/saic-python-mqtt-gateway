@@ -458,13 +458,20 @@ class VehicleState:
 
     def set_refresh_mode(self, mode: RefreshMode):
         if (
-                self.refresh_mode is None
-                or self.refresh_mode != mode
+                mode is not None and
+                (
+                        self.refresh_mode is None
+                        or self.refresh_mode != mode
+                )
         ):
-            LOG.info(f"Setting refresh mode to {mode.value}")
-            self.previous_refresh_mode = self.refresh_mode
+            new_mode_value = mode.value
+            LOG.info(f"Setting refresh mode to {new_mode_value}")
+            self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_MODE), new_mode_value)
+            # Make sure we never store FORCE as previous refresh mode
+            if self.refresh_mode != RefreshMode.FORCE:
+                self.previous_refresh_mode = self.refresh_mode
             self.refresh_mode = mode
-            LOG.debug(f'Refresh mode set to {mode.value}')
+            LOG.debug(f'Refresh mode set to {new_mode_value}')
 
     def has_sunroof(self):
         return self.__get_property_value('Sunroof') != '0'
