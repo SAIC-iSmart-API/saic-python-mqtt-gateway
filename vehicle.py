@@ -5,6 +5,7 @@ from enum import Enum
 from typing import cast
 
 import paho.mqtt.client as mqtt
+from saic_ismart_client.common_model import ScheduledChargingMode
 from saic_ismart_client.ota_v1_1.data_model import VinInfo
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
 from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp, RvsChargingStatus
@@ -368,12 +369,9 @@ class VehicleState:
                                      round(charge_mgmt_data.get_voltage(), 3))
         self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_POWER),
                                      round(charge_mgmt_data.get_power(), 3))
-        raw_target_soc = charge_mgmt_data.bmsOnBdChrgTrgtSOCDspCmd
-        if raw_target_soc is not None:
-            try:
-                self.update_target_soc(TargetBatteryCode(raw_target_soc))
-            except ValueError:
-                logging.warning(f'Invalid target SOC received: {raw_target_soc}')
+        target_soc = charge_mgmt_data.get_charge_target_soc()
+        if target_soc is not None:
+            self.update_target_soc(target_soc)
 
         soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
         if soc <= 100.0:
@@ -404,13 +402,16 @@ class VehicleState:
                                     charge_status.charging_gun_state)
 
         if has_scheduled_charging_info(charge_mgmt_data):
-            self.publisher.publish_json(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE), {
-                'startTime': "{:02d}:{:02d}".format(charge_mgmt_data.bmsReserStHourDspCmd,
-                                                    charge_mgmt_data.bmsReserStMintueDspCmd),
-                'endTime': "{:02d}:{:02d}".format(charge_mgmt_data.bmsReserSpHourDspCmd,
-                                                  charge_mgmt_data.bmsReserSpMintueDspCmd),
-                'mode': to_charging_schedule_mode(charge_mgmt_data.bmsReserCtrlDspCmd),
-            })
+            try:
+                self.publisher.publish_json(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE), {
+                    'startTime': "{:02d}:{:02d}".format(charge_mgmt_data.bmsReserStHourDspCmd,
+                                                        charge_mgmt_data.bmsReserStMintueDspCmd),
+                    'endTime': "{:02d}:{:02d}".format(charge_mgmt_data.bmsReserSpHourDspCmd,
+                                                      charge_mgmt_data.bmsReserSpMintueDspCmd),
+                    'mode': ScheduledChargingMode(charge_mgmt_data.bmsReserCtrlDspCmd).name,
+                })
+            except ValueError:
+                LOG.exception("Error parsing scheduled charging info")
 
         # Only publish remaining charging time if the car is charging and we have current flowing
         if charge_status.charging_gun_state and charge_mgmt_data.get_current() < 0:
@@ -521,14 +522,3 @@ def has_scheduled_charging_info(charge_mgmt_data: OtaChrgMangDataResp):
         and charge_mgmt_data.bmsReserStMintueDspCmd is not None \
         and charge_mgmt_data.bmsReserSpHourDspCmd is not None \
         and charge_mgmt_data.bmsReserSpMintueDspCmd is not None
-
-
-def to_charging_schedule_mode(charging_schedule_mode: int):
-    if charging_schedule_mode == 1:
-        return 'UNTIL_CONFIGURED_TIME'
-    if charging_schedule_mode == 2:
-        return 'DISABLED'
-    if charging_schedule_mode == 3:
-        return 'UNTIL_CONFIGURED_SOC'
-    else:
-        return f'UNKNOWN MODE {charging_schedule_mode}'

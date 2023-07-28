@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import datetime
 import faulthandler
+import json
 import logging
 import os
 import signal
@@ -14,7 +15,7 @@ import paho.mqtt.client as mqtt
 
 from home_assistant_discovery import HomeAssistantDiscovery
 from saic_ismart_client.abrp_api import AbrpApi, AbrpApiException
-from saic_ismart_client.common_model import TargetBatteryCode
+from saic_ismart_client.common_model import TargetBatteryCode, ScheduledChargingMode
 from saic_ismart_client.ota_v1_1.data_model import VinInfo, MpUserLoggingInRsp, MpAlarmSettingType
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
 from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp
@@ -232,6 +233,17 @@ class VehicleHandler:
                         self.saic_api.set_target_battery_soc(target_battery_code, self.vin_info)
                     except ValueError as e:
                         raise MqttGatewayException(f'Error setting SoC target: {e}')
+                case mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE:
+                    payload = msg.payload.decode().strip()
+                    try:
+                        LOG.info("Setting charging schedule to %s", payload)
+                        payload_json = json.loads(payload)
+                        start_time = datetime.time.fromisoformat(payload_json['startTime'])
+                        end_time = datetime.time.fromisoformat(payload_json['endTime'])
+                        mode = ScheduledChargingMode[payload_json['mode'].upper()]
+                        self.saic_api.set_schedule_charging(start_time, end_time, mode, self.vin_info)
+                    except Exception as e:
+                        raise MqttGatewayException(f'Error setting charging schedule: {e}')
                 case _:
                     # set mode, period (in)-active,...
                     self.vehicle_state.configure_by_message(topic, msg)
