@@ -8,7 +8,7 @@ import paho.mqtt.client as mqtt
 from saic_ismart_client.ota_v1_1.data_model import VinInfo
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
 from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp, RvsChargingStatus
-from saic_ismart_client.saic_api import SaicMessage, TargetBatteryCode
+from saic_ismart_client.saic_api import SaicMessage, TargetBatteryCode, ChargeCurrentLimitCode
 
 import mqtt_topics
 from Exceptions import MqttGatewayException
@@ -49,6 +49,7 @@ class VehicleState:
         self.refresh_period_after_shutdown = -1
         self.refresh_period_inactive_grace = -1
         self.target_soc = None
+        self.charge_current_limit = None
         self.refresh_mode = RefreshMode.OFF
         self.previous_refresh_mode = RefreshMode.OFF
         self.properties = {}
@@ -81,16 +82,26 @@ class VehicleState:
             self.refresh_period_inactive_grace = refresh_period_inactive_grace
 
     def update_target_soc(self, target_soc: TargetBatteryCode):
-        if self.target_soc != target_soc:
+        if self.target_soc != target_soc and target_soc is not None:
             self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_TARGET), target_soc.get_percentage())
             self.target_soc = target_soc
+
+    def update_charge_current_limit(self, charge_current_limit: ChargeCurrentLimitCode):
+        if self.charge_current_limit != charge_current_limit and charge_current_limit is not None:
+            try:
+                self.publisher.publish_str(
+                    self.get_topic(mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT),
+                    charge_current_limit.get_limit()
+                )
+                self.charge_current_limit = charge_current_limit
+            except ValueError:
+                LOG.exception(f'Unhandled charge current limit {charge_current_limit}')
 
     def is_complete(self) -> bool:
         return self.refresh_period_active != -1 \
             and self.refresh_period_inactive != -1 \
             and self.refresh_period_after_shutdown != -1 \
             and self.refresh_period_inactive_grace != -1 \
-            and self.target_soc != -1 \
             and self.refresh_mode
 
     def handle_vehicle_status(self, vehicle_status: OtaRvmVehicleStatusResp25857) -> None:
@@ -368,6 +379,13 @@ class VehicleState:
                                      round(charge_mgmt_data.get_voltage(), 3))
         self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_POWER),
                                      round(charge_mgmt_data.get_power(), 3))
+        raw_charge_current_limit = charge_mgmt_data.bmsAltngChrgCrntDspCmd
+        if raw_charge_current_limit is not None:
+            try:
+                self.update_charge_current_limit(ChargeCurrentLimitCode(raw_charge_current_limit))
+            except ValueError:
+                logging.warning(f'Invalid charge current limit received: {raw_charge_current_limit}')
+
         raw_target_soc = charge_mgmt_data.bmsOnBdChrgTrgtSOCDspCmd
         if raw_target_soc is not None:
             try:
