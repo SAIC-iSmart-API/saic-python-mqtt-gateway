@@ -6,6 +6,7 @@
 
 * Control charge current limit
 * Dynamic refresh period during charging
+* Force polling around scheduled charging start
 
 ## 0.3.0
 
