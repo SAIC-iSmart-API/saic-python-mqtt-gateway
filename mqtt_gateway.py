@@ -164,7 +164,8 @@ class VehicleHandler:
                         temp = int(payload)
                         changed = self.vehicle_state.set_ac_temperature(temp)
                         if changed and self.vehicle_state.is_remote_ac_running():
-                            self.saic_api.start_ac(self.vin_info, temperature_idx=self.vehicle_state.get_ac_temperature_idx())
+                            self.saic_api.start_ac(self.vin_info,
+                                                   temperature_idx=self.vehicle_state.get_ac_temperature_idx())
 
                     except ValueError as e:
                         raise MqttGatewayException(f'Error setting SoC target: {e}')
@@ -178,7 +179,8 @@ class VehicleHandler:
                             self.saic_api.start_ac_blowing(self.vin_info)
                         case 'on':
                             LOG.info('A/C will be switched on')
-                            self.saic_api.start_ac(self.vin_info, temperature_idx=self.vehicle_state.get_ac_temperature_idx())
+                            self.saic_api.start_ac(self.vin_info,
+                                                   temperature_idx=self.vehicle_state.get_ac_temperature_idx())
                         case 'front':
                             LOG.info("A/C will be set to front seats only")
                             self.saic_api.start_ac_blowing(self.vin_info)
@@ -230,13 +232,16 @@ class VehicleHandler:
                             LOG.info("Setting charging current limit to %s", payload)
                             raw_charge_current_limit = str(payload)
                             charge_current_limit = ChargeCurrentLimitCode.to_code(raw_charge_current_limit)
-                            self.saic_api.set_target_battery_soc(self.vehicle_state.target_soc, self.vin_info, charge_current_limit)
+                            self.saic_api.set_target_battery_soc(self.vehicle_state.target_soc, self.vin_info,
+                                                                 charge_current_limit)
                             self.vehicle_state.update_charge_current_limit(charge_current_limit)
                         except ValueError:
                             raise MqttGatewayException(f'Error setting value for payload {payload}')
                     else:
-                        logging.info(f'Unknown Target SOC: waiting for state update before changing charge current limit')
-                        raise MqttGatewayException(f'Error setting charge current limit - SOC {self.vehicle_state.target_soc}')
+                        logging.info(
+                            f'Unknown Target SOC: waiting for state update before changing charge current limit')
+                        raise MqttGatewayException(
+                            f'Error setting charge current limit - SOC {self.vehicle_state.target_soc}')
                 case mqtt_topics.DRIVETRAIN_SOC_TARGET:
                     payload = msg.payload.decode().strip()
                     try:

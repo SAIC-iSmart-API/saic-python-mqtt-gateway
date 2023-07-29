@@ -380,7 +380,10 @@ class VehicleState:
         self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_POWER),
                                      round(charge_mgmt_data.get_power(), 3))
         raw_charge_current_limit = charge_mgmt_data.bmsAltngChrgCrntDspCmd
-        if raw_charge_current_limit is not None:
+        if (
+                raw_charge_current_limit is not None
+                and raw_charge_current_limit != 0
+        ):
             try:
                 self.update_charge_current_limit(ChargeCurrentLimitCode(raw_charge_current_limit))
             except ValueError:

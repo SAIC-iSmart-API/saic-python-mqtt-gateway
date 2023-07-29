@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.4.0
+
+### Added
+
+* Control charge current limit
+
 ## 0.3.0
 
 ### Added
