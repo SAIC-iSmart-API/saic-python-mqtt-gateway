@@ -320,7 +320,13 @@ class MqttGateway:
                 LOG.debug(f'SoC for wallbox is published over MQTT topic: {wallbox_soc_topic}')
             else:
                 wallbox_soc_topic = ''
-            vehicle_state = VehicleState(self.publisher, account_prefix, vin_info, wallbox_soc_topic)
+            vehicle_state = VehicleState(
+                self.publisher,
+                account_prefix,
+                vin_info,
+                wallbox_soc_topic=wallbox_soc_topic,
+                charge_polling_min_percent=self.configuration.charge_dynamic_polling_min_percentage
+            )
             vehicle_state.configure(vin_info)
 
             vehicle_handler = VehicleHandler(
@@ -538,9 +544,15 @@ def process_arguments() -> Configuration:
                                                           'HA_DISCOVERY_PREFIX', dest='ha_discovery_prefix',
                             required=False, action=EnvDefault,
                             envvar='HA_DISCOVERY_PREFIX', default='homeassistant')
+        parser.add_argument('--charge-min-percentage',
+                            help='How many % points we should try to refresh the charge state. Environment Variable: '
+                                 'CHARGE_MIN_PERCENTAGE', dest='charge_dynamic_polling_min_percentage', required=False,
+                            action=EnvDefault, envvar='CHARGE_MIN_PERCENTAGE', default='1.0', type=check_positive_float)
+
         args = parser.parse_args()
         config.mqtt_user = args.mqtt_user
         config.mqtt_password = args.mqtt_password
+        config.charge_dynamic_polling_min_percentage = args.charge_dynamic_polling_min_percentage
         if args.saic_relogin_delay:
             config.saic_relogin_delay = args.saic_relogin_delay
         config.mqtt_topic = args.mqtt_topic
@@ -603,6 +615,13 @@ def check_positive(value):
     if ivalue <= 0:
         raise argparse.ArgumentTypeError(f'{ivalue} is an invalid positive int value')
     return ivalue
+
+
+def check_positive_float(value):
+    fvalue = float(value)
+    if fvalue <= 0:
+        raise argparse.ArgumentTypeError(f'{fvalue} is an invalid positive float value')
+    return fvalue
 
 
 def check_bool(value):
