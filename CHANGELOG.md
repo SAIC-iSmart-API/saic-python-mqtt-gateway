@@ -7,8 +7,6 @@
 * Keep polling for a configurable amount of time after the vehicle has been shutdown
 * Battery target load
 * Start/Stop charging
-* Configurable refresh interval after car shutdown
-* Configurable inactive grace period
 * Enhanced A/C control
 * Turn off message requests when refresh mode is off
 * Home Assistant auto-discovery
