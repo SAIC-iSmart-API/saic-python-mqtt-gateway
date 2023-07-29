@@ -5,6 +5,7 @@
 ### Added
 
 * Control charge current limit
+* Dynamic refresh period during charging
 
 ## 0.3.0
 
