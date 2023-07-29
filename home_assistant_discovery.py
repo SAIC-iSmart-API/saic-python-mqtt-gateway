@@ -1,4 +1,7 @@
+import json
+
 import inflection as inflection
+from saic_ismart_client.common_model import ScheduledChargingMode
 from saic_ismart_client.ota_v1_1.data_model import VinInfo
 
 import mqtt_topics
@@ -31,8 +34,11 @@ class HomeAssistantDiscovery:
         self.__publish_sensor(mqtt_topics.REFRESH_LAST_CHARGE_STATE, 'Last charge state', device_class='timestamp', )
         self.__publish_sensor(mqtt_topics.REFRESH_LAST_VEHICLE_STATE, 'Last vehicle state', device_class='timestamp', )
 
-        # AC
+        # Complex sensors
         self.__publish_remote_ac()
+        self.__publish_vehicle_tracker()
+        self.__publish_scheduled_charging()
+
         # Switches
         self.__publish_switch(mqtt_topics.DRIVETRAIN_CHARGING, 'Charging')
         self.__publish_switch(mqtt_topics.WINDOWS_DRIVER, 'Window driver')
@@ -46,7 +52,6 @@ class HomeAssistantDiscovery:
         self.__publish_lock(mqtt_topics.DOORS_LOCKED, 'Doors Lock', icon='mdi:car-door-lock')
         self.__publish_lock(mqtt_topics.DOORS_BOOT, 'Boot Lock', icon='mdi:car-door-lock', state_locked='False',
                             state_unlocked='True')
-
         # Target SoC
         self.__publish_number(
             mqtt_topics.DRIVETRAIN_SOC_TARGET,
@@ -60,19 +65,11 @@ class HomeAssistantDiscovery:
             icon='mdi:battery-charging-70',
         )
 
-        # Vehicle Tracker
-        self.__publish_vehicle_tracker()
         # Standard sensors
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_SOC, 'SoC', device_class='battery', state_class='measurement',
                               unit_of_measurement='%')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME, 'Remaining charging time',
                               device_class='duration', state_class='measurement', unit_of_measurement='s')
-        self.__publish_sensor(mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE, 'Scheduled Charging Start',
-                              value_template='{{ value_json["startTime"] }}', icon='mdi:clock-start')
-        self.__publish_sensor(mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE, 'Scheduled Charging End',
-                              value_template='{{ value_json["endTime"] }}', icon='mdi:clock-end')
-        self.__publish_sensor(mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE, 'Scheduled Charging Mode',
-                              value_template='{{ value_json["mode"] }}')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE, 'Mileage', device_class='distance',
                               state_class='total_increasing', unit_of_measurement='km')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE_OF_DAY, 'Mileage of the day', device_class='distance',
@@ -166,7 +163,7 @@ class HomeAssistantDiscovery:
             icon: str | None = None,
             payload_on='True',
             payload_off='False',
-    ):
+    ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
             'command_topic': self.__get_vehicle_topic(topic) + '/set',
@@ -178,7 +175,7 @@ class HomeAssistantDiscovery:
         }
         if icon is not None:
             payload['icon'] = icon
-        self.__publish_ha_discovery_message('switch', name, payload)
+        return self.__publish_ha_discovery_message('switch', name, payload)
 
     def __publish_lock(
             self,
@@ -189,7 +186,7 @@ class HomeAssistantDiscovery:
             payload_unlock: str = 'False',
             state_locked: str = 'True',
             state_unlocked: str = 'False',
-    ):
+    ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
             'command_topic': self.__get_vehicle_topic(topic) + '/set',
@@ -202,7 +199,7 @@ class HomeAssistantDiscovery:
         }
         if icon is not None:
             payload['icon'] = icon
-        self.__publish_ha_discovery_message('lock', name, payload)
+        return self.__publish_ha_discovery_message('lock', name, payload)
 
     def __publish_sensor(
             self,
@@ -213,7 +210,7 @@ class HomeAssistantDiscovery:
             unit_of_measurement: str | None = None,
             icon: str | None = None,
             value_template: str = '{{ value }}',
-    ):
+    ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
             'value_template': value_template,
@@ -227,7 +224,7 @@ class HomeAssistantDiscovery:
         if icon is not None:
             payload['icon'] = icon
 
-        self.__publish_ha_discovery_message('sensor', name, payload)
+        return self.__publish_ha_discovery_message('sensor', name, payload)
 
     def __publish_number(
             self,
@@ -243,7 +240,7 @@ class HomeAssistantDiscovery:
             min: float = 1.0,
             max: float = 100.0,
             step: float = 1.0,
-    ):
+    ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
             'command_topic': self.__get_vehicle_topic(topic) + '/set',
@@ -263,7 +260,37 @@ class HomeAssistantDiscovery:
         if icon is not None:
             payload['icon'] = icon
 
-        self.__publish_ha_discovery_message('number', name, payload)
+        return self.__publish_ha_discovery_message('number', name, payload)
+
+    def __publish_text(
+            self,
+            topic: str,
+            name: str,
+            icon: str | None = None,
+            value_template: str = '{{ value }}',
+            command_template: str = '{{ value }}',
+            retain: bool = False,
+            min: int | None = None,
+            max: int | None = None,
+            pattern: str | None = None,
+    ) -> str:
+        payload = {
+            'state_topic': self.__get_vehicle_topic(topic),
+            'command_topic': self.__get_vehicle_topic(topic) + '/set',
+            'value_template': value_template,
+            'command_template': command_template,
+            'retain': str(retain).lower(),
+        }
+        if min is not None:
+            payload['min'] = min
+        if max is not None:
+            payload['max'] = max
+        if pattern is not None:
+            payload['pattern'] = pattern
+        if icon is not None:
+            payload['icon'] = icon
+
+        return self.__publish_ha_discovery_message('text', name, payload)
 
     def __publish_binary_sensor(
             self,
@@ -274,7 +301,7 @@ class HomeAssistantDiscovery:
             payload_on: str = 'True',
             payload_off: str = 'False',
             icon: str | None = None,
-    ):
+    ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
             'value_template': value_template,
@@ -286,7 +313,7 @@ class HomeAssistantDiscovery:
         if icon is not None:
             payload['icon'] = icon
 
-        self.__publish_ha_discovery_message('binary_sensor', name, payload)
+        return self.__publish_ha_discovery_message('binary_sensor', name, payload)
 
     def __publish_select(
             self,
@@ -294,18 +321,20 @@ class HomeAssistantDiscovery:
             name: str,
             options: list[str],
             value_template: str = '{{ value }}',
+            command_template: str = '{{ value }}',
             icon: str | None = None,
-    ):
+    ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
             'command_topic': self.__get_vehicle_topic(topic) + '/set',
             'value_template': value_template,
+            'command_template': command_template,
             'options': options,
         }
         if icon is not None:
             payload['icon'] = icon
 
-        self.__publish_ha_discovery_message('select', name, payload)
+        return self.__publish_ha_discovery_message('select', name, payload)
 
     def __get_common_attributes(self, id, name):
         return {
@@ -350,13 +379,73 @@ class HomeAssistantDiscovery:
             return str(publisher.get_topic(vehicle_topic, no_prefix=False), encoding='utf8')
         return vehicle_topic
 
-    def __publish_ha_discovery_message(self, sensor_type: str, sensor_name: str, payload: dict):
+    def __publish_ha_discovery_message(self, sensor_type: str, sensor_name: str, payload: dict) -> str:
         vin = self.__get_vin()
         unique_id = f'{vin}_{snake_case(sensor_name)}'
         final_payload = self.__get_common_attributes(unique_id, sensor_name) | payload
         discovery_prefix = self.__vehicle_state.publisher.configuration.ha_discovery_prefix
         ha_topic = f'{discovery_prefix}/{sensor_type}/{vin}_mg/{unique_id}/config'
         self.__vehicle_state.publisher.publish_json(ha_topic, final_payload, no_prefix=True)
+        return f"{sensor_type}.{unique_id}"
+
+    def __publish_scheduled_charging(self):
+        start_time_id = self.__publish_sensor(
+            mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE,
+            'Scheduled Charging Start',
+            value_template='{{ value_json["startTime"] }}', icon='mdi:clock-start'
+        )
+        end_time_id = self.__publish_sensor(
+            mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE,
+            'Scheduled Charging End',
+            value_template='{{ value_json["endTime"] }}', icon='mdi:clock-end'
+        )
+        scheduled_charging_mode_id = self.__publish_sensor(
+            mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE,
+            'Scheduled Charging Mode',
+            value_template='{{ value_json["mode"] }}', icon='mdi:clock-outline',
+        )
+
+        change_mode_cmd_template = json.dumps({
+            "startTime": f"{{{{ states('{start_time_id}') }}}}",
+            "endTime": f"{{{{ states('{end_time_id}') }}}}",
+            "mode": "{{ value }}"
+        })
+        self.__publish_select(
+            mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE,
+            'Scheduled Charging Mode',
+            options=[m.name for m in ScheduledChargingMode],
+            value_template='{{ value_json["mode"] }}',
+            command_template=change_mode_cmd_template,
+            icon='mdi:clock-outline',
+        )
+
+        change_start_cmd_template = json.dumps({
+            "startTime": "{{ value }}",
+            "endTime": f"{{{{ states('{end_time_id}') }}}}",
+            "mode": f"{{{{ states('{scheduled_charging_mode_id}') }}}}"
+        })
+        self.__publish_text(
+            mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE,
+            'Scheduled Charging Start',
+            value_template='{{ value_json["startTime"] }}',
+            command_template=change_start_cmd_template,
+            min=4, max=5, pattern='^([01][0-9]|2[0-3]):[0-5][0-9]$',
+            icon='mdi:clock-start'
+        )
+
+        change_end_cmd_template = json.dumps({
+            "startTime": f"{{{{ states('{start_time_id}') }}}}",
+            "endTime": "{{ value }}",
+            "mode": f"{{{{ states('{scheduled_charging_mode_id}') }}}}"
+        })
+        self.__publish_text(
+            mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE,
+            'Scheduled Charging End',
+            value_template='{{ value_json["endTime"] }}',
+            command_template=change_end_cmd_template,
+            min=4, max=5, pattern='^([01][0-9]|2[0-3]):[0-5][0-9]$',
+            icon='mdi:clock-end'
+        )
 
 
 def snake_case(s):
