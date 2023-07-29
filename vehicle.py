@@ -495,8 +495,8 @@ class VehicleState:
             total_battery_capacity = charge_status.total_battery_capacity / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_TOTAL_BATTERY_CAPACITY),
                                          total_battery_capacity)
-        if soc is not None and target_soc is not None and remaining_charging_time is not None:
-            target_soc_percentage = target_soc.get_percentage()
+        if soc is not None and self.target_soc is not None and remaining_charging_time is not None:
+            target_soc_percentage = self.target_soc.get_percentage()
             # Default to 1% if we are really close (e.g. balancing)
             delta_soc = max(1, int(target_soc_percentage - soc))
             time_for_1pct = remaining_charging_time / delta_soc
