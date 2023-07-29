@@ -2,3 +2,4 @@ saic-ismart-client~=1.5.0
 requests~=2.31.0
 paho-mqtt~=1.6.1
 inflection~=0.5.1
+apscheduler~=3.10.1

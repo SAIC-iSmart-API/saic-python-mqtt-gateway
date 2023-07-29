@@ -11,6 +11,7 @@ import time
 import urllib.parse
 from typing import cast
 
+import apscheduler.schedulers.asyncio
 import paho.mqtt.client as mqtt
 
 from home_assistant_discovery import HomeAssistantDiscovery
@@ -261,6 +262,7 @@ class VehicleHandler:
                         end_time = datetime.time.fromisoformat(payload_json['endTime'])
                         mode = ScheduledChargingMode[payload_json['mode'].upper()]
                         self.saic_api.set_schedule_charging(start_time, end_time, mode, self.vin_info)
+                        self.vehicle_state.update_scheduled_charging(start_time, mode)
                     except Exception as e:
                         raise MqttGatewayException(f'Error setting charging schedule: {e}')
                 case _:
@@ -296,6 +298,8 @@ class MqttGateway:
         self.publisher.connect()
 
     def run(self):
+        scheduler = apscheduler.schedulers.asyncio.AsyncIOScheduler()
+        scheduler.start()
         try:
             login_response_message = self.saic_api.login()
             user_logging_in_response = cast(MpUserLoggingInRsp, login_response_message.application_data)
@@ -322,19 +326,22 @@ class MqttGateway:
                 wallbox_soc_topic = ''
             vehicle_state = VehicleState(
                 self.publisher,
+                scheduler,
                 account_prefix,
                 vin_info,
-                wallbox_soc_topic=wallbox_soc_topic,
+                wallbox_soc_topic=wallbox_soc_topic
+            ,
                 charge_polling_min_percent=self.configuration.charge_dynamic_polling_min_percentage
             )
             vehicle_state.configure(vin_info)
 
             vehicle_handler = VehicleHandler(
-                self.configuration,  # Gateway pointer
+                self.configuration,
                 self.saic_api,
-                self.publisher,
+                self.publisher,  # Gateway pointer
                 vin_info,
-                vehicle_state)
+                vehicle_state
+            )
             self.vehicle_handler[vin_info.vin] = vehicle_handler
 
         message_handler = MessageHandler(self, self.saic_api, self.configuration.messages_request_interval)
