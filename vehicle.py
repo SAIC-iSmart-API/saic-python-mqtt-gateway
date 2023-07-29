@@ -6,6 +6,8 @@ from enum import Enum
 from typing import cast
 
 import paho.mqtt.client as mqtt
+from apscheduler.schedulers.base import BaseScheduler
+from apscheduler.triggers.cron import CronTrigger
 from saic_ismart_client.common_model import ScheduledChargingMode
 from saic_ismart_client.ota_v1_1.data_model import VinInfo
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
@@ -37,6 +39,7 @@ class VehicleState:
     def __init__(
             self,
             publisher: Publisher,
+            scheduler: BaseScheduler,
             account_prefix: str,
             vin: VinInfo, wallbox_soc_topic: str = '',
             charge_polling_min_percent: float = 1.0,
@@ -66,6 +69,7 @@ class VehicleState:
         self.properties = {}
         self.__remote_ac_temp = None
         self.__remote_ac_running = False
+        self.__scheduler = scheduler
 
     def set_refresh_period_active(self, seconds: int):
         self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_ACTIVE), seconds)
@@ -123,6 +127,40 @@ class VehicleState:
                 self.charge_current_limit = charge_current_limit
             except ValueError:
                 LOG.exception(f'Unhandled charge current limit {charge_current_limit}')
+
+    def update_scheduled_charging(
+            self,
+            start_time: datetime.time,
+            mode: ScheduledChargingMode
+    ):
+        job_id = f'{self.vin}_scheduled_charging'
+        if mode != ScheduledChargingMode.DISABLED:
+            if self.refresh_period_inactive_grace > 0:
+                # Add a grace period to the start time, so that the car is not woken up too early
+                dt = datetime.datetime.now() \
+                         .replace(hour=start_time.hour, minute=start_time.minute, second=0, microsecond=0) \
+                     + datetime.timedelta(seconds=self.refresh_period_inactive_grace)
+                start_time = dt.time()
+            trigger = CronTrigger(
+                hour=start_time.hour,
+                minute=start_time.minute,
+                second=0,
+                jitter=self.refresh_period_inactive_grace
+            )
+            self.__scheduler.add_job(
+                func=self.set_refresh_mode,
+                args=[RefreshMode.FORCE],
+                trigger=trigger,
+                kwargs={},
+                name=job_id,
+                id=job_id,
+                replace_existing=True,
+                max_instances=1,
+            )
+            LOG.info(f'Scheduled check for charging start for VIN {self.vin} at {start_time}')
+        else:
+            LOG.info(f'Removing scheduled check for charging start for VIN {self.vin}')
+            self.__scheduler.remove_job(job_id)
 
     def is_complete(self) -> bool:
         return self.refresh_period_active != -1 \
@@ -290,8 +328,6 @@ class VehicleState:
                 return True
             # RefreshMode.PERIODIC is treated like default
             case _:
-                last_shutdown_plus_refresh = self.last_car_shutdown \
-                                             + datetime.timedelta(seconds=float(self.refresh_period_inactive_grace))
                 if self.last_successful_refresh is None:
                     self.mark_successful_refresh()
                     return True
@@ -311,6 +347,9 @@ class VehicleState:
                         seconds=float(self.refresh_period_active))
                     LOG.debug(f'HV battery is active. Should refresh: {result}')
                     return result
+
+                last_shutdown_plus_refresh = self.last_car_shutdown \
+                                             + datetime.timedelta(seconds=float(self.refresh_period_inactive_grace))
 
                 if last_shutdown_plus_refresh > datetime.datetime.now():
                     result = self.last_successful_refresh < datetime.datetime.now() - datetime.timedelta(
@@ -460,13 +499,19 @@ class VehicleState:
 
         if has_scheduled_charging_info(charge_mgmt_data):
             try:
+                start_hour = charge_mgmt_data.bmsReserStHourDspCmd
+                start_minute = charge_mgmt_data.bmsReserStMintueDspCmd
+                start_time = datetime.time(hour=start_hour, minute=start_minute)
+                end_hour = charge_mgmt_data.bmsReserSpHourDspCmd
+                end_minute = charge_mgmt_data.bmsReserSpMintueDspCmd
+                mode = ScheduledChargingMode(charge_mgmt_data.bmsReserCtrlDspCmd)
                 self.publisher.publish_json(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE), {
-                    'startTime': "{:02d}:{:02d}".format(charge_mgmt_data.bmsReserStHourDspCmd,
-                                                        charge_mgmt_data.bmsReserStMintueDspCmd),
-                    'endTime': "{:02d}:{:02d}".format(charge_mgmt_data.bmsReserSpHourDspCmd,
-                                                      charge_mgmt_data.bmsReserSpMintueDspCmd),
-                    'mode': ScheduledChargingMode(charge_mgmt_data.bmsReserCtrlDspCmd).name,
+                    'startTime': "{:02d}:{:02d}".format(start_hour, start_minute),
+                    'endTime': "{:02d}:{:02d}".format(end_hour, end_minute),
+                    'mode': mode.name,
                 })
+                self.update_scheduled_charging(start_time, mode)
+
             except ValueError:
                 LOG.exception("Error parsing scheduled charging info")
 
