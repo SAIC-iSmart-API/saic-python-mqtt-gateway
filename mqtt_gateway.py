@@ -14,7 +14,7 @@ import paho.mqtt.client as mqtt
 
 from home_assistant_discovery import HomeAssistantDiscovery
 from saic_ismart_client.abrp_api import AbrpApi, AbrpApiException
-from saic_ismart_client.common_model import TargetBatteryCode
+from saic_ismart_client.common_model import TargetBatteryCode, ChargeCurrentLimitCode
 from saic_ismart_client.ota_v1_1.data_model import VinInfo, MpUserLoggingInRsp, MpAlarmSettingType
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
 from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp
@@ -223,13 +223,27 @@ class VehicleHandler:
                             self.saic_api.start_front_defrost(self.vin_info)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
+                case mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT:
+                    payload = msg.payload.decode().strip().upper()
+                    if self.vehicle_state.target_soc is not None:
+                        try:
+                            LOG.info("Setting charging current limit to %s", payload)
+                            raw_charge_current_limit = str(payload)
+                            charge_current_limit = ChargeCurrentLimitCode.to_code(raw_charge_current_limit)
+                            self.saic_api.set_target_battery_soc(self.vehicle_state.target_soc, self.vin_info, charge_current_limit)
+                            self.vehicle_state.update_charge_current_limit(charge_current_limit)
+                        except ValueError:
+                            raise MqttGatewayException(f'Error setting value for payload {payload}')
+                    else:
+                        logging.info(f'Unknown Target SOC: waiting for state update before changing charge current limit')
+                        raise MqttGatewayException(f'Error setting charge current limit - SOC {self.vehicle_state.target_soc}')
                 case mqtt_topics.DRIVETRAIN_SOC_TARGET:
                     payload = msg.payload.decode().strip()
                     try:
                         LOG.info("Setting SoC target to %s", payload)
                         target_battery_code = TargetBatteryCode.from_percentage(int(payload))
-                        self.vehicle_state.update_target_soc(target_battery_code)
                         self.saic_api.set_target_battery_soc(target_battery_code, self.vin_info)
+                        self.vehicle_state.update_target_soc(target_battery_code)
                     except ValueError as e:
                         raise MqttGatewayException(f'Error setting SoC target: {e}')
                 case _:
