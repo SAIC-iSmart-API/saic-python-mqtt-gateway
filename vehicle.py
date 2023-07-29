@@ -57,6 +57,8 @@ class VehicleState:
         self.refresh_period_inactive = -1
         self.refresh_period_after_shutdown = -1
         self.refresh_period_inactive_grace = -1
+        self.refresh_period_charging = 0
+        self.charge_polling_min_percent = charge_polling_min_percent
         self.target_soc = None
         self.charge_current_limit = None
         self.refresh_period_charging = 0
