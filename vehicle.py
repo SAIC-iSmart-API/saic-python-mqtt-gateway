@@ -1,5 +1,6 @@
 import datetime
 import logging
+import math
 import os
 from enum import Enum
 from typing import cast
@@ -32,7 +33,13 @@ class RefreshMode(Enum):
 
 
 class VehicleState:
-    def __init__(self, publisher: Publisher, account_prefix: str, vin: VinInfo, wallbox_soc_topic: str = ''):
+    def __init__(
+            self,
+            publisher: Publisher,
+            account_prefix: str,
+            vin: VinInfo, wallbox_soc_topic: str = '',
+            charge_polling_min_percent: float = 1.0,
+    ):
         self.publisher = publisher
         self.vin = vin.vin
         self.series = str(vin.series).strip().upper()
@@ -44,11 +51,13 @@ class VehicleState:
         self.last_car_vehicle_message = datetime.datetime.min
         # treat high voltage battery as active, if we don't have any other information
         self.hv_battery_active = True
+        self.is_charging = False
         self.refresh_period_active = -1
         self.refresh_period_inactive = -1
         self.refresh_period_after_shutdown = -1
         self.refresh_period_inactive_grace = -1
-        self.target_soc = None
+        self.refresh_period_charging = 0
+        self.charge_polling_min_percent = charge_polling_min_percent
         self.refresh_mode = RefreshMode.OFF
         self.previous_refresh_mode = RefreshMode.OFF
         self.properties = {}
@@ -57,18 +66,34 @@ class VehicleState:
 
     def set_refresh_period_active(self, seconds: int):
         self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_ACTIVE), seconds)
-        LOG.info(f'Setting active query interval in vehicle handler for VIN {self.vin} to {seconds} seconds')
+        human_readable_period = str(datetime.timedelta(seconds=seconds))
+        LOG.info(f'Setting active query interval in vehicle handler for VIN {self.vin} to {human_readable_period}')
         self.refresh_period_active = seconds
+        # Recompute charging refresh period, if active refresh period is changed
+        self.set_refresh_period_charging(self.refresh_period_charging)
 
     def set_refresh_period_inactive(self, seconds: int):
         self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_INACTIVE), seconds)
-        LOG.info(f'Setting inactive query interval in vehicle handler for VIN {self.vin} to {seconds} seconds')
+        human_readable_period = str(datetime.timedelta(seconds=seconds))
+        LOG.info(f'Setting inactive query interval in vehicle handler for VIN {self.vin} to {human_readable_period}')
         self.refresh_period_inactive = seconds
+        # Recompute charging refresh period, if active refresh period is changed
+        self.set_refresh_period_charging(self.refresh_period_charging)
+
+    def set_refresh_period_charging(self, seconds: int):
+        # Do not refresh more than the active period and less than the inactive one
+        seconds = min(max(seconds, self.refresh_period_active), self.refresh_period_inactive) if seconds > 0 else 0
+        self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_CHARGING), seconds)
+        human_readable_period = str(datetime.timedelta(seconds=seconds))
+        LOG.info(f'Setting charging query interval in vehicle handler for VIN {self.vin} to {human_readable_period}')
+        self.refresh_period_charging = seconds
 
     def set_refresh_period_after_shutdown(self, seconds: int):
         self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_AFTER_SHUTDOWN), seconds)
+        human_readable_period = str(datetime.timedelta(seconds=seconds))
         LOG.info(
-            f'Setting after shutdown query interval in vehicle handler for VIN {self.vin} to {seconds} seconds')
+            f'Setting after shutdown query interval in vehicle handler for VIN {self.vin} to {human_readable_period}'
+        )
         self.refresh_period_after_shutdown = seconds
 
     def set_refresh_period_inactive_grace(self, refresh_period_inactive_grace: int):
@@ -81,28 +106,25 @@ class VehicleState:
             self.refresh_period_inactive_grace = refresh_period_inactive_grace
 
     def update_target_soc(self, target_soc: TargetBatteryCode):
-        if self.target_soc != target_soc:
-            self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_TARGET), target_soc.get_percentage())
-            self.target_soc = target_soc
+        self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_TARGET), target_soc.get_percentage())
 
     def is_complete(self) -> bool:
         return self.refresh_period_active != -1 \
             and self.refresh_period_inactive != -1 \
             and self.refresh_period_after_shutdown != -1 \
             and self.refresh_period_inactive_grace != -1 \
-            and self.target_soc != -1 \
             and self.refresh_mode
 
     def handle_vehicle_status(self, vehicle_status: OtaRvmVehicleStatusResp25857) -> None:
         is_engine_running = vehicle_status.is_engine_running()
-        is_charging = vehicle_status.is_charging()
+        self.is_charging = vehicle_status.is_charging()
         basic_vehicle_status = vehicle_status.get_basic_vehicle_status()
         remote_climate_status = basic_vehicle_status.remote_climate_status
 
-        self.set_hv_battery_active(is_charging or is_engine_running or remote_climate_status > 0)
+        self.set_hv_battery_active(self.is_charging or is_engine_running or remote_climate_status > 0)
 
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_RUNNING), is_engine_running)
-        self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING), is_charging)
+        self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING), self.is_charging)
         interior_temperature = basic_vehicle_status.interior_temperature
         if interior_temperature > -128:
             self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_INTERIOR_TEMPERATURE), interior_temperature)
@@ -261,6 +283,13 @@ class VehicleState:
                 if self.last_car_activity > self.last_successful_refresh:
                     return True
 
+                if self.is_charging and self.refresh_period_charging > 0:
+                    result = self.last_successful_refresh < datetime.datetime.now() - datetime.timedelta(
+                        seconds=float(self.refresh_period_charging)
+                    )
+                    LOG.debug(f'HV battery is charging. Should refresh: {result}')
+                    return result
+
                 if self.hv_battery_active:
                     result = self.last_successful_refresh < datetime.datetime.now() - datetime.timedelta(
                         seconds=float(self.refresh_period_active))
@@ -413,11 +442,14 @@ class VehicleState:
             })
 
         # Only publish remaining charging time if the car is charging and we have current flowing
+        remaining_charging_time = None
         if charge_status.charging_gun_state and charge_mgmt_data.get_current() < 0:
+            remaining_charging_time = charge_mgmt_data.chrgngRmnngTime * 60
             self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME),
-                                       charge_mgmt_data.chrgngRmnngTime * 60)
+                                       remaining_charging_time)
         else:
             self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME), 0)
+
         self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_CHARGE_STATE),
                                    VehicleState.datetime_to_str(datetime.datetime.now()))
         if (
@@ -434,6 +466,17 @@ class VehicleState:
             total_battery_capacity = charge_status.total_battery_capacity / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_TOTAL_BATTERY_CAPACITY),
                                          total_battery_capacity)
+        if soc is not None and target_soc is not None and remaining_charging_time is not None:
+            target_soc_percentage = target_soc.get_percentage()
+            # Default to 1% if we are really close (e.g. balancing)
+            delta_soc = max(1, int(target_soc_percentage - soc))
+            time_for_1pct = remaining_charging_time / delta_soc
+            time_for_min_pct = math.ceil(self.charge_polling_min_percent * time_for_1pct)
+            # It doesn't make sense to refresh less than the estimated time for completion
+            computed_refresh_period = min(remaining_charging_time, time_for_min_pct)
+            self.set_refresh_period_charging(computed_refresh_period)
+        else:
+            self.set_refresh_period_charging(0)
 
     def get_topic(self, sub_topic: str):
         return f'{self.mqtt_vin_prefix}/{sub_topic}'
