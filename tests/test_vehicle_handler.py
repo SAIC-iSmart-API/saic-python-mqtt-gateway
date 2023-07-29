@@ -1,6 +1,7 @@
 from unittest import TestCase
 from unittest.mock import patch
 
+from apscheduler.schedulers.blocking import BlockingScheduler
 from saic_ismart_client.common_model import MessageV2, MessageBodyV2
 from saic_ismart_client.ota_v1_1.data_model import VinInfo
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857, \
@@ -151,7 +152,8 @@ class TestVehicleHandler(TestCase):
         vin_info.vin = VIN
         vin_info.series = 'EH32 S'
         account_prefix = f'/vehicles/{VIN}'
-        vehicle_state = VehicleState(publisher, account_prefix, vin_info)
+        scheduler = BlockingScheduler()
+        vehicle_state = VehicleState(publisher, scheduler, account_prefix, vin_info)
         self.vehicle_handler = VehicleHandler(config, saicapi, publisher, vin_info, vehicle_state)
 
     @patch.object(SaicApi, 'get_vehicle_status_with_retry')
@@ -228,7 +230,7 @@ class TestVehicleHandler(TestCase):
                                DRIVETRAIN_LAST_CHARGE_ENDING_POWER)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_TOTAL_BATTERY_CAPACITY),
                                DRIVETRAIN_TOTAL_BATTERY_CAPACITY)
-        self.assertEqual(14, len(self.vehicle_handler.publisher.map))
+        self.assertEqual(15, len(self.vehicle_handler.publisher.map))
 
     def assert_mqtt_topic(self, topic: str, value):
         mqtt_map = self.vehicle_handler.publisher.map
