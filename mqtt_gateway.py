@@ -628,6 +628,10 @@ def process_charging_stations_file(config: Configuration):
                 soc_topic = item['socTopic']
                 vin = item['vin']
                 charging_station = ChargingStation(vin, charge_state_topic, charging_value, soc_topic)
+                if 'chargerConnectedTopic' in item:
+                    charging_station.connected_topic = item['chargerConnectedTopic']
+                if 'chargerConnectedValue' in item:
+                    charging_station.connected_value = item['chargerConnectedValue']
                 config.charging_stations_by_vin[vin] = charging_station
     except FileNotFoundError:
         LOG.debug(f'File {json_file} does not exist')

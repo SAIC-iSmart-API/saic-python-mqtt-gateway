@@ -38,31 +38,18 @@ If your charging station also provides information over MQTT or if you somehow m
 
 An [openWB](https://openwb.de) charging station is capable of providing information over MQTT for instance. You just need to provide the configuration in the file charging-stations.json. A sample configuration for two cars connected to an openWB charging station would be the following.
 
-```
-[
-    {
-        "chargeStateTopic": "openWB/lp/1/boolChargeStat",
-        "chargingValue": "1",
-        "socTopic": "openWB/set/lp/1/%Soc",
-        "vin": "vin1"
-    },
-    {
-        "chargeStateTopic": "openWB/lp/2/boolChargeStat",
-        "chargingValue": "1",
-        "socTopic": "openWB/set/lp/2/%Soc",
-        "vin": "vin2"
-    }
-]
-```
+Check-out the [sample file](charging-stations.json.sample)
 
 The key-value pairs in the JSON express the following: 
 
-| name             | description                                                                        |
-|------------------|------------------------------------------------------------------------------------|
-| chargeStateTopic | topic indicating the charge state                                                  |
-| chargingValue    | payload that indicates the charging                                                |
-| socTopic         | topic where the gateway publishes the SoC for the charging station                 |
-| vin              | vehicle identification number to map the charging station information to a vehicle | 
+| JSON key              | Description                                                                                       |
+|-----------------------|---------------------------------------------------------------------------------------------------|
+| chargeStateTopic      | topic indicating the charge state - **required**                                                  |
+| chargingValue         | payload that indicates the charging - **required**                                                |
+| socTopic              | topic where the gateway publishes the SoC for the charging station - **required**                 |
+| chargerConnectedTopic | topic indicating that the vehicle is connected to the charging station - optional                 |
+| chargerConnectedValue | payload that indicates that the charger is connected - optional                                   |
+| vin                   | vehicle identification number to map the charging station information to a vehicle - **required** |
 
 ## Running the service
 
