@@ -34,7 +34,7 @@ Configuration parameters can be provided as command line parameters or environme
 
 ### Charging Station Configuration
 
-If your charging station also provides information over MQTT or if you somehow manage to publish information from charging station, the MQTT gateway can benefit from it. In addition, the MQTT gateway can provide the SoC to your charging station.
+If your charging station also provides information over MQTT or if you somehow manage to publish information from your charging station, the MQTT gateway can benefit from it. In addition, the MQTT gateway can provide the SoC to your charging station.
 
 An [openWB](https://openwb.de) charging station is capable of providing information over MQTT for instance. You just need to provide the configuration in the file charging-stations.json. A sample configuration for two cars connected to an openWB charging station would be the following.
 
@@ -54,6 +54,8 @@ An [openWB](https://openwb.de) charging station is capable of providing informat
     }
 ]
 ```
+
+The key-value pairs in the JSON express the following: 
 
 | name             | description                                                                        |
 |------------------|------------------------------------------------------------------------------------|
