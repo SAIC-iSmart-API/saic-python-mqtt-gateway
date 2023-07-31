@@ -68,6 +68,7 @@ class MqttClient(Publisher):
             self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/{mqtt_topics.REFRESH_MODE}/set')
             self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/{mqtt_topics.REFRESH_PERIOD}/+/set')
             for charging_station in self.configuration.charging_stations_by_vin.values():
+                LOG.debug(f'Subscribing to MQTT topic {charging_station.charge_state_topic}')
                 self.client.subscribe(charging_station.charge_state_topic)
             self.keepalive()
         else:
@@ -81,9 +82,12 @@ class MqttClient(Publisher):
 
     def __on_message_real(self, client, userdata, msg: mqtt.MQTTMessage) -> None:
         if msg.topic in self.get_vin_by_charge_state_topic():
+            payload = msg.payload.decode()
+            LOG.debug(f'Received message over topic {msg.topic} with payload {payload}')
             vin = self.get_vin_by_charge_state_topic()[msg.topic]
             charging_station = self.configuration.charging_stations_by_vin[vin]
-            if msg.payload.decode() == charging_station.charging_value:
+            if payload == charging_station.charging_value:
+                LOG.debug(f'Charging indicated for vin {vin}, setting refresh mode to force')
                 mqtt_account_prefix = self.get_mqtt_account_prefix()
                 topic = f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/{vin}/{mqtt_topics.REFRESH_MODE}/set'
                 m = mqtt.MQTTMessage(msg.mid, topic.encode())

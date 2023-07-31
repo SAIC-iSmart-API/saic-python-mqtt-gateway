@@ -322,7 +322,7 @@ class MqttGateway:
             account_prefix = f'{self.configuration.saic_user}/{mqtt_topics.VEHICLES}/{vin_info.vin}'
             charging_station = self.get_charging_station(vin_info.vin)
             if charging_station:
-                LOG.debug(f'SoC for charging station is published over MQTT topic: {charging_station.soc_topic}')
+                LOG.debug(f'SoC for charging station will be published over MQTT topic: {charging_station.soc_topic}')
             vehicle_state = VehicleState(
                 self.publisher,
                 scheduler,
