@@ -624,7 +624,7 @@ def process_charging_stations_file(config: Configuration):
 
             for item in data:
                 charge_state_topic = item['chargeStateTopic']
-                charging_value = item['charging_value']
+                charging_value = item['chargingValue']
                 soc_topic = item['socTopic']
                 vin = item['vin']
                 charging_station = ChargingStation(vin, charge_state_topic, charging_value, soc_topic)
