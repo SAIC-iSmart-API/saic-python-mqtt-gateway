@@ -12,8 +12,7 @@ class Configuration:
         self.mqtt_user = ''
         self.mqtt_password = ''
         self.mqtt_topic = ''
-        self.open_wb_topic = 'openWB'
-        self.open_wb_lp_map = {}
+        self.charging_stations_by_vin = {}
         self.anonymized_publishing = False
         self.messages_request_interval = 60  # in seconds
         self.ha_discovery_enabled = True

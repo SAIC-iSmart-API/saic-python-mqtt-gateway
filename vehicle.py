@@ -16,6 +16,7 @@ from saic_ismart_client.saic_api import SaicMessage, TargetBatteryCode, ChargeCu
 
 import mqtt_topics
 from Exceptions import MqttGatewayException
+from charging_station import ChargingStation
 from publisher import Publisher
 
 PRESSURE_TO_BAR_FACTOR = 0.04
@@ -41,14 +42,14 @@ class VehicleState:
             publisher: Publisher,
             scheduler: BaseScheduler,
             account_prefix: str,
-            vin: VinInfo, wallbox_soc_topic: str = '',
+            vin: VinInfo, charging_station: ChargingStation = None,
             charge_polling_min_percent: float = 1.0,
     ):
         self.publisher = publisher
         self.vin = vin.vin
         self.series = str(vin.series).strip().upper()
         self.mqtt_vin_prefix = f'{account_prefix}'
-        self.wallbox_soc_topic = wallbox_soc_topic
+        self.charging_station = charging_station
         self.last_car_activity = datetime.datetime.min
         self.last_successful_refresh = datetime.datetime.min
         self.last_car_shutdown = datetime.datetime.now()
@@ -139,7 +140,7 @@ class VehicleState:
                 # Add a grace period to the start time, so that the car is not woken up too early
                 dt = datetime.datetime.now() \
                          .replace(hour=start_time.hour, minute=start_time.minute, second=0, microsecond=0) \
-                     + datetime.timedelta(seconds=self.refresh_period_inactive_grace)
+                         + datetime.timedelta(seconds=self.refresh_period_inactive_grace)
                 start_time = dt.time()
             trigger = CronTrigger(
                 hour=start_time.hour,
@@ -348,8 +349,8 @@ class VehicleState:
                     LOG.debug(f'HV battery is active. Should refresh: {result}')
                     return result
 
-                last_shutdown_plus_refresh = self.last_car_shutdown \
-                                             + datetime.timedelta(seconds=float(self.refresh_period_inactive_grace))
+                last_shutdown_plus_refresh = self.last_car_shutdown + datetime.timedelta(
+                    seconds=float(self.refresh_period_inactive_grace))
 
                 if last_shutdown_plus_refresh > datetime.datetime.now():
                     result = self.last_successful_refresh < datetime.datetime.now() - datetime.timedelta(
@@ -472,8 +473,8 @@ class VehicleState:
         soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
         if soc <= 100.0:
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC), soc)
-            if self.wallbox_soc_topic:
-                self.publisher.publish_int(self.wallbox_soc_topic, int(soc), True)
+            if self.charging_station:
+                self.publisher.publish_int(self.charging_station.soc_topic, int(soc), True)
         estimated_electrical_range = charge_mgmt_data.bms_estd_elec_rng / 10.0
         self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_HYBRID_ELECTRICAL_RANGE),
                                      estimated_electrical_range)

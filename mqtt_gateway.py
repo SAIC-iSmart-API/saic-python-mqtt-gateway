@@ -14,6 +14,7 @@ from typing import cast
 import apscheduler.schedulers.asyncio
 import paho.mqtt.client as mqtt
 
+from charging_station import ChargingStation
 from home_assistant_discovery import HomeAssistantDiscovery
 from saic_ismart_client.abrp_api import AbrpApi, AbrpApiException
 from saic_ismart_client.common_model import TargetBatteryCode, ChargeCurrentLimitCode, ScheduledChargingMode
@@ -30,6 +31,7 @@ from publisher import Publisher
 from vehicle import RefreshMode, VehicleState
 
 MSG_CMD_SUCCESSFUL = 'Success'
+CHARGING_STATIONS_FILE = 'charging-stations.json'
 
 
 def epoch_value_to_str(time_value: int) -> str:
@@ -318,19 +320,15 @@ class MqttGateway:
         for info in user_logging_in_response.vin_list:
             vin_info = cast(VinInfo, info)
             account_prefix = f'{self.configuration.saic_user}/{mqtt_topics.VEHICLES}/{vin_info.vin}'
-            wb_lp = self.get_open_wb_lp(vin_info.vin)
-            if wb_lp:
-                wallbox_soc_topic = f'{self.configuration.open_wb_topic}/set/lp/{wb_lp}/%Soc'
-                LOG.debug(f'SoC for wallbox is published over MQTT topic: {wallbox_soc_topic}')
-            else:
-                wallbox_soc_topic = ''
+            charging_station = self.get_charging_station(vin_info.vin)
+            if charging_station:
+                LOG.debug(f'SoC for charging station is published over MQTT topic: {charging_station.soc_topic}')
             vehicle_state = VehicleState(
                 self.publisher,
                 scheduler,
                 account_prefix,
                 vin_info,
-                wallbox_soc_topic=wallbox_soc_topic
-            ,
+                charging_station,
                 charge_polling_min_percent=self.configuration.charge_dynamic_polling_min_percentage
             )
             vehicle_state.configure(vin_info)
@@ -364,14 +362,14 @@ class MqttGateway:
     def __on_publish_raw_value(self, key: str, raw: str):
         self.publisher.publish_str(key, raw)
 
-    def __on_publish_json_value(self, key: str, json: dict):
-        self.publisher.publish_json(key, json)
+    def __on_publish_json_value(self, key: str, json_data: dict):
+        self.publisher.publish_json(key, json_data)
 
-    def get_open_wb_lp(self, vin) -> str | None:
-        for key in self.configuration.open_wb_lp_map.keys():
-            if self.configuration.open_wb_lp_map[key] == vin:
-                return key
-        return None
+    def get_charging_station(self, vin) -> ChargingStation | None:
+        if vin in self.configuration.charging_stations_by_vin:
+            return self.configuration.charging_stations_by_vin[vin]
+        else:
+            return None
 
 
 class MessageHandler:
@@ -500,6 +498,18 @@ async def shutdown_handler(tasks):
             LOG.warning(f'There are still {len(pending)} tasks... waiting for them to complete')
 
 
+def get_charging_stations(open_wb_lp_map: dict[str, str]) -> dict[str, ChargingStation]:
+    LOG.info(f'openwb-lp-map is deprecated! Please provide {CHARGING_STATIONS_FILE} file instead!')
+    charging_stations = {}
+    for vin in open_wb_lp_map.keys():
+        loading_point_no = open_wb_lp_map[vin]
+        charging_station = ChargingStation(vin, f'openWB/lp/{loading_point_no}/boolChargeStat', '1',
+                                           f'openWB/set/lp/{loading_point_no}/%Soc')
+        charging_stations[vin] = charging_station
+
+    return charging_stations
+
+
 def process_arguments() -> Configuration:
     config = Configuration()
     parser = argparse.ArgumentParser(prog='MQTT Gateway')
@@ -570,7 +580,10 @@ def process_arguments() -> Configuration:
         if args.abrp_user_token:
             cfg_value_to_dict(args.abrp_user_token, config.abrp_token_map)
         if args.open_wp_lp_map:
-            cfg_value_to_dict(args.open_wp_lp_map, config.open_wb_lp_map)
+            open_wb_lp_map = {}
+            cfg_value_to_dict(args.open_wp_lp_map, open_wb_lp_map)
+            config.charging_stations_by_vin = get_charging_stations(open_wb_lp_map)
+
         config.saic_password = args.saic_password
 
         if args.ha_discovery_enabled:
@@ -601,6 +614,25 @@ def process_arguments() -> Configuration:
     except argparse.ArgumentError as err:
         parser.print_help()
         SystemExit(err)
+
+
+def process_charging_stations_file(config: Configuration):
+    json_file = f'./{CHARGING_STATIONS_FILE}'
+    try:
+        with open(json_file, 'r') as f:
+            data = json.load(f)
+
+            for item in data:
+                charge_state_topic = item['chargeStateTopic']
+                charging_value = item['charging_value']
+                soc_topic = item['socTopic']
+                vin = item['vin']
+                charging_station = ChargingStation(vin, charge_state_topic, charging_value, soc_topic)
+                config.charging_stations_by_vin[vin] = charging_station
+    except FileNotFoundError:
+        LOG.debug(f'File {json_file} does not exist')
+    except json.JSONDecodeError as e:
+        LOG.exception(f'Reading {json_file} failed', exc_info=e)
 
 
 def cfg_value_to_dict(cfg_value: str, result_map: dict):
@@ -641,6 +673,7 @@ if __name__ == '__main__':
     if hasattr(faulthandler, 'register'):
         faulthandler.register(signal.SIGQUIT, chain=False)
     configuration = process_arguments()
+    process_charging_stations_file(configuration)
 
     mqtt_gateway = MqttGateway(configuration)
     mqtt_gateway.run()
