@@ -7,6 +7,7 @@
 * Control charge current limit
 * Dynamic refresh period during charging
 * Force polling around scheduled charging start
+* Generic charging station integration (OPENWB_LP_MAP argument is deprecated now)
 
 ## 0.3.0
 

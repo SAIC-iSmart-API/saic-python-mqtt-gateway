@@ -499,7 +499,7 @@ async def shutdown_handler(tasks):
 
 
 def get_charging_stations(open_wb_lp_map: dict[str, str]) -> dict[str, ChargingStation]:
-    LOG.info(f'openwb-lp-map is deprecated! Please provide {CHARGING_STATIONS_FILE} file instead!')
+    LOG.info(f'OPENWB_LP_MAP is deprecated! Please provide {CHARGING_STATIONS_FILE} file instead!')
     charging_stations = {}
     for vin in open_wb_lp_map.keys():
         loading_point_no = open_wb_lp_map[vin]
