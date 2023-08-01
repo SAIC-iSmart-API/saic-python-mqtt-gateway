@@ -141,12 +141,7 @@ class VehicleState:
                          .replace(hour=start_time.hour, minute=start_time.minute, second=0, microsecond=0) \
                      + datetime.timedelta(seconds=self.refresh_period_inactive_grace)
                 start_time = dt.time()
-            trigger = CronTrigger(
-                hour=start_time.hour,
-                minute=start_time.minute,
-                second=0,
-                jitter=self.refresh_period_inactive_grace
-            )
+            trigger = CronTrigger.from_crontab(f'{start_time.minute} {start_time.hour} * * *')
             self.__scheduler.add_job(
                 func=self.set_refresh_mode,
                 args=[RefreshMode.FORCE],
