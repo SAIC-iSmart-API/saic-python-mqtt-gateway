@@ -164,7 +164,10 @@ class VehicleHandler:
                         temp = int(payload)
                         changed = self.vehicle_state.set_ac_temperature(temp)
                         if changed and self.vehicle_state.is_remote_ac_running():
-                            self.saic_api.start_ac(self.vin_info, temperature_idx=self.vehicle_state.get_ac_temperature_idx())
+                            self.saic_api.start_ac(
+                                self.vin_info,
+                                temperature_idx=self.vehicle_state.get_ac_temperature_idx()
+                            )
 
                     except ValueError as e:
                         raise MqttGatewayException(f'Error setting SoC target: {e}')
@@ -178,7 +181,10 @@ class VehicleHandler:
                             self.saic_api.start_ac_blowing(self.vin_info)
                         case 'on':
                             LOG.info('A/C will be switched on')
-                            self.saic_api.start_ac(self.vin_info, temperature_idx=self.vehicle_state.get_ac_temperature_idx())
+                            self.saic_api.start_ac(
+                                self.vin_info,
+                                temperature_idx=self.vehicle_state.get_ac_temperature_idx()
+                            )
                         case 'front':
                             LOG.info("A/C will be set to front seats only")
                             self.saic_api.start_ac_blowing(self.vin_info)
