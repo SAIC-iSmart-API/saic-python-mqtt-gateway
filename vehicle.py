@@ -18,6 +18,7 @@ import mqtt_topics
 from Exceptions import MqttGatewayException
 from publisher import Publisher
 
+DEFAULT_AC_TEMP = 22
 PRESSURE_TO_BAR_FACTOR = 0.04
 
 logging.basicConfig(format='%(asctime)s %(message)s')
@@ -67,8 +68,8 @@ class VehicleState:
         self.refresh_mode = RefreshMode.OFF
         self.previous_refresh_mode = RefreshMode.OFF
         self.properties = {}
-        self.__remote_ac_temp = None
-        self.__remote_ac_running = False
+        self.__remote_ac_temp: int = DEFAULT_AC_TEMP
+        self.__remote_ac_running: bool = False
         self.__scheduler = scheduler
 
     def set_refresh_period_active(self, seconds: int):
@@ -406,8 +407,6 @@ class VehicleState:
         # Make sure the only refresh mode that is not supported at start is RefreshMode.PERIODIC
         if self.refresh_mode in [RefreshMode.OFF, RefreshMode.FORCE]:
             self.set_refresh_mode(RefreshMode.PERIODIC)
-        if self.__remote_ac_temp is None:
-            self.set_ac_temperature(22)
 
     def configure_by_message(self, topic: str, msg: mqtt.MQTTMessage):
         payload = msg.payload.decode().lower()
@@ -603,33 +602,40 @@ class VehicleState:
                 return pdict['value']
         return None
 
+    def get_ac_temperature(self) -> int:
+        return DEFAULT_AC_TEMP if self.__remote_ac_temp is None else self.__remote_ac_temp
+
     def set_ac_temperature(self, temp) -> bool:
+        if temp is None:
+            LOG.error("Cannot set AC temperature to None")
+            return False
         temp = max(self.get_min_ac_temperature(), min(self.get_max_ac_temperature(), temp))
         if (self.__remote_ac_temp is None) or (self.__remote_ac_temp != temp):
             self.__remote_ac_temp = temp
+            LOG.info(f"Updating remote AC temperature to {temp}")
             self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_REMOTE_TEMPERATURE), temp)
             return True
         return False
 
-    def get_ac_temperature_idx(self):
+    def get_ac_temperature_idx(self) -> int:
         if self.series.startswith('EH32'):
-            return 3 + self.__remote_ac_temp - self.get_min_ac_temperature()
+            return 3 + self.get_ac_temperature() - self.get_min_ac_temperature()
         else:
-            return 2 + self.__remote_ac_temp - self.get_min_ac_temperature()
+            return 2 + self.get_ac_temperature() - self.get_min_ac_temperature()
 
-    def get_min_ac_temperature(self):
+    def get_min_ac_temperature(self) -> int:
         if self.series.startswith('EH32'):
             return 17
         else:
             return 16
 
-    def get_max_ac_temperature(self):
+    def get_max_ac_temperature(self) -> int:
         if self.series.startswith('EH32'):
             return 33
         else:
             return 28
 
-    def is_remote_ac_running(self):
+    def is_remote_ac_running(self) -> bool:
         return self.__remote_ac_running
 
 
