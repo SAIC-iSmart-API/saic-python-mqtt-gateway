@@ -6,13 +6,14 @@ from enum import Enum
 from typing import cast
 
 import paho.mqtt.client as mqtt
+from apscheduler.job import Job
 from apscheduler.schedulers.base import BaseScheduler
 from apscheduler.triggers.cron import CronTrigger
 from saic_ismart_client.common_model import ScheduledChargingMode
 from saic_ismart_client.ota_v1_1.data_model import VinInfo
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
 from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp, RvsChargingStatus
-from saic_ismart_client.saic_api import SaicMessage, TargetBatteryCode, ChargeCurrentLimitCode
+from saic_ismart_client.saic_api import ChargeCurrentLimitCode, SaicMessage, TargetBatteryCode
 
 import mqtt_topics
 from Exceptions import MqttGatewayException
@@ -135,6 +136,7 @@ class VehicleState:
             mode: ScheduledChargingMode
     ):
         job_id = f'{self.vin}_scheduled_charging'
+        existing_job: Job | None = self.__scheduler.get_job(job_id)
         if mode != ScheduledChargingMode.DISABLED:
             if self.refresh_period_inactive_grace > 0:
                 # Add a grace period to the start time, so that the car is not woken up too early
@@ -143,20 +145,23 @@ class VehicleState:
                          + datetime.timedelta(seconds=self.refresh_period_inactive_grace)
                 start_time = dt.time()
             trigger = CronTrigger.from_crontab(f'{start_time.minute} {start_time.hour} * * *')
-            self.__scheduler.add_job(
-                func=self.set_refresh_mode,
-                args=[RefreshMode.FORCE],
-                trigger=trigger,
-                kwargs={},
-                name=job_id,
-                id=job_id,
-                replace_existing=True,
-                max_instances=1,
-            )
-            LOG.info(f'Scheduled check for charging start for VIN {self.vin} at {start_time}')
-        else:
-            LOG.info(f'Removing scheduled check for charging start for VIN {self.vin}')
-            self.__scheduler.remove_job(job_id)
+            if existing_job is not None:
+                existing_job.reschedule(trigger=trigger)
+                LOG.info(f'Rescheduled check for charging start for VIN {self.vin} at {start_time}')
+            else:
+                self.__scheduler.add_job(
+                    func=self.set_refresh_mode,
+                    args=[RefreshMode.FORCE],
+                    trigger=trigger,
+                    kwargs={},
+                    name=job_id,
+                    id=job_id,
+                    replace_existing=True,
+                )
+                LOG.info(f'Scheduled check for charging start for VIN {self.vin} at {start_time}')
+        elif existing_job is not None:
+            existing_job.remove()
+            LOG.info(f'Removed scheduled check for charging start for VIN {self.vin}')
 
     def is_complete(self) -> bool:
         return self.refresh_period_active != -1 \
