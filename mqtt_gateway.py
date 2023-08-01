@@ -42,7 +42,12 @@ def datetime_to_str(dt: datetime.datetime) -> str:
 
 logging.basicConfig(format='%(asctime)s %(message)s')
 LOG = logging.getLogger(__name__)
-LOG.setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
+LOG.setLevel(level=LOG_LEVEL)
+
+
+def debug_log_enabled():
+    return LOG_LEVEL == 'DEBUG'
 
 
 class VehicleHandler:
@@ -297,7 +302,7 @@ class MqttGateway:
         self.saic_api.on_publish_raw_value = self.__on_publish_raw_value
         self.publisher.connect()
 
-    def run(self):
+    async def run(self):
         scheduler = apscheduler.schedulers.asyncio.AsyncIOScheduler()
         scheduler.start()
         try:
@@ -329,8 +334,7 @@ class MqttGateway:
                 scheduler,
                 account_prefix,
                 vin_info,
-                wallbox_soc_topic=wallbox_soc_topic
-            ,
+                wallbox_soc_topic=wallbox_soc_topic,
                 charge_polling_min_percent=self.configuration.charge_dynamic_polling_min_percentage
             )
             vehicle_state.configure(vin_info)
@@ -345,7 +349,7 @@ class MqttGateway:
             self.vehicle_handler[vin_info.vin] = vehicle_handler
 
         message_handler = MessageHandler(self, self.saic_api, self.configuration.messages_request_interval)
-        asyncio.run(main(self.vehicle_handler, message_handler))
+        await self.__main_loop(message_handler)
 
     def get_vehicle_handler(self, vin: str) -> VehicleHandler | None:
         if vin in self.vehicle_handler:
@@ -372,6 +376,38 @@ class MqttGateway:
             if self.configuration.open_wb_lp_map[key] == vin:
                 return key
         return None
+
+    async def __main_loop(self, message_handler):
+        tasks = []
+        for (key, vh) in self.vehicle_handler.items():
+            LOG.debug(f'Starting process for car {key}')
+            task = asyncio.create_task(vh.handle_vehicle(), name=f'handle_vehicle_{key}')
+            tasks.append(task)
+
+        tasks.append(asyncio.create_task(message_handler.check_for_new_messages(), name='message_handler'))
+
+        await self.__shutdown_handler(tasks)
+
+    @staticmethod
+    async def __shutdown_handler(tasks):
+        while True:
+            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+            for task in done:
+                task_name = task.get_name()
+                if task.cancelled():
+                    LOG.debug(f'{task_name !r} task was cancelled, this is only supposed if the application is '
+                              + f'shutting down')
+                else:
+                    exception = task.exception()
+                    if exception is not None:
+                        LOG.exception(f'{task_name !r} task crashed with an exception', exc_info=exception)
+                        raise SystemExit(-1)
+                    else:
+                        LOG.warning(f'{task_name !r} task terminated cleanly with result={task.result()}')
+            if len(pending) == 0:
+                break
+            else:
+                LOG.warning(f'There are still {len(pending)} tasks... waiting for them to complete')
 
 
 class MessageHandler:
@@ -464,40 +500,6 @@ class EnvDefault(argparse.Action):
 
     def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, self.dest, values)
-
-
-async def main(vh_map: dict[str, VehicleHandler], message_handler: MessageHandler):
-    tasks = []
-    for key in vh_map:
-        LOG.debug(f'Starting process for car {key}')
-        vh = vh_map[key]
-        task = asyncio.create_task(vh.handle_vehicle(), name=f'handle_vehicle_{key}')
-        tasks.append(task)
-
-    tasks.append(asyncio.create_task(message_handler.check_for_new_messages(), name='message_handler'))
-
-    await shutdown_handler(tasks)
-
-
-async def shutdown_handler(tasks):
-    while True:
-        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-        for task in done:
-            task_name = task.get_name()
-            if task.cancelled():
-                LOG.debug(f'{task_name !r} task was cancelled, this is only supposed if the application is '
-                          + f'shutting down')
-            else:
-                exception = task.exception()
-                if exception is not None:
-                    LOG.exception(f'{task_name !r} task crashed with an exception', exc_info=exception)
-                    raise SystemExit(-1)
-                else:
-                    LOG.warning(f'{task_name !r} task terminated cleanly with result={task.result()}')
-        if len(pending) == 0:
-            break
-        else:
-            LOG.warning(f'There are still {len(pending)} tasks... waiting for them to complete')
 
 
 def process_arguments() -> Configuration:
@@ -643,4 +645,4 @@ if __name__ == '__main__':
     configuration = process_arguments()
 
     mqtt_gateway = MqttGateway(configuration)
-    mqtt_gateway.run()
+    asyncio.run(mqtt_gateway.run(), debug=debug_log_enabled())
