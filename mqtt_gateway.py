@@ -549,6 +549,9 @@ def process_arguments() -> Configuration:
                                                     + ' Multiple mappings can be provided seperated by ,'
                                                     + ' Example: LSJXXXX=1,LSJYYYY=2',
                             dest='open_wp_lp_map', required=False, action=EnvDefault, envvar='OPENWB_LP_MAP')
+        parser.add_argument('--charging-stations-json', help='Custom charging stations configuration file name',
+                            dest='charging_stations_file', required=False, action=EnvDefault,
+                            envvar='CHARGING_STATIONS_JSON')
         parser.add_argument('--saic-relogin-delay', help='How long to wait before attempting another login to the SAIC '
                                                          'API. Environment Variable: SAIC_RELOGIN_DELAY',
                             dest='saic_relogin_delay', required=False, action=EnvDefault, envvar='SAIC_RELOGIN_DELAY',
@@ -583,6 +586,10 @@ def process_arguments() -> Configuration:
             open_wb_lp_map = {}
             cfg_value_to_dict(args.open_wp_lp_map, open_wb_lp_map)
             config.charging_stations_by_vin = get_charging_stations(open_wb_lp_map)
+        if args.charging_stations_file:
+            process_charging_stations_file(config, args.charging_stations_file)
+        else:
+            process_charging_stations_file(config, f'./{CHARGING_STATIONS_FILE}')
 
         config.saic_password = args.saic_password
 
@@ -616,8 +623,7 @@ def process_arguments() -> Configuration:
         SystemExit(err)
 
 
-def process_charging_stations_file(config: Configuration):
-    json_file = f'./{CHARGING_STATIONS_FILE}'
+def process_charging_stations_file(config: Configuration, json_file: str):
     try:
         with open(json_file, 'r') as f:
             data = json.load(f)
@@ -634,7 +640,7 @@ def process_charging_stations_file(config: Configuration):
                     charging_station.connected_value = item['chargerConnectedValue']
                 config.charging_stations_by_vin[vin] = charging_station
     except FileNotFoundError:
-        LOG.debug(f'File {json_file} does not exist')
+        LOG.warning(f'File {json_file} does not exist')
     except json.JSONDecodeError as e:
         LOG.exception(f'Reading {json_file} failed', exc_info=e)
 
@@ -677,7 +683,6 @@ if __name__ == '__main__':
     if hasattr(faulthandler, 'register'):
         faulthandler.register(signal.SIGQUIT, chain=False)
     configuration = process_arguments()
-    process_charging_stations_file(configuration)
 
     mqtt_gateway = MqttGateway(configuration)
     mqtt_gateway.run()
