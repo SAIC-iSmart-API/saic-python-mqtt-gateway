@@ -137,12 +137,12 @@ class VehicleState:
     ):
         job_id = f'{self.vin}_scheduled_charging'
         existing_job: Job | None = self.__scheduler.get_job(job_id)
-        if mode != ScheduledChargingMode.DISABLED:
+        if mode in [ScheduledChargingMode.UNTIL_CONFIGURED_TIME, ScheduledChargingMode.UNTIL_CONFIGURED_SOC]:
             if self.refresh_period_inactive_grace > 0:
                 # Add a grace period to the start time, so that the car is not woken up too early
                 dt = datetime.datetime.now() \
                          .replace(hour=start_time.hour, minute=start_time.minute, second=0, microsecond=0) \
-                         + datetime.timedelta(seconds=self.refresh_period_inactive_grace)
+                     + datetime.timedelta(seconds=self.refresh_period_inactive_grace)
                 start_time = dt.time()
             trigger = CronTrigger.from_crontab(f'{start_time.minute} {start_time.hour} * * *')
             if existing_job is not None:
