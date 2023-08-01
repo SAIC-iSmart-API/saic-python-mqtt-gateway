@@ -348,9 +348,16 @@ class MqttGateway:
                 vehicle_state
             )
             self.vehicle_handler[vin_info.vin] = vehicle_handler
-
-        message_handler = MessageHandler(self, self.saic_api, self.configuration.messages_request_interval)
-        await self.__main_loop(message_handler)
+        message_handler = MessageHandler(self, self.saic_api)
+        scheduler.add_job(
+            func=message_handler.check_for_new_messages,
+            trigger='interval',
+            seconds=self.configuration.messages_request_interval,
+            id='message_handler',
+            name='Check for new messages',
+            max_instances=1
+        )
+        await self.__main_loop()
 
     def get_vehicle_handler(self, vin: str) -> VehicleHandler | None:
         if vin in self.vehicle_handler:
@@ -378,14 +385,12 @@ class MqttGateway:
         else:
             return None
 
-    async def __main_loop(self, message_handler):
+    async def __main_loop(self):
         tasks = []
         for (key, vh) in self.vehicle_handler.items():
             LOG.debug(f'Starting process for car {key}')
             task = asyncio.create_task(vh.handle_vehicle(), name=f'handle_vehicle_{key}')
             tasks.append(task)
-
-        tasks.append(asyncio.create_task(message_handler.check_for_new_messages(), name='message_handler'))
 
         await self.__shutdown_handler(tasks)
 
@@ -412,20 +417,16 @@ class MqttGateway:
 
 
 class MessageHandler:
-    def __init__(self, gateway: MqttGateway, saicapi: SaicApi, refresh_interval: int):
+    def __init__(self, gateway: MqttGateway, saicapi: SaicApi):
         self.gateway = gateway
         self.saicapi = saicapi
-        self.refresh_interval = refresh_interval
 
     async def check_for_new_messages(self) -> None:
-        while True:
-            if self.__should_poll():
-                LOG.debug("Checking for new messages")
-                self.__polling()
-            else:
-                LOG.debug("Not checking for new messages since all cars have RefreshMode.OFF")
-            LOG.debug(f'Waiting {self.refresh_interval} seconds to check for new messages')
-            await asyncio.sleep(float(self.refresh_interval))
+        if self.__should_poll():
+            LOG.debug("Checking for new messages")
+            self.__polling()
+        else:
+            LOG.debug("Not checking for new messages since all cars have RefreshMode.OFF")
 
     def __polling(self):
         try:
