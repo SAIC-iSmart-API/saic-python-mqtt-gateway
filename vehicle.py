@@ -22,7 +22,6 @@ from publisher import Publisher
 DEFAULT_AC_TEMP = 22
 PRESSURE_TO_BAR_FACTOR = 0.04
 
-logging.basicConfig(format='%(asctime)s %(message)s')
 LOG = logging.getLogger(__name__)
 LOG.setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
 
@@ -455,14 +454,14 @@ class VehicleState:
             try:
                 self.update_charge_current_limit(ChargeCurrentLimitCode(raw_charge_current_limit))
             except ValueError:
-                logging.warning(f'Invalid charge current limit received: {raw_charge_current_limit}')
+                LOG.warning(f'Invalid charge current limit received: {raw_charge_current_limit}')
 
         raw_target_soc = charge_mgmt_data.bmsOnBdChrgTrgtSOCDspCmd
         if raw_target_soc is not None:
             try:
                 self.update_target_soc(TargetBatteryCode(raw_target_soc))
             except ValueError:
-                logging.warning(f'Invalid target SOC received: {raw_target_soc}')
+                LOG.warning(f'Invalid target SOC received: {raw_target_soc}')
 
         soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
         if soc <= 100.0:

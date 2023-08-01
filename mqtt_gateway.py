@@ -42,10 +42,12 @@ def datetime_to_str(dt: datetime.datetime) -> str:
     return dt.strftime('%Y-%m-%d %H:%M:%S')
 
 
-logging.basicConfig(format='%(asctime)s %(message)s')
+logging.root.handlers = []
+logging.basicConfig(format='{asctime:s} [{levelname:^8s}] {message:s} - {name:s}', style='{')
 LOG = logging.getLogger(__name__)
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
 LOG.setLevel(level=LOG_LEVEL)
+logging.getLogger('apscheduler').setLevel(level=LOG_LEVEL)
 
 
 def debug_log_enabled():

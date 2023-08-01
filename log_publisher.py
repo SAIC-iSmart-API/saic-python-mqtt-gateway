@@ -7,7 +7,6 @@ from publisher import Publisher
 class Logger(Publisher):
     def __init__(self, configuration: Configuration):
         super().__init__(configuration)
-        logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
 
     def publish_json(self, key: str, data: dict, no_prefix: bool = False) -> None:
         logging.debug(f'{key}: {self.dict_to_anonymized_json(data)}')

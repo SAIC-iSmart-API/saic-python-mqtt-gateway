@@ -8,7 +8,6 @@ import mqtt_topics
 from configuration import Configuration
 from publisher import Publisher
 
-logging.basicConfig(format='%(asctime)s %(message)s')
 LOG = logging.getLogger(__name__)
 LOG.setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
 
