@@ -1,0 +1,18 @@
+[
+    {
+        "chargeStateTopic": "openWB/lp/1/boolChargeStat",
+        "chargingValue": "1",
+        "socTopic": "openWB/set/lp/1/%Soc",
+        "chargerConnectedTopic": "openWB/lp/1/boolPlugStat",
+        "chargerConnectedValue": "1",
+        "vin": "vin1"
+    },
+    {
+        "chargeStateTopic": "openWB/lp/2/boolChargeStat",
+        "chargingValue": "1",
+        "socTopic": "openWB/set/lp/2/%Soc",
+        "chargerConnectedTopic": "openWB/lp/2/boolPlugStat",
+        "chargerConnectedValue": "1",
+        "vin": "vin2"
+    }
+]

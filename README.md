@@ -15,22 +15,42 @@ The implementation is based on the findings from the [SAIC-iSmart-API Documentat
 
 Configuration parameters can be provided as command line parameters or environment variables (this is what you typically do when you run the service from a docker container).
 
-| CMD param             | ENV variable         | Description                                                                                                                                                                          |
-|-----------------------|----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| -u or --saic-user     | SAIC_USER            | SAIC user name - **required**                                                                                                                                                        |
-| -p or --saic-password | SAIC_PASSWORD        | SAIC password - **required**                                                                                                                                                         |
-| -m or --mqtt-uri      | MQTT_URI             | URI to the MQTT Server. TCP: tcp://mqtt.eclipseprojects.io:1883 or WebSocket: ws://mqtt.eclipseprojects.io:9001 - **required**                                                       |
-| --mqtt-user           | MQTT_USER            | MQTT user name                                                                                                                                                                       |
-| --mqtt-password       | MQTT_PASSWORD        | MQTT password                                                                                                                                                                        |
-| --mqtt-topic-prefix   | MQTT_TOPIC           | Provide a custom MQTT prefix to replace the default: saic                                                                                                                            |
-| --saic-uri            | SAIC_URI             | SAIC URI. Default is the European Production endpoint: https://tap-eu.soimt.com                                                                                                      |
-| --abrp-api-key        | ABRP_API_KEY         | API key for the A Better Route Planner telemetry API. Default is the open source telemetry API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.                                             |
-| --abrp-user-token     | ABRP_USER_TOKEN      | Mapping of VIN to ABRP User Token. Multiple mappings can be provided seperated by ',' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl                                             |
-| --openwb-lp-map       | OPENWB_LP_MAP        | Mapping of VIN to openWB charging point. Multiple mappings can be provided seperated by ',' Example: 1=LSJXXXX,2=LSJYYYY                                                             |
-| --saic-relogin-delay  | SAIC_RELOGIN_DELAY   | The gateway detects logins from other devices (e.g. the iSMART app). It then pauses it's activity for 900 seconds (default value). The delay can be configured with this parameter.  |
-| --ha-discovery        | HA_DISCOVERY_ENABLED | Home Assistant auto-discovery is enabled (True) by default. It can be disabled (False) with this parameter.                                                                          |
-| --ha-discovery-prefix | HA_DISCOVERY_PREFIX  | The default MQTT prefix for Home Assistant auto-discovery is 'homeassistant'. Another prefix can be configured with this parameter                                                   |
-|                       | LOG_LEVEL            | Log level: INFO (default), use DEBUG for detailed output, use CRITICAL for no ouput, [more info](https://docs.python.org/3/library/logging.html#levels)                              |
+| CMD param                | ENV variable           | Description                                                                                                                                                                         |
+|--------------------------|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| -u or --saic-user        | SAIC_USER              | SAIC user name - **required**                                                                                                                                                       |
+| -p or --saic-password    | SAIC_PASSWORD          | SAIC password - **required**                                                                                                                                                        |
+| -m or --mqtt-uri         | MQTT_URI               | URI to the MQTT Server. TCP: tcp://mqtt.eclipseprojects.io:1883 or WebSocket: ws://mqtt.eclipseprojects.io:9001 - **required**                                                      |
+| --mqtt-user              | MQTT_USER              | MQTT user name                                                                                                                                                                      |
+| --mqtt-password          | MQTT_PASSWORD          | MQTT password                                                                                                                                                                       |
+| --mqtt-topic-prefix      | MQTT_TOPIC             | Provide a custom MQTT prefix to replace the default: saic                                                                                                                           |
+| --saic-uri               | SAIC_URI               | SAIC URI. Default is the European Production endpoint: https://tap-eu.soimt.com                                                                                                     |
+| --abrp-api-key           | ABRP_API_KEY           | API key for the A Better Route Planner telemetry API. Default is the open source telemetry API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.                                            |
+| --abrp-user-token        | ABRP_USER_TOKEN        | Mapping of VIN to ABRP User Token. Multiple mappings can be provided separated by ',' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl                                            |
+| --openwb-lp-map          | OPENWB_LP_MAP          | Mapping of VIN to openWB charging point. Multiple mappings can be provided separated by ',' Example: 1=LSJXXXX,2=LSJYYYY - **deprecated**                                           |
+| --charging-stations-json | CHARGING_STATIONS_JSON | Custom charging stations configuration file name                                                                                                                                    |
+| --saic-relogin-delay     | SAIC_RELOGIN_DELAY     | The gateway detects logins from other devices (e.g. the iSMART app). It then pauses it's activity for 900 seconds (default value). The delay can be configured with this parameter. |
+| --ha-discovery           | HA_DISCOVERY_ENABLED   | Home Assistant auto-discovery is enabled (True) by default. It can be disabled (False) with this parameter.                                                                         |
+| --ha-discovery-prefix    | HA_DISCOVERY_PREFIX    | The default MQTT prefix for Home Assistant auto-discovery is 'homeassistant'. Another prefix can be configured with this parameter                                                  |
+|                          | LOG_LEVEL              | Log level: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)                            |
+
+### Charging Station Configuration
+
+If your charging station also provides information over MQTT or if you somehow manage to publish information from your charging station, the MQTT gateway can benefit from it. In addition, the MQTT gateway can provide the SoC to your charging station.
+
+An [openWB](https://openwb.de) charging station is capable of providing information over MQTT for instance. You just need to provide the configuration in the file charging-stations.json. A sample configuration for two cars connected to an openWB charging station would be the following.
+
+Check-out the [sample file](charging-stations.json.sample)
+
+The key-value pairs in the JSON express the following: 
+
+| JSON key              | Description                                                                                       |
+|-----------------------|---------------------------------------------------------------------------------------------------|
+| chargeStateTopic      | topic indicating the charge state - **required**                                                  |
+| chargingValue         | payload that indicates the charging - **required**                                                |
+| socTopic              | topic where the gateway publishes the SoC for the charging station - **required**                 |
+| chargerConnectedTopic | topic indicating that the vehicle is connected to the charging station - optional                 |
+| chargerConnectedValue | payload that indicates that the charger is connected - optional                                   |
+| vin                   | vehicle identification number to map the charging station information to a vehicle - **required** |
 
 ## Running the service
 
@@ -54,13 +74,6 @@ $ docker build -t saic-mqtt-gateway .
 
 There is a [docker compose file](docker-compose.yml) that shows how to set up the service.
 
-## openWB integration
-
-The state-of-charge (SoC) can be provided over MQTT to an [openWB wallbox](https://openwb.de). To activate this, you need to provide the Mapping of VIN to openWB charging point. With this information the gateway can also detect that the vehicle is charging.
-
-Just configure the MQTT gateway to connect to the MQTT broker which is running on your openWB and enable SoC over MQTT in the openWB.
-
-The openWB can also connect to an external MQTT broker. However, this connection needs to be secured with TLS so that messages are not exchanged in clear text. Since the MQTT gateway does not yet support secured MQTT connections, it won't be possible to use a third-party broker.
 
 ## A Better Route Planner (ABRP) integration
 

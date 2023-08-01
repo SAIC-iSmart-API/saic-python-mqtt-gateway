@@ -10,3 +10,5 @@ services:
       - MQTT_PASSWORD=${MQTT_PWD}
       - SAIC_USER=${SAIC_USERNAME}
       - SAIC_PASSWORD=${SAIC_PWD}
+    volumes:
+      - ./charging-stations.json:/usr/src/app/charging-stations.json

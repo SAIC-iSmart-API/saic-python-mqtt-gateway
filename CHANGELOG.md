@@ -8,6 +8,7 @@
 * Dynamic refresh period during charging
 * Force polling around scheduled charging start
 * Further A/C enhancements
+* Generic charging station integration (OPENWB_LP_MAP argument is deprecated now)
 
 ## 0.3.0
 

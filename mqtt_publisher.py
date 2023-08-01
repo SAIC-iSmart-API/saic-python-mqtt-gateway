@@ -25,6 +25,8 @@ class MqttClient(Publisher):
         self.port = self.configuration.mqtt_port
         self.transport_protocol = self.configuration.mqtt_transport_protocol
         self.on_mqtt_command_received = None
+        self.vin_by_charge_state_topic = {}
+        self.vin_by_charger_connected_topic = {}
 
         mqtt_client = mqtt.Client(str(self.publisher_id), transport=self.transport_protocol, protocol=mqtt.MQTTv311)
         mqtt_client.on_connect = self.__on_connect
@@ -60,7 +62,14 @@ class MqttClient(Publisher):
             self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/+/+/+/set')
             self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/{mqtt_topics.REFRESH_MODE}/set')
             self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/{mqtt_topics.REFRESH_PERIOD}/+/set')
-            self.client.subscribe(f'{self.configuration.open_wb_topic}/lp/+/boolChargeStat')
+            for charging_station in self.configuration.charging_stations_by_vin.values():
+                LOG.debug(f'Subscribing to MQTT topic {charging_station.charge_state_topic}')
+                self.vin_by_charge_state_topic[charging_station.charge_state_topic] = charging_station.vin
+                self.client.subscribe(charging_station.charge_state_topic)
+                if charging_station.connected_topic:
+                    LOG.debug(f'Subscribing to MQTT topic {charging_station.connected_topic}')
+                    self.vin_by_charger_connected_topic[charging_station.connected_topic] = charging_station.vin
+                    self.client.subscribe(charging_station.connected_topic)
             self.keepalive()
         else:
             SystemExit(f'Unable to connect to MQTT broker. Return code: {rc}')
@@ -72,19 +81,27 @@ class MqttClient(Publisher):
             LOG.exception(f'Error while processing MQTT message: {e}')
 
     def __on_message_real(self, client, userdata, msg: mqtt.MQTTMessage) -> None:
-        if msg.topic.endswith('/boolChargeStat'):
-            index = self.get_index_from_open_wp_topic(msg.topic)
-            if index in self.configuration.open_wb_lp_map:
-                vin = self.configuration.open_wb_lp_map[index]
-                if msg.payload.decode() == '1':
-                    mqtt_account_prefix = self.get_mqtt_account_prefix()
-                    topic = f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/{vin}/{mqtt_topics.REFRESH_MODE}/set'
-                    m = mqtt.MQTTMessage(msg.mid, topic.encode())
-                    m.payload = str.encode('force')
-                    self.on_mqtt_command_received(vin, m)
+        if msg.topic in self.vin_by_charge_state_topic:
+            payload = msg.payload.decode()
+            LOG.debug(f'Received message over topic {msg.topic} with payload {payload}')
+            vin = self.vin_by_charge_state_topic[msg.topic]
+            charging_station = self.configuration.charging_stations_by_vin[vin]
+            if payload == charging_station.charging_value:
+                LOG.debug(f'Vehicle with vin {vin} is charging. Setting refresh mode to force')
+                mqtt_account_prefix = self.get_mqtt_account_prefix()
+                topic = f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/{vin}/{mqtt_topics.REFRESH_MODE}/set'
+                m = mqtt.MQTTMessage(msg.mid, topic.encode())
+                m.payload = str.encode('force')
+                self.on_mqtt_command_received(vin, m)
+        elif msg.topic in self.vin_by_charger_connected_topic:
+            payload = msg.payload.decode()
+            LOG.debug(f'Received message over topic {msg.topic} with payload {payload}')
+            vin = self.vin_by_charger_connected_topic[msg.topic]
+            charging_station = self.configuration.charging_stations_by_vin[vin]
+            if payload == charging_station.connected_value:
+                LOG.debug(f'Vehicle with vin {vin} is connected to its charging station')
             else:
-                self.on_mqtt_command_received('', msg)
-
+                LOG.debug(f'Vehicle with vin {vin} is disconnected from its charging station')
         else:
             vin = self.get_vin_from_topic(msg.topic)
             if self.on_mqtt_command_received is not None:
@@ -130,8 +147,3 @@ class MqttClient(Publisher):
         global_topic_removed = topic[len(self.configuration.mqtt_topic) + 1:]
         elements = global_topic_removed.split('/')
         return elements[2]
-
-    def get_index_from_open_wp_topic(self, topic: str):
-        open_wb_topic_removed = topic[len(f'{self.configuration.open_wb_topic}') + 1:]
-        elements = open_wb_topic_removed.split('/')
-        return elements[1]
