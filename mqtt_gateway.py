@@ -501,6 +501,18 @@ class EnvDefault(argparse.Action):
         setattr(namespace, self.dest, values)
 
 
+def get_charging_stations(open_wb_lp_map: dict[str, str]) -> dict[str, ChargingStation]:
+    LOG.info(f'OPENWB_LP_MAP is deprecated! Please provide {CHARGING_STATIONS_FILE} file instead!')
+    charging_stations = {}
+    for loading_point_no in open_wb_lp_map.keys():
+        vin = open_wb_lp_map[loading_point_no]
+        charging_station = ChargingStation(vin, f'openWB/lp/{loading_point_no}/boolChargeStat', '1',
+                                           f'openWB/set/lp/{loading_point_no}/%Soc')
+        charging_stations[vin] = charging_station
+
+    return charging_stations
+
+
 def process_arguments() -> Configuration:
     config = Configuration()
     parser = argparse.ArgumentParser(prog='MQTT Gateway')
