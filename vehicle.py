@@ -6,13 +6,14 @@ from enum import Enum
 from typing import cast
 
 import paho.mqtt.client as mqtt
+from apscheduler.job import Job
 from apscheduler.schedulers.base import BaseScheduler
 from apscheduler.triggers.cron import CronTrigger
 from saic_ismart_client.common_model import ScheduledChargingMode
 from saic_ismart_client.ota_v1_1.data_model import VinInfo
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
 from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp, RvsChargingStatus
-from saic_ismart_client.saic_api import SaicMessage, TargetBatteryCode, ChargeCurrentLimitCode
+from saic_ismart_client.saic_api import ChargeCurrentLimitCode, SaicMessage, TargetBatteryCode
 
 import mqtt_topics
 from Exceptions import MqttGatewayException
@@ -22,7 +23,6 @@ from publisher import Publisher
 DEFAULT_AC_TEMP = 22
 PRESSURE_TO_BAR_FACTOR = 0.04
 
-logging.basicConfig(format='%(asctime)s %(message)s')
 LOG = logging.getLogger(__name__)
 LOG.setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
 
@@ -136,28 +136,32 @@ class VehicleState:
             mode: ScheduledChargingMode
     ):
         job_id = f'{self.vin}_scheduled_charging'
-        if mode != ScheduledChargingMode.DISABLED:
+        existing_job: Job | None = self.__scheduler.get_job(job_id)
+        if mode in [ScheduledChargingMode.UNTIL_CONFIGURED_TIME, ScheduledChargingMode.UNTIL_CONFIGURED_SOC]:
             if self.refresh_period_inactive_grace > 0:
                 # Add a grace period to the start time, so that the car is not woken up too early
                 dt = datetime.datetime.now() \
                          .replace(hour=start_time.hour, minute=start_time.minute, second=0, microsecond=0) \
-                         + datetime.timedelta(seconds=self.refresh_period_inactive_grace)
+                     + datetime.timedelta(seconds=self.refresh_period_inactive_grace)
                 start_time = dt.time()
             trigger = CronTrigger.from_crontab(f'{start_time.minute} {start_time.hour} * * *')
-            self.__scheduler.add_job(
-                func=self.set_refresh_mode,
-                args=[RefreshMode.FORCE],
-                trigger=trigger,
-                kwargs={},
-                name=job_id,
-                id=job_id,
-                replace_existing=True,
-                max_instances=1,
-            )
-            LOG.info(f'Scheduled check for charging start for VIN {self.vin} at {start_time}')
-        else:
-            LOG.info(f'Removing scheduled check for charging start for VIN {self.vin}')
-            self.__scheduler.remove_job(job_id)
+            if existing_job is not None:
+                existing_job.reschedule(trigger=trigger)
+                LOG.info(f'Rescheduled check for charging start for VIN {self.vin} at {start_time}')
+            else:
+                self.__scheduler.add_job(
+                    func=self.set_refresh_mode,
+                    args=[RefreshMode.FORCE],
+                    trigger=trigger,
+                    kwargs={},
+                    name=job_id,
+                    id=job_id,
+                    replace_existing=True,
+                )
+                LOG.info(f'Scheduled check for charging start for VIN {self.vin} at {start_time}')
+        elif existing_job is not None:
+            existing_job.remove()
+            LOG.info(f'Removed scheduled check for charging start for VIN {self.vin}')
 
     def is_complete(self) -> bool:
         return self.refresh_period_active != -1 \
@@ -455,14 +459,14 @@ class VehicleState:
             try:
                 self.update_charge_current_limit(ChargeCurrentLimitCode(raw_charge_current_limit))
             except ValueError:
-                logging.warning(f'Invalid charge current limit received: {raw_charge_current_limit}')
+                LOG.warning(f'Invalid charge current limit received: {raw_charge_current_limit}')
 
         raw_target_soc = charge_mgmt_data.bmsOnBdChrgTrgtSOCDspCmd
         if raw_target_soc is not None:
             try:
                 self.update_target_soc(TargetBatteryCode(raw_target_soc))
             except ValueError:
-                logging.warning(f'Invalid target SOC received: {raw_target_soc}')
+                LOG.warning(f'Invalid target SOC received: {raw_target_soc}')
 
         soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
         if soc <= 100.0:
