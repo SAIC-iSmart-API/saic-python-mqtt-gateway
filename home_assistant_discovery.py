@@ -65,6 +65,8 @@ class HomeAssistantDiscovery:
         # Standard sensors
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_SOC, 'SoC', device_class='battery', state_class='measurement',
                               unit_of_measurement='%')
+        self.__publish_sensor(mqtt_topics.DRIVETRAIN_SOC_KWH, 'SoC_kWh', device_class='ENERGY_STORAGE', state_class='measurement', 
+                              unit_of_measurement='kWh')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME, 'Remaining charging time',
                               device_class='duration', state_class='measurement', unit_of_measurement='s')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE, 'Scheduled Charging Start',
