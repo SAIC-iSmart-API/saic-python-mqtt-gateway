@@ -1,4 +1,6 @@
 import json
+import logging
+import os
 
 import inflection as inflection
 from saic_ismart_client.common_model import ScheduledChargingMode
@@ -8,6 +10,9 @@ from saic_ismart_client.common_model import ChargeCurrentLimitCode
 import mqtt_topics
 from mqtt_publisher import MqttClient
 from vehicle import VehicleState, RefreshMode
+
+LOG = logging.getLogger(__name__)
+LOG.setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
 
 
 class HomeAssistantDiscovery:
@@ -355,15 +360,17 @@ class HomeAssistantDiscovery:
 
     def __get_device_node(self):
         vin = self.__get_vin()
-        brand_name = str(self.__vin_info.brand_name, encoding='utf8')
-        model_name = str(self.__vin_info.model_name, encoding='utf8')
-        model_year = str(self.__vin_info.model_year)
-        color_name = str(self.__vin_info.color_name, encoding='utf8')
+        brand_name = decode_as_utf8(self.__vin_info.brand_name)
+        model_name = decode_as_utf8(self.__vin_info.model_name)
+        model_year = decode_as_utf8(self.__vin_info.model_year)
+        color_name = decode_as_utf8(self.__vin_info.color_name)
         series = str(self.__vin_info.series)
+        # Create a long model name concatenating model_name, model_year and color_name without multiple spaces
+        final_model_name = ' '.join([model_name, model_year, color_name]).strip().replace('  ', ' ')
         return {
             'name': f'{brand_name} {model_name} {vin}',
             'manufacturer': brand_name,
-            'model': f'{model_name} {model_year} {color_name}',
+            'model': final_model_name,
             'hw_version': series,
             'identifiers': [vin],
         }
@@ -456,3 +463,22 @@ class HomeAssistantDiscovery:
 
 def snake_case(s):
     return inflection.underscore(s.lower()).replace(' ', '_')
+
+
+def decode_as_utf8(byte_string, default=''):
+    if byte_string is None:
+        return default
+    elif isinstance(byte_string, str):
+        return byte_string
+    elif isinstance(byte_string, bytes) or isinstance(byte_string, bytearray):
+        try:
+            return str(byte_string, encoding='utf8', errors='ignore')
+        except Exception:
+            LOG.exception(f'Failed to decode {byte_string} as utf8')
+            return default
+    else:
+        try:
+            return str(byte_string)
+        except Exception:
+            LOG.exception(f'Failed to decode {byte_string}')
+            return default
