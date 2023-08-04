@@ -74,8 +74,8 @@ class HomeAssistantDiscovery:
         # Standard sensors
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_SOC, 'SoC', device_class='battery', state_class='measurement',
                               unit_of_measurement='%')
-        self.__publish_sensor(mqtt_topics.DRIVETRAIN_SOC_KWH, 'SoC_kWh', device_class='ENERGY_STORAGE', state_class='measurement', 
-                              unit_of_measurement='kWh')
+        self.__publish_sensor(mqtt_topics.DRIVETRAIN_SOC_KWH, 'SoC_kWh', device_class='ENERGY_STORAGE',
+                              state_class='measurement', unit_of_measurement='kWh')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME, 'Remaining charging time',
                               device_class='duration', state_class='measurement', unit_of_measurement='s')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE, 'Mileage', device_class='distance',
@@ -344,12 +344,12 @@ class HomeAssistantDiscovery:
 
         return self.__publish_ha_discovery_message('select', name, payload)
 
-    def __get_common_attributes(self, id, name):
+    def __get_common_attributes(self, unique_id: str, name: str):
         return {
             'name': name,
             'device': self.__get_device_node(),
-            'unique_id': id,
-            'object_id': id,
+            'unique_id': unique_id,
+            'object_id': unique_id,
             'availability_topic': self.__get_system_topic(mqtt_topics.INTERNAL_LWT),
             'payload_available': 'online',
             'payload_not_available': 'offline',
