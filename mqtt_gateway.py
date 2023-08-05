@@ -70,24 +70,6 @@ class VehicleHandler:
             abrp_user_token = None
         self.abrp_api = AbrpApi(self.configuration.abrp_api_key, abrp_user_token)
 
-    def update_front_window_heat_state(self, front_window_heat_state: str):
-        result_key = f'{self.vehicle_prefix}/climate/frontWindowDefrosterHeating/result'
-        try:
-            if front_window_heat_state.lower() == 'on':
-                LOG.info('Front window heating will be switched on')
-                self.saic_api.start_front_defrost(self.vin_info)
-                self.publisher.publish_str(result_key, MSG_CMD_SUCCESSFUL)
-            elif front_window_heat_state.lower() == 'off':
-                LOG.info('Front window heating will be switched off')
-                self.saic_api.stop_front_defrost(self.vin_info)
-                self.publisher.publish_str(result_key, MSG_CMD_SUCCESSFUL)
-            else:
-                message = f'Invalid front window heat state: {front_window_heat_state}. Valid values are on and off'
-                self.publisher.publish_str(result_key, message)
-        except SaicApiException as e:
-            self.publisher.publish_str(result_key, f'Failed: {e.message}')
-            LOG.exception('update_front_window_heat_state failed', exc_info=e)
-
     async def handle_vehicle(self) -> None:
         self.vehicle_state.configure(self.vin_info)
         start_time = datetime.datetime.now()
