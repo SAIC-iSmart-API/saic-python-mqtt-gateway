@@ -8,6 +8,7 @@ class Configuration:
         self.saic_uri = ''
         self.saic_relogin_delay = 15 * 60  # in seconds
         self.abrp_token_map: dict[str, str] = {}
+        self.battery_capacity_map: dict[str, float] = {}
         self.abrp_api_key = ''
         self.mqtt_host = ''
         self.mqtt_port = -1

@@ -45,6 +45,7 @@ class VehicleState:
             account_prefix: str,
             vin: VinInfo, charging_station: ChargingStation = None,
             charge_polling_min_percent: float = 1.0,
+            total_battery_capacity: float = None,
     ):
         self.publisher = publisher
         self.vin = vin.vin
@@ -72,6 +73,7 @@ class VehicleState:
         self.__remote_ac_temp: int = DEFAULT_AC_TEMP
         self.__remote_ac_running: bool = False
         self.__scheduler = scheduler
+        self.__total_battery_capacity = total_battery_capacity
 
     def set_refresh_period_active(self, seconds: int):
         self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_ACTIVE), seconds)
@@ -490,8 +492,7 @@ class VehicleState:
             mileage_since_last_charge = charge_status.mileage_since_last_charge / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE_SINCE_LAST_CHARGE),
                                          mileage_since_last_charge)
-        soc_kwh = charge_status.real_time_power / 10.0
-        self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_KWH), soc_kwh)
+
         self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_TYPE), charge_status.charging_type)
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGER_CONNECTED),
                                     charge_status.charging_gun_state)
@@ -532,13 +533,42 @@ class VehicleState:
             last_charge_ending_power = charge_status.last_charge_ending_power / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_LAST_CHARGE_ENDING_POWER),
                                          last_charge_ending_power)
+
+        real_total_battery_capacity = self.get_actual_battery_capacity()
+        raw_total_battery_capacity = None
+
         if (
                 charge_status.total_battery_capacity is not None
                 and charge_status.total_battery_capacity > 0
         ):
-            total_battery_capacity = charge_status.total_battery_capacity / 10.0
-            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_TOTAL_BATTERY_CAPACITY),
-                                         total_battery_capacity)
+            raw_total_battery_capacity = charge_status.total_battery_capacity / 10.0
+
+        battery_capacity_correction_factor = 1.0
+        if real_total_battery_capacity is None and raw_total_battery_capacity is not None:
+            LOG.debug(f"Setting real battery capacity to raw battery capacity {raw_total_battery_capacity}")
+            real_total_battery_capacity = raw_total_battery_capacity
+            battery_capacity_correction_factor = 1.0
+        elif real_total_battery_capacity is not None and raw_total_battery_capacity is None:
+            LOG.debug(f"Setting raw battery capacity to real battery capacity {real_total_battery_capacity}")
+            battery_capacity_correction_factor = 1.0
+        elif real_total_battery_capacity is not None and raw_total_battery_capacity is not None:
+            LOG.debug(
+                f"Calculating full battery capacity correction factor based on "
+                f"real={real_total_battery_capacity} and raw={raw_total_battery_capacity}"
+            )
+            battery_capacity_correction_factor = real_total_battery_capacity / raw_total_battery_capacity
+        elif real_total_battery_capacity is None and raw_total_battery_capacity is None:
+            LOG.warning("No battery capacity information available")
+            battery_capacity_correction_factor = 1.0
+
+        if real_total_battery_capacity is not None and real_total_battery_capacity > 0:
+            self.publisher.publish_float(
+                self.get_topic(mqtt_topics.DRIVETRAIN_TOTAL_BATTERY_CAPACITY),
+                real_total_battery_capacity
+            )
+        soc_kwh = (battery_capacity_correction_factor * charge_status.real_time_power) / 10.0
+        self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_KWH), soc_kwh)
+
         if soc is not None and self.target_soc is not None and remaining_charging_time is not None:
             target_soc_percentage = self.target_soc.get_percentage()
             # Default to 1% if we are really close (e.g. balancing)
@@ -594,6 +624,18 @@ class VehicleState:
 
     def has_heated_seats(self):
         return self.__get_property_value('HeatedSeat') == '0'
+
+    def get_actual_battery_capacity(self) -> float | None:
+        if self.__total_battery_capacity is not None and self.__total_battery_capacity > 0:
+            return float(self.__total_battery_capacity)
+        # MG4 Lux/Trophy 2022
+        elif self.series.startswith('EH32 S'):
+            return 64.0
+        # MG4 Standard 2022
+        elif self.series.startswith('EH32 L'):
+            return 51.0
+        else:
+            return None
 
     def __get_property_value(self, property_name: str) -> str | None:
         if property_name in self.properties:
