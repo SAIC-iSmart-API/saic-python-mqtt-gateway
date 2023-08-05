@@ -74,6 +74,7 @@ class HomeAssistantDiscovery:
             step=10,
             mode='slider',
             icon='mdi:battery-charging-70',
+            enabled=self.__vehicle_state.supports_target_soc(),
         )
 
         # Standard sensors
@@ -194,6 +195,7 @@ class HomeAssistantDiscovery:
             self,
             topic: str,
             name: str,
+            enabled=True,
             icon: str | None = None,
             payload_lock: str = 'True',
             payload_unlock: str = 'False',
@@ -209,6 +211,7 @@ class HomeAssistantDiscovery:
             'state_unlocked': state_unlocked,
             'optimistic': False,
             'qos': 0,
+            'enabled_by_default': enabled,
         }
         if icon is not None:
             payload['icon'] = icon
@@ -218,6 +221,7 @@ class HomeAssistantDiscovery:
             self,
             topic: str,
             name: str,
+            enabled=True,
             device_class: str | None = None,
             state_class: str | None = None,
             unit_of_measurement: str | None = None,
@@ -227,6 +231,7 @@ class HomeAssistantDiscovery:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
             'value_template': value_template,
+            'enabled_by_default': enabled,
         }
         if device_class is not None:
             payload['device_class'] = device_class
@@ -243,6 +248,7 @@ class HomeAssistantDiscovery:
             self,
             topic: str,
             name: str,
+            enabled=True,
             device_class: str | None = None,
             state_class: str | None = None,
             unit_of_measurement: str | None = None,
@@ -263,6 +269,7 @@ class HomeAssistantDiscovery:
             'min': min,
             'max': max,
             'step': step,
+            'enabled_by_default': enabled,
         }
         if device_class is not None:
             payload['device_class'] = device_class
@@ -279,6 +286,7 @@ class HomeAssistantDiscovery:
             self,
             topic: str,
             name: str,
+            enabled=True,
             icon: str | None = None,
             value_template: str = '{{ value }}',
             command_template: str = '{{ value }}',
@@ -293,6 +301,7 @@ class HomeAssistantDiscovery:
             'value_template': value_template,
             'command_template': command_template,
             'retain': str(retain).lower(),
+            'enabled_by_default': enabled,
         }
         if min is not None:
             payload['min'] = min
@@ -309,6 +318,7 @@ class HomeAssistantDiscovery:
             self,
             topic: str,
             name: str,
+            enabled=True,
             device_class: str | None = None,
             value_template: str = '{{ value }}',
             payload_on: str = 'True',
@@ -320,6 +330,7 @@ class HomeAssistantDiscovery:
             'value_template': value_template,
             'payload_on': payload_on,
             'payload_off': payload_off,
+            'enabled_by_default': enabled,
         }
         if device_class is not None:
             payload['device_class'] = device_class
@@ -333,6 +344,7 @@ class HomeAssistantDiscovery:
             topic: str,
             name: str,
             options: list[str],
+            enabled=True,
             value_template: str = '{{ value }}',
             command_template: str = '{{ value }}',
             icon: str | None = None,
@@ -343,6 +355,7 @@ class HomeAssistantDiscovery:
             'value_template': value_template,
             'command_template': command_template,
             'options': options,
+            'enabled_by_default': enabled,
         }
         if icon is not None:
             payload['icon'] = icon

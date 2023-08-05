@@ -595,6 +595,9 @@ class VehicleState:
     def has_heated_seats(self):
         return self.__get_property_value('HeatedSeat') == '0'
 
+    def supports_target_soc(self):
+        return self.__get_property_value('BType') == '1'
+
     def __get_property_value(self, property_name: str) -> str | None:
         if property_name in self.properties:
             pdict = self.properties[property_name]
