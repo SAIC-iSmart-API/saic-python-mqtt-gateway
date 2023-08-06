@@ -9,7 +9,7 @@ import signal
 import sys
 import time
 import urllib.parse
-from typing import cast
+from typing import Callable, cast
 
 import apscheduler.schedulers.asyncio
 import paho.mqtt.client as mqtt
@@ -319,13 +319,15 @@ class MqttGateway:
             charging_station = self.get_charging_station(vin_info.vin)
             if charging_station:
                 LOG.debug(f'SoC for charging station will be published over MQTT topic: {charging_station.soc_topic}')
+            total_battery_capacity = configuration.battery_capacity_map.get(vin_info.vin, None)
             vehicle_state = VehicleState(
                 self.publisher,
                 scheduler,
                 account_prefix,
                 vin_info,
                 charging_station,
-                charge_polling_min_percent=self.configuration.charge_dynamic_polling_min_percentage
+                charge_polling_min_percent=self.configuration.charge_dynamic_polling_min_percentage,
+                total_battery_capacity=total_battery_capacity
             )
             vehicle_state.configure(vin_info)
 
@@ -540,6 +542,11 @@ def process_arguments() -> Configuration:
                                                       + ' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl,'
                                                       + ' Environment Variable: ABRP_USER_TOKEN',
                             dest='abrp_user_token', required=False, action=EnvDefault, envvar='ABRP_USER_TOKEN')
+        parser.add_argument('--battery-capacity-mapping', help='The mapping of VIN to full battery capacity.'
+                                                      + ' Multiple mappings can be provided seperated by ,'
+                                                      + ' Example: LSJXXXX=54.0,LSJYYYY=64.0,'
+                                                      + ' Environment Variable: BATTERY_CAPACITY_MAPPING',
+                            dest='battery_capacity_mapping', required=False, action=EnvDefault, envvar='BATTERY_CAPACITY_MAPPING')
         parser.add_argument('--openwb-lp-map', help='The mapping of VIN to openWB charging point.'
                                                     + ' Multiple mappings can be provided seperated by ,'
                                                     + ' Example: LSJXXXX=1,LSJYYYY=2',
@@ -577,6 +584,12 @@ def process_arguments() -> Configuration:
         config.abrp_api_key = args.abrp_api_key
         if args.abrp_user_token:
             cfg_value_to_dict(args.abrp_user_token, config.abrp_token_map)
+        if args.battery_capacity_mapping:
+            cfg_value_to_dict(
+                args.battery_capacity_mapping,
+                config.battery_capacity_map,
+                value_type=check_positive_float
+            )
         if args.open_wp_lp_map:
             open_wb_lp_map = {}
             cfg_value_to_dict(args.open_wp_lp_map, open_wb_lp_map)
@@ -640,7 +653,7 @@ def process_charging_stations_file(config: Configuration, json_file: str):
         LOG.exception(f'Reading {json_file} failed', exc_info=e)
 
 
-def cfg_value_to_dict(cfg_value: str, result_map: dict):
+def cfg_value_to_dict(cfg_value: str, result_map: dict, value_type: Callable[[str], any] = str):
     if ',' in cfg_value:
         map_entries = cfg_value.split(',')
     else:
@@ -651,7 +664,7 @@ def cfg_value_to_dict(cfg_value: str, result_map: dict):
             key_value_pair = entry.split('=')
             key = key_value_pair[0]
             value = key_value_pair[1]
-            result_map[key] = value
+            result_map[key] = value_type(value)
 
 
 def check_positive(value):
