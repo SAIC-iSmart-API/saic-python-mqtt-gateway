@@ -146,7 +146,7 @@ def mock_charge_status(mocked_charge_status):
 class TestVehicleHandler(TestCase):
     def setUp(self) -> None:
         config = Configuration()
-        saicapi = SaicApi('', '', '')
+        saicapi = SaicApi('', '', '', '')
         publisher = Publisher(config)
         vin_info = VinInfo()
         vin_info.vin = VIN

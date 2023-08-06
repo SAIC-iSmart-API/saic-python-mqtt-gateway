@@ -6,6 +6,7 @@ class Configuration:
         self.saic_user = ''
         self.saic_password = ''
         self.saic_uri = ''
+        self.saic_rest_uri = 'https://gateway-eu.soimt.com/'
         self.saic_relogin_delay = 15 * 60  # in seconds
         self.abrp_token_map: dict[str, str] = {}
         self.abrp_api_key = ''

@@ -13,6 +13,7 @@ from typing import cast
 
 import apscheduler.schedulers.asyncio
 import paho.mqtt.client as mqtt
+from saic_ismart_client.exceptions import SaicApiException
 
 from charging_station import ChargingStation
 from home_assistant_discovery import HomeAssistantDiscovery
@@ -21,7 +22,7 @@ from saic_ismart_client.common_model import TargetBatteryCode, ChargeCurrentLimi
 from saic_ismart_client.ota_v1_1.data_model import VinInfo, MpUserLoggingInRsp, MpAlarmSettingType
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
 from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp
-from saic_ismart_client.saic_api import SaicApi, SaicApiException, create_alarm_switch
+from saic_ismart_client.saic_api import SaicApi, create_alarm_switch
 
 import mqtt_topics
 from Exceptions import MqttGatewayException
@@ -301,7 +302,13 @@ class MqttGateway:
         self.vehicle_handler: dict[str, VehicleHandler] = {}
         self.publisher = MqttClient(self.configuration)
         self.publisher.on_mqtt_command_received = self.__on_mqtt_command_received
-        self.saic_api = SaicApi(config.saic_uri, config.saic_user, config.saic_password, config.saic_relogin_delay)
+        self.saic_api = SaicApi(
+            config.saic_uri,
+            config.saic_rest_uri,
+            config.saic_user,
+            config.saic_password,
+            config.saic_relogin_delay
+        )
         self.saic_api.on_publish_json_value = self.__on_publish_json_value
         self.saic_api.on_publish_raw_value = self.__on_publish_raw_value
         self.publisher.connect()
