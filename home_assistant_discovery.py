@@ -22,7 +22,11 @@ class HomeAssistantDiscovery:
 
     def publish_ha_discovery_messages(self):
         if not self.__vehicle_state.is_complete():
+            LOG.debug("Skipping Home Assistant discovery messages as vehicle state is not yet complete")
             return
+
+        LOG.debug("Publishing Home Assistant discovery messages")
+
         # Gateway Control
         self.__publish_select(mqtt_topics.REFRESH_MODE, 'Gateway refresh mode', [m.value for m in RefreshMode],
                               icon='mdi:refresh')
@@ -59,6 +63,7 @@ class HomeAssistantDiscovery:
         self.__publish_switch(mqtt_topics.WINDOWS_SUN_ROOF, 'Sun roof', enabled=self.__vehicle_state.has_sunroof())
         self.__publish_switch(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT, 'Rear window defroster heating',
                               icon='mdi:car-defrost-rear', payload_on='on', payload_off='off')
+
         # Locks
         self.__publish_lock(mqtt_topics.DOORS_LOCKED, 'Doors Lock', icon='mdi:car-door-lock')
         self.__publish_lock(mqtt_topics.DOORS_BOOT, 'Boot Lock', icon='mdi:car-door-lock', state_locked='False',
@@ -107,8 +112,6 @@ class HomeAssistantDiscovery:
                               icon='mdi:car-connected')
         self.__publish_sensor(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT, 'Rear window defroster heating',
                               icon='mdi:car-defrost-rear')
-        self.__publish_sensor(mqtt_topics.CLIMATE_FRONT_WINDOW_HEAT, 'Front window defroster heating',
-                              icon='mdi:car-defrost-front')
         self.__publish_sensor(mqtt_topics.LOCATION_HEADING, 'Heading', icon='mdi:compass')
         self.__publish_sensor(mqtt_topics.LOCATION_SPEED, 'Vehicle speed', device_class='speed',
                               unit_of_measurement='km/h')
@@ -141,23 +144,48 @@ class HomeAssistantDiscovery:
         self.__publish_binary_sensor(mqtt_topics.LIGHTS_DIPPED_BEAM, 'Lights Dipped Beam', device_class='light',
                                      icon='mdi:car-light-dimmed')
 
+        # Remove deprecated sensors
+        self.__unpublish_ha_discovery_message('sensor', 'Front window defroster heating')
+        LOG.debug("Completed publishing Home Assistant discovery messages")
+
     def __publish_vehicle_tracker(self):
         self.__publish_ha_discovery_message('device_tracker', 'Vehicle position', {
             'json_attributes_topic': self.__get_vehicle_topic(mqtt_topics.LOCATION_POSITION)
         })
 
     def __publish_remote_ac(self):
+        # This has been convrted into 2 switches and a climate entity for ease of operation
+
+        self.__publish_ha_discovery_message('switch', 'Front window defroster heating', {
+            'icon': 'mdi:car-defrost-front',
+            'state_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE),
+            'command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE) + '/set',
+            'value_template': '{% if value == "front" %}front{% else %}off{% endif %}',
+            'state_on': 'front',
+            'state_off': 'off',
+            'payload_on': 'front',
+            'payload_off': 'off',
+        })
+
+        self.__publish_ha_discovery_message('switch', 'Vehicle climate fan only', {
+            'icon': 'mdi:fan',
+            'state_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE),
+            'command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE) + '/set',
+            'value_template': '{% if value == "blowingOnly" %}blowingOnly{% else %}off{% endif %}',
+            'state_on': 'blowingOnly',
+            'state_off': 'off',
+            'payload_on': 'blowingOnly',
+            'payload_off': 'off',
+        })
+
         self.__publish_ha_discovery_message('climate', 'Vehicle climate', {
             'precision': 1.0,
             'temperature_unit': 'C',
             'mode_state_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE),
             'mode_command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE) + '/set',
-            'mode_state_template': '{% if value == "off" %}off{% else %}auto{% endif %}',
-            'mode_command_template': '{% if value == "off" %}off{% else %}on{% endif %}',
+            'mode_state_template': '{% if value == "on" %}auto{% else %}off{% endif %}',
+            'mode_command_template': '{% if value == "auto" %}on{% else %}off{% endif %}',
             'modes': ['off', 'auto'],
-            'preset_modes': ['off', 'on', 'blowingOnly', 'front'],
-            'preset_mode_command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE) + '/set',
-            'preset_mode_state_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE),
             'current_temperature_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_INTERIOR_TEMPERATURE),
             'current_temperature_template': '{{ value }}',
             'temperature_command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_TEMPERATURE) + '/set',
@@ -402,6 +430,14 @@ class HomeAssistantDiscovery:
         ha_topic = f'{discovery_prefix}/{sensor_type}/{vin}_mg/{unique_id}/config'
         self.__vehicle_state.publisher.publish_json(ha_topic, final_payload, no_prefix=True)
         return f"{sensor_type}.{unique_id}"
+
+    # This de-registers an entity from Home Assistant
+    def __unpublish_ha_discovery_message(self, sensor_type: str, sensor_name: str) -> None:
+        vin = self.__get_vin()
+        unique_id = f'{vin}_{snake_case(sensor_name)}'
+        discovery_prefix = self.__vehicle_state.publisher.configuration.ha_discovery_prefix
+        ha_topic = f'{discovery_prefix}/{sensor_type}/{vin}_mg/{unique_id}/config'
+        self.__vehicle_state.publisher.publish_str(ha_topic, '', no_prefix=True)
 
     def __publish_scheduled_charging(self):
         start_time_id = self.__publish_sensor(
