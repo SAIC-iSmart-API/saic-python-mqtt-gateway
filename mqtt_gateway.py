@@ -542,11 +542,12 @@ def process_arguments() -> Configuration:
                                                       + ' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl,'
                                                       + ' Environment Variable: ABRP_USER_TOKEN',
                             dest='abrp_user_token', required=False, action=EnvDefault, envvar='ABRP_USER_TOKEN')
-        parser.add_argument('--battery-capacity-mapping', help='The mapping of VIN to full battery capacity.'
-                                                      + ' Multiple mappings can be provided seperated by ,'
-                                                      + ' Example: LSJXXXX=54.0,LSJYYYY=64.0,'
-                                                      + ' Environment Variable: BATTERY_CAPACITY_MAPPING',
-                            dest='battery_capacity_mapping', required=False, action=EnvDefault, envvar='BATTERY_CAPACITY_MAPPING')
+        parser.add_argument('--battery-capacity-mapping', help='The mapping of VIN to full batteryc'
+                                                               + ' apacity. Multiple mappings can be provided separated'
+                                                               + ' by , Example: LSJXXXX=54.0,LSJYYYY=64.0,'
+                                                               + ' Environment Variable: BATTERY_CAPACITY_MAPPING',
+                            dest='battery_capacity_mapping', required=False, action=EnvDefault,
+                            envvar='BATTERY_CAPACITY_MAPPING')
         parser.add_argument('--openwb-lp-map', help='The mapping of VIN to openWB charging point.'
                                                     + ' Multiple mappings can be provided seperated by ,'
                                                     + ' Example: LSJXXXX=1,LSJYYYY=2',

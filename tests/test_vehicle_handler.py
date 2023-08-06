@@ -35,7 +35,9 @@ DRIVETRAIN_CHARGING_TYPE = 1
 DRIVETRAIN_CHARGER_CONNECTED = True
 DRIVETRAIN_REMAINING_CHARGING_TIME = 0
 DRIVETRAIN_LAST_CHARGE_ENDING_POWER = 200
-DRIVETRAIN_TOTAL_BATTERY_CAPACITY = 500
+REAL_TOTAL_BATTERY_CAPACITY = 64.0
+RAW_TOTAL_BATTERY_CAPACITY = 72.5
+BATTERY_CAPACITY_CORRECTION_FACTOR = REAL_TOTAL_BATTERY_CAPACITY / RAW_TOTAL_BATTERY_CAPACITY
 
 CLIMATE_INTERIOR_TEMPERATURE = 22
 CLIMATE_EXTERIOR_TEMPERATURE = 18
@@ -133,11 +135,11 @@ def mock_charge_status(mocked_charge_status):
     charge_status = RvsChargingStatus()
     charge_status.mileage_of_day = DRIVETRAIN_MILEAGE_OF_DAY * 10.0
     charge_status.mileage_since_last_charge = DRIVETRAIN_MILEAGE_SINCE_LAST_CHARGE * 10.0
-    charge_status.real_time_power = DRIVETRAIN_SOC_KWH * 10.0
+    charge_status.real_time_power = (DRIVETRAIN_SOC_KWH / BATTERY_CAPACITY_CORRECTION_FACTOR) * 10
     charge_status.charging_type = DRIVETRAIN_CHARGING_TYPE
     charge_status.charging_gun_state = DRIVETRAIN_CHARGER_CONNECTED
     charge_status.last_charge_ending_power = DRIVETRAIN_LAST_CHARGE_ENDING_POWER * 10.0
-    charge_status.total_battery_capacity = DRIVETRAIN_TOTAL_BATTERY_CAPACITY * 10.0
+    charge_status.total_battery_capacity = RAW_TOTAL_BATTERY_CAPACITY * 10.0
     charge_mgmt_data.chargeStatus = charge_status
     charge_mgmt_data_rsp_msg = MessageV30(MessageBodyV30(), charge_mgmt_data)
     mocked_charge_status.return_value = charge_mgmt_data_rsp_msg
@@ -229,7 +231,7 @@ class TestVehicleHandler(TestCase):
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_LAST_CHARGE_ENDING_POWER),
                                DRIVETRAIN_LAST_CHARGE_ENDING_POWER)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_TOTAL_BATTERY_CAPACITY),
-                               DRIVETRAIN_TOTAL_BATTERY_CAPACITY)
+                               REAL_TOTAL_BATTERY_CAPACITY)
         self.assertEqual(15, len(self.vehicle_handler.publisher.map))
 
     def assert_mqtt_topic(self, topic: str, value):

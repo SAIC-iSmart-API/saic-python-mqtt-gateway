@@ -155,7 +155,7 @@ class HomeAssistantDiscovery:
         })
 
     def __publish_remote_ac(self):
-        # This has been convrted into 2 switches and a climate entity for ease of operation
+        # This has been converted into 2 switches and a climate entity for ease of operation
 
         self.__publish_ha_discovery_message('switch', 'Front window defroster heating', {
             'icon': 'mdi:car-defrost-front',
