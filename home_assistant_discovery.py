@@ -67,6 +67,8 @@ class HomeAssistantDiscovery:
                               unit_of_measurement='%')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME, 'Remaining charging time',
                               device_class='duration', state_class='measurement', unit_of_measurement='s')
+        self.__publish_sensor(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME, 'Charging finished',
+                              device_class='timestamp', value_template='{{ (as_timestamp(now()) + value | int) }}')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE, 'Scheduled Charging Start',
                               value_template='{{ value_json["startTime"] }}', icon='mdi:clock-start')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE, 'Scheduled Charging End',
