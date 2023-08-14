@@ -91,8 +91,7 @@ class HomeAssistantDiscovery:
                               device_class='duration', state_class='measurement', unit_of_measurement='s')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME, 'Charging finished',
                               device_class='timestamp',
-                              value_template='{{ (now() + timedelta(seconds = value | int)).isoformat() }}',
-                              availability='{{ value | int > 0 }}')
+                              value_template='{{ (now() + timedelta(seconds = value | int)).isoformat() }}')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE, 'Mileage', device_class='distance',
                               state_class='total_increasing', unit_of_measurement='km')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE_OF_DAY, 'Mileage of the day', device_class='distance',
@@ -259,7 +258,6 @@ class HomeAssistantDiscovery:
             unit_of_measurement: str | None = None,
             icon: str | None = None,
             value_template: str = '{{ value }}',
-            availability: str | None = None
     ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
@@ -275,7 +273,7 @@ class HomeAssistantDiscovery:
         if icon is not None:
             payload['icon'] = icon
 
-        return self.__publish_ha_discovery_message('sensor', name, payload, availability)
+        return self.__publish_ha_discovery_message('sensor', name, payload)
 
     def __publish_number(
             self,
@@ -395,21 +393,16 @@ class HomeAssistantDiscovery:
 
         return self.__publish_ha_discovery_message('select', name, payload)
 
-    def __get_common_attributes(self, unique_id: str, name: str, availability: str | None = None):
-        common_attributes = {
+    def __get_common_attributes(self, unique_id: str, name: str):
+        return {
             'name': name,
             'device': self.__get_device_node(),
             'unique_id': unique_id,
-            'object_id': unique_id
+            'object_id': unique_id,
+            'availability_topic': self.__get_system_topic(mqtt_topics.INTERNAL_LWT),
+            'payload_available': 'online',
+            'payload_not_available': 'offline',
         }
-
-        if availability is not None:
-            common_attributes['availability'] = availability
-        else:
-            common_attributes['availability_topic'] = self.__get_system_topic(mqtt_topics.INTERNAL_LWT),
-            common_attributes['payload_available'] = 'online',
-            common_attributes['payload_not_available'] = 'offline',
-        return common_attributes
 
     def __get_device_node(self):
         vin = self.__get_vin()
@@ -445,16 +438,10 @@ class HomeAssistantDiscovery:
             return str(publisher.get_topic(vehicle_topic, no_prefix=False), encoding='utf8')
         return vehicle_topic
 
-    def __publish_ha_discovery_message(
-            self,
-            sensor_type: str,
-            sensor_name: str,
-            payload: dict,
-            availability: str | None = None
-    ) -> str:
+    def __publish_ha_discovery_message(self, sensor_type: str, sensor_name: str, payload: dict) -> str:
         vin = self.__get_vin()
         unique_id = f'{vin}_{snake_case(sensor_name)}'
-        final_payload = self.__get_common_attributes(unique_id, sensor_name, availability) | payload
+        final_payload = self.__get_common_attributes(unique_id, sensor_name) | payload
         discovery_prefix = self.__vehicle_state.publisher.configuration.ha_discovery_prefix
         ha_topic = f'{discovery_prefix}/{sensor_type}/{vin}_mg/{unique_id}/config'
         self.__vehicle_state.publisher.publish_json(ha_topic, final_payload, no_prefix=True)
