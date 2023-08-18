@@ -16,6 +16,7 @@ class Configuration:
         self.mqtt_transport_protocol = ''
         self.mqtt_user = ''
         self.mqtt_password = ''
+        self.mqtt_client_id = 'saic-python-mqtt-gateway'
         self.mqtt_topic = ''
         self.charging_stations_by_vin: dict[str, ChargingStation] = {}
         self.anonymized_publishing = False

@@ -518,6 +518,11 @@ def process_arguments() -> Configuration:
                             dest='mqtt_user', required=False, action=EnvDefault, envvar='MQTT_USER')
         parser.add_argument('--mqtt-password', help='The MQTT password. Environment Variable: MQTT_PASSWORD',
                             dest='mqtt_password', required=False, action=EnvDefault, envvar='MQTT_PASSWORD')
+        parser.add_argument('--mqtt-client-id', help='The MQTT Client Identifier. Environment Variable: '
+                                                     + 'MQTT_CLIENT_ID '
+                                                     + 'Default is saic-python-mqtt-gateway',
+                            default='saic-python-mqtt-gateway', dest='mqtt_client_id', required=False,
+                            action=EnvDefault, envvar='MQTT_CLIENT_ID')
         parser.add_argument('--mqtt-topic-prefix', help='MQTT topic prefix. Environment Variable: MQTT_TOPIC'
                                                         + 'Default is saic', default='saic', dest='mqtt_topic',
                             required=False, action=EnvDefault, envvar='MQTT_TOPIC')
@@ -574,6 +579,7 @@ def process_arguments() -> Configuration:
         args = parser.parse_args()
         config.mqtt_user = args.mqtt_user
         config.mqtt_password = args.mqtt_password
+        config.mqtt_client_id = args.mqtt_client_id
         config.charge_dynamic_polling_min_percentage = args.charge_dynamic_polling_min_percentage
         if args.saic_relogin_delay:
             config.saic_relogin_delay = args.saic_relogin_delay

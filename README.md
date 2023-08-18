@@ -22,6 +22,7 @@ Configuration parameters can be provided as command line parameters or environme
 | -m or --mqtt-uri           | MQTT_URI                 | URI to the MQTT Server. TCP: tcp://mqtt.eclipseprojects.io:1883 or WebSocket: ws://mqtt.eclipseprojects.io:9001 - **required**                                                      |
 | --mqtt-user                | MQTT_USER                | MQTT user name                                                                                                                                                                      |
 | --mqtt-password            | MQTT_PASSWORD            | MQTT password                                                                                                                                                                       |
+| --mqtt-client-id           | MQTT_CLIENT_ID           | MQTT Client Identifier. Defaults to saic-python-mqtt-gateway.                                                                                                                       |
 | --mqtt-topic-prefix        | MQTT_TOPIC               | Provide a custom MQTT prefix to replace the default: saic                                                                                                                           |
 | --saic-uri                 | SAIC_URI                 | SAIC URI. Default is the European Production endpoint: https://tap-eu.soimt.com                                                                                                     |
 | --abrp-api-key             | ABRP_API_KEY             | API key for the A Better Route Planner telemetry API. Default is the open source telemetry API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.                                            |
@@ -33,6 +34,7 @@ Configuration parameters can be provided as command line parameters or environme
 | --ha-discovery             | HA_DISCOVERY_ENABLED     | Home Assistant auto-discovery is enabled (True) by default. It can be disabled (False) with this parameter.                                                                         |
 | --ha-discovery-prefix      | HA_DISCOVERY_PREFIX      | The default MQTT prefix for Home Assistant auto-discovery is 'homeassistant'. Another prefix can be configured with this parameter                                                  |
 |                            | LOG_LEVEL                | Log level: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)                            |
+|                            | MQTT_LOG_LEVEL           | Log level of the MQTT Client: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)         |
 
 ### Charging Station Configuration
 
