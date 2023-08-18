@@ -15,9 +15,9 @@ import apscheduler.schedulers.asyncio
 import paho.mqtt.client as mqtt
 from saic_ismart_client.exceptions import SaicApiException
 
+from abrp_api import AbrpApi, AbrpApiException
 from charging_station import ChargingStation
 from home_assistant_discovery import HomeAssistantDiscovery
-from saic_ismart_client.abrp_api import AbrpApi, AbrpApiException
 from saic_ismart_client.common_model import TargetBatteryCode, ChargeCurrentLimitCode, ScheduledChargingMode
 from saic_ismart_client.ota_v1_1.data_model import VinInfo, MpUserLoggingInRsp, MpAlarmSettingType
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
@@ -88,9 +88,12 @@ class VehicleHandler:
                     and self.vehicle_state.should_refresh()
             ):
                 try:
-                    vehicle_status = self.update_vehicle_status()
-                    charge_status = self.update_charge_status()
-                    abrp_response = self.abrp_api.update_abrp(vehicle_status, charge_status)
+                    if self.vehicle_state.is_charging:
+                        self.update_charge_status()
+                    else:
+                        self.update_vehicle_status()
+                        self.update_charge_status()
+                    abrp_response = self.abrp_api.update_abrp(self.vehicle_state)
                     self.publisher.publish_str(f'{self.vehicle_prefix}/{mqtt_topics.INTERNAL_ABRP}', abrp_response)
                     self.vehicle_state.mark_successful_refresh()
                     LOG.info('Refreshing vehicle status succeeded...')

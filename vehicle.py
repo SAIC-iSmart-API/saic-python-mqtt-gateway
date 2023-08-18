@@ -74,6 +74,15 @@ class VehicleState:
         self.__remote_ac_running: bool = False
         self.__scheduler = scheduler
         self.__total_battery_capacity = total_battery_capacity
+        self.is_parked: bool = False
+        self.power: float = 0
+        self.voltage: float = 0
+        self.current: float = 0
+        self.soc: float = 0
+        self.exterior_temperature: float = 0
+        self.mileage: float = 0
+        self.electric_range: float = 0
+        self.gps_data = {}
 
     def set_refresh_period_active(self, seconds: int):
         self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_ACTIVE), seconds)
@@ -175,6 +184,7 @@ class VehicleState:
     def handle_vehicle_status(self, vehicle_status: OtaRvmVehicleStatusResp25857) -> None:
         is_engine_running = vehicle_status.is_engine_running()
         self.is_charging = vehicle_status.is_charging()
+        self.is_parked = vehicle_status.is_parked()
         basic_vehicle_status = vehicle_status.get_basic_vehicle_status()
         remote_climate_status = basic_vehicle_status.remote_climate_status
 
@@ -187,23 +197,31 @@ class VehicleState:
             self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_INTERIOR_TEMPERATURE), interior_temperature)
         exterior_temperature = basic_vehicle_status.exterior_temperature
         if exterior_temperature > -128:
-            self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_EXTERIOR_TEMPERATURE), exterior_temperature)
-        battery_voltage = basic_vehicle_status.battery_voltage / 10.0
-        self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE), battery_voltage)
+            self.exterior_temperature = exterior_temperature
+            self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_EXTERIOR_TEMPERATURE),
+                                       self.exterior_temperature)
+        self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE),
+                                     basic_vehicle_status.battery_voltage / 10.0)
 
+        self.gps_data['utc'] = vehicle_status.get_gps_position().timestamp_4_short.seconds
         way_point = vehicle_status.get_gps_position().get_way_point()
         speed = way_point.speed / 10.0
+        self.gps_data['speed'] = speed
         self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_SPEED), speed)
+        self.gps_data['heading'] = way_point.heading
         self.publisher.publish_int(self.get_topic(mqtt_topics.LOCATION_HEADING), way_point.heading)
         position = way_point.get_position()
         latitude = None
         if abs(position.latitude) > 0:
             latitude = position.latitude / 1000000.0
+            self.gps_data['lat'] = latitude
             self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_LATITUDE), latitude)
         longitude = None
         if abs(position.longitude) > 0:
             longitude = position.longitude / 1000000.0
+            self.gps_data['lon'] = longitude
             self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_LONGITUDE), longitude)
+            self.gps_data['elevation'] = position.altitude
         self.publisher.publish_int(self.get_topic(mqtt_topics.LOCATION_ELEVATION), position.altitude)
         if latitude is not None and longitude is not None:
             self.publisher.publish_json(self.get_topic(mqtt_topics.LOCATION_POSITION), {
@@ -271,11 +289,11 @@ class VehicleState:
                                    'off' if rear_window_heat_state == 0 else 'on')
 
         if basic_vehicle_status.mileage > 0:
-            mileage = basic_vehicle_status.mileage / 10.0
-            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE), mileage)
+            self.mileage = basic_vehicle_status.mileage / 10.0
+            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE), self.mileage)
         if basic_vehicle_status.fuel_range_elec > 0:
-            electric_range = basic_vehicle_status.fuel_range_elec / 10.0
-            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_RANGE), electric_range)
+            self.electric_range = basic_vehicle_status.fuel_range_elec / 10.0
+            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_RANGE), self.electric_range)
 
         self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_VEHICLE_STATE),
                                    VehicleState.datetime_to_str(datetime.datetime.now()))
@@ -447,12 +465,12 @@ class VehicleState:
                 raise MqttGatewayException(f'Unsupported topic {topic}')
 
     def handle_charge_status(self, charge_mgmt_data: OtaChrgMangDataResp) -> None:
-        self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_CURRENT),
-                                     round(charge_mgmt_data.get_current(), 3))
-        self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_VOLTAGE),
-                                     round(charge_mgmt_data.get_voltage(), 3))
-        self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_POWER),
-                                     round(charge_mgmt_data.get_power(), 3))
+        self.current = round(charge_mgmt_data.get_current(), 3)
+        self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_CURRENT), self.current)
+        self.voltage = round(charge_mgmt_data.get_voltage(), 3)
+        self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_VOLTAGE), self.voltage)
+        self.power = round(charge_mgmt_data.get_power(), 3)
+        self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_POWER), self.power)
         raw_charge_current_limit = charge_mgmt_data.bmsAltngChrgCrntDspCmd
         if (
                 raw_charge_current_limit is not None
@@ -472,9 +490,10 @@ class VehicleState:
 
         soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
         if soc <= 100.0:
-            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC), soc)
+            self.soc = soc
+            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC), self.soc)
             if self.charging_station:
-                self.publisher.publish_int(self.charging_station.soc_topic, int(soc), True)
+                self.publisher.publish_int(self.charging_station.soc_topic, int(self.soc), True)
         estimated_electrical_range = charge_mgmt_data.bms_estd_elec_rng / 10.0
         self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_HYBRID_ELECTRICAL_RANGE),
                                      estimated_electrical_range)
@@ -493,7 +512,7 @@ class VehicleState:
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE_SINCE_LAST_CHARGE),
                                          mileage_since_last_charge)
 
-        self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_TYPE), charge_status.charging_type)
+        self.handle_charging_type(charge_status.charging_type)
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGER_CONNECTED),
                                     charge_status.charging_gun_state)
 
@@ -569,10 +588,10 @@ class VehicleState:
         soc_kwh = (battery_capacity_correction_factor * charge_status.real_time_power) / 10.0
         self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_KWH), soc_kwh)
 
-        if soc is not None and self.target_soc is not None and remaining_charging_time is not None:
+        if self.soc is not None and self.target_soc is not None and remaining_charging_time is not None:
             target_soc_percentage = self.target_soc.get_percentage()
             # Default to 1% if we are really close (e.g. balancing)
-            delta_soc = max(1, int(target_soc_percentage - soc))
+            delta_soc = max(1, int(target_soc_percentage - self.soc))
             time_for_1pct = remaining_charging_time / delta_soc
             time_for_min_pct = math.ceil(self.charge_polling_min_percent * time_for_1pct)
             # It doesn't make sense to refresh less than the estimated time for completion
@@ -627,6 +646,7 @@ class VehicleState:
 
     def supports_target_soc(self):
         return self.__get_property_value('BType') == '1'
+
     def get_actual_battery_capacity(self) -> float | None:
         if self.__total_battery_capacity is not None and self.__total_battery_capacity > 0:
             return float(self.__total_battery_capacity)
@@ -681,6 +701,14 @@ class VehicleState:
 
     def is_remote_ac_running(self) -> bool:
         return self.__remote_ac_running
+
+    def handle_charging_type(self, charging_type: int):
+        if charging_type > 3:
+            self.is_charging = True
+        else:
+            self.is_charging = False
+        self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING), self.is_charging)
+        self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_TYPE), charging_type)
 
 
 def has_scheduled_charging_info(charge_mgmt_data: OtaChrgMangDataResp):
