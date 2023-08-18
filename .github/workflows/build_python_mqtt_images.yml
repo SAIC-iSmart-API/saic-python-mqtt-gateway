@@ -33,6 +33,7 @@ jobs:
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_PASSWORD }}
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
@@ -46,8 +47,20 @@ jobs:
         with:
           string: ${{ github.repository }}
 
-      - name: Build and push
+      - name: Build and push (GHCR only)
         uses: docker/build-push-action@v4
+        if: env.DOCKERHUB_ORGANIZATION == null
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          tags: |
+            ghcr.io/${{ steps.lowercase-repository.outputs.lowercase }}/saic-mqtt-gateway:latest
+            ghcr.io/${{ steps.lowercase-repository.outputs.lowercase }}/saic-mqtt-gateway:${{ env.RELEASE_VERSION }}
+
+      - name: Build and push (GHCR + DockerHub)
+        uses: docker/build-push-action@v4
+        if: env.DOCKERHUB_ORGANIZATION != null
         with:
           context: .
           platforms: linux/amd64,linux/arm64,linux/arm/v7
