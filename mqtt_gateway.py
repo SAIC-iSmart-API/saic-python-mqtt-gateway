@@ -77,7 +77,6 @@ class VehicleHandler:
         self.vehicle_state.notify_car_activity_time(start_time, True)
 
         while True:
-            self.publisher.keepalive()
             if (
                     not self.vehicle_state.is_complete()
                     and datetime.datetime.now() > start_time + datetime.timedelta(seconds=10)
