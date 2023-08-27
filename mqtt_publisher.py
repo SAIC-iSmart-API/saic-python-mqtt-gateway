@@ -1,7 +1,6 @@
 import logging
 import os
 import threading
-import uuid
 import paho.mqtt.client as mqtt
 
 import mqtt_topics
@@ -11,12 +10,15 @@ from publisher import Publisher
 LOG = logging.getLogger(__name__)
 LOG.setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
 
+MQTT_LOG = logging.getLogger(mqtt.__name__)
+MQTT_LOG.setLevel(level=os.getenv('MQTT_LOG_LEVEL', 'INFO').upper())
+
 
 class MqttClient(Publisher):
     def __init__(self, configuration: Configuration):
         super().__init__(configuration)
-        self.publisher_id = uuid.uuid4()
         self.configuration = configuration
+        self.publisher_id = self.configuration.mqtt_client_id
         self.topic_root = configuration.mqtt_topic
         self.is_connected = threading.Event()
         self.client = None
@@ -28,6 +30,7 @@ class MqttClient(Publisher):
         self.vin_by_charger_connected_topic = {}
 
         mqtt_client = mqtt.Client(str(self.publisher_id), transport=self.transport_protocol, protocol=mqtt.MQTTv311)
+        mqtt_client.enable_logger(MQTT_LOG)
         mqtt_client.on_connect = self.__on_connect
         mqtt_client.on_message = self.__on_message
         self.client = mqtt_client
