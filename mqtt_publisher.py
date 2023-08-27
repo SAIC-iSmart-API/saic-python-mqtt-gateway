@@ -29,7 +29,8 @@ class MqttClient(Publisher):
         self.vin_by_charge_state_topic = {}
         self.vin_by_charger_connected_topic = {}
 
-        mqtt_client = mqtt.Client(str(self.publisher_id), transport=self.transport_protocol, protocol=mqtt.MQTTv311)
+        mqtt_client = mqtt.Client(str(self.publisher_id), transport=self.transport_protocol.transport_mechanism,
+                                  protocol=mqtt.MQTTv311)
         mqtt_client.enable_logger(MQTT_LOG)
         mqtt_client.on_connect = self.__on_connect
         mqtt_client.on_message = self.__on_message
@@ -50,6 +51,11 @@ class MqttClient(Publisher):
             payload='offline',
             retain=True
         )
+        if self.transport_protocol.with_tls:
+            cert_uri = self.configuration.tls_server_cert_path
+            LOG.debug(f'Configuring network encryption and authentication options for MQTT using {cert_uri}')
+            self.client.tls_set(ca_certs=cert_uri)
+            self.client.tls_insecure_set(True)
         self.client.connect(host=self.host, port=self.port)
         self.client.loop_start()
         # wait until we've connected

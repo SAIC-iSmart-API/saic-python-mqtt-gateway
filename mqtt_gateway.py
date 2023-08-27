@@ -26,7 +26,7 @@ from saic_ismart_client.saic_api import SaicApi, create_alarm_switch
 
 import mqtt_topics
 from Exceptions import MqttGatewayException
-from configuration import Configuration
+from configuration import Configuration, TransportProtocol
 from mqtt_publisher import MqttClient
 from publisher import Publisher
 from vehicle import RefreshMode, VehicleState
@@ -512,8 +512,12 @@ def process_arguments() -> Configuration:
     try:
         parser.add_argument('-m', '--mqtt-uri', help='The URI to the MQTT Server. Environment Variable: MQTT_URI,'
                                                      + 'TCP: tcp://mqtt.eclipseprojects.io:1883 '
-                                                     + 'WebSocket: ws://mqtt.eclipseprojects.io:9001',
+                                                     + 'WebSocket: ws://mqtt.eclipseprojects.io:9001'
+                                                     + 'TLS: tls://mqtt.eclipseprojects.io:8883',
                             dest='mqtt_uri', required=True, action=EnvDefault, envvar='MQTT_URI')
+        parser.add_argument('--mqtt-server-cert',
+                            help='Path to the server certificate authority file in PEM format for TLS.',
+                            dest='tls_server_cert_path', required=False, action=EnvDefault, envvar='MQTT_SERVER_CERT')
         parser.add_argument('--mqtt-user', help='The MQTT user name. Environment Variable: MQTT_USER',
                             dest='mqtt_user', required=False, action=EnvDefault, envvar='MQTT_USER')
         parser.add_argument('--mqtt-password', help='The MQTT password. Environment Variable: MQTT_PASSWORD',
@@ -615,9 +619,15 @@ def process_arguments() -> Configuration:
 
         parse_result = urllib.parse.urlparse(args.mqtt_uri)
         if parse_result.scheme == 'tcp':
-            config.mqtt_transport_protocol = 'tcp'
+            config.mqtt_transport_protocol = TransportProtocol.TCP
         elif parse_result.scheme == 'ws':
-            config.mqtt_transport_protocol = 'websockets'
+            config.mqtt_transport_protocol = TransportProtocol.WS
+        elif parse_result.scheme == 'tls':
+            config.mqtt_transport_protocol = TransportProtocol.TLS
+            if args.tls_server_cert_path:
+                config.tls_server_cert_path = args.tls_server_cert_path
+            else:
+                raise SystemExit(f'No server certificate authority file provided for TLS MQTT URI {args.mqtt_uri}')
         else:
             raise SystemExit(f'Invalid MQTT URI scheme: {parse_result.scheme}, use tcp or ws')
 

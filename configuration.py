@@ -1,4 +1,15 @@
+from enum import Enum
+
 from charging_station import ChargingStation
+
+
+class TransportProtocol(Enum):
+    def __init__(self, transport_mechanism: str, with_tls: bool):
+        self.transport_mechanism = transport_mechanism
+        self.with_tls = with_tls
+    TCP = 'tcp', False
+    WS = 'websockets', False
+    TLS = 'tcp', True
 
 
 class Configuration:
@@ -13,7 +24,8 @@ class Configuration:
         self.abrp_api_key = ''
         self.mqtt_host = ''
         self.mqtt_port = -1
-        self.mqtt_transport_protocol = ''
+        self.mqtt_transport_protocol: TransportProtocol | None = None
+        self.tls_server_cert_path: str | None = None
         self.mqtt_user = ''
         self.mqtt_password = ''
         self.mqtt_client_id = 'saic-python-mqtt-gateway'

@@ -9,6 +9,7 @@
 * Force polling around scheduled charging start
 * Further A/C enhancements
 * Generic charging station integration (OPENWB_LP_MAP argument is deprecated now)
+* TLS support
 
 ## 0.3.0
 
