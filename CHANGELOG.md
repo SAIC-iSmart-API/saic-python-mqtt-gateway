@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.4.4
+
+### Fixed
+
+* Error message decoding issue fixed in saic-python-client 1.6.4
+
 ## 0.4.3
 
 ### Fixed
