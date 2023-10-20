@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.4.5
+
+### Fixed
+
+* Binary string decoding issue fixed in saic-python-client 1.6.5
+
 ## 0.4.4
 
 ### Fixed
