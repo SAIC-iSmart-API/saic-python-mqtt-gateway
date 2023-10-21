@@ -14,6 +14,7 @@ from vehicle import VehicleState, RefreshMode
 PAYLOAD_NOT_AVAILABLE = 'payload_not_available'
 PAYLOAD_AVAILABLE = 'payload_available'
 AVAILABILITY_TOPIC = 'availability_topic'
+AVAILABILITY_TEMPLATE = 'availability_template'
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
@@ -95,7 +96,9 @@ class HomeAssistantDiscovery:
                               device_class='duration', state_class='measurement', unit_of_measurement='s')
         custom_availability = {
             AVAILABILITY_TOPIC: self.__get_vehicle_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME),
-            PAYLOAD_NOT_AVAILABLE: '0'
+            AVAILABILITY_TEMPLATE: "{{ 'online' if (value | int) > 0 else 'offline' }}",
+            PAYLOAD_NOT_AVAILABLE: 'online',
+            PAYLOAD_AVAILABLE: 'offline',
         }
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME, 'Charging finished',
                               device_class='timestamp',
@@ -414,6 +417,8 @@ class HomeAssistantDiscovery:
         if custom_availability is not None:
             if AVAILABILITY_TOPIC in custom_availability:
                 common_attributes[AVAILABILITY_TOPIC] = custom_availability[AVAILABILITY_TOPIC]
+            if AVAILABILITY_TEMPLATE in custom_availability:
+                common_attributes[AVAILABILITY_TEMPLATE] = custom_availability[AVAILABILITY_TEMPLATE]
             if PAYLOAD_AVAILABLE in custom_availability:
                 common_attributes[PAYLOAD_AVAILABLE] = custom_availability[PAYLOAD_AVAILABLE]
             if PAYLOAD_NOT_AVAILABLE in custom_availability:
