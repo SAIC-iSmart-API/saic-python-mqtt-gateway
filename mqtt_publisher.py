@@ -37,7 +37,13 @@ class MqttClient(Publisher):
         self.client = mqtt_client
 
     def get_mqtt_account_prefix(self) -> str:
-        return f'{self.configuration.mqtt_topic}/{self.configuration.saic_user}'
+        return MqttClient.remove_special_mqtt_characters(
+            f'{self.configuration.mqtt_topic}/{self.configuration.saic_user}')
+
+    @staticmethod
+    def remove_special_mqtt_characters(input: str) -> str:
+        result = input.replace('+', '_').replace('#', '_').replace('*', '_')\
+            .replace('>', '_').replace('$', '_')
 
     def connect(self):
         if self.configuration.mqtt_user is not None:
