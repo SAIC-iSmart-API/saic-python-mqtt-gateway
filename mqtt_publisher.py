@@ -42,7 +42,7 @@ class MqttClient(Publisher):
 
     @staticmethod
     def remove_special_mqtt_characters(input: str) -> str:
-        result = input.replace('+', '_').replace('#', '_').replace('*', '_')\
+        return input.replace('+', '_').replace('#', '_').replace('*', '_')\
             .replace('>', '_').replace('$', '_')
 
     def connect(self):
