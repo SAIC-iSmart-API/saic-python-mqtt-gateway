@@ -1,5 +1,12 @@
 # Change Log
 
+## 0.5.0
+
+### Fixed
+
+* Detection of battery type
+* Remove special characters from username to generate valid MQTT topics
+
 ## 0.4.5
 
 ### Fixed
