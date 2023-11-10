@@ -626,7 +626,8 @@ class VehicleState:
         return self.__get_property_value('HeatedSeat') == '0'
 
     def supports_target_soc(self):
-        return self.__get_property_value('BType') == '1'
+        return self.__get_property_value('Battery') == '1'
+
     def get_actual_battery_capacity(self) -> float | None:
         if self.__total_battery_capacity is not None and self.__total_battery_capacity > 0:
             return float(self.__total_battery_capacity)
