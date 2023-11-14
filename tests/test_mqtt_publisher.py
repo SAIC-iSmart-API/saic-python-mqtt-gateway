@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import paho.mqtt.client as mqtt
 
-from configuration import Configuration
+from configuration import Configuration, TransportProtocol
 from mqtt_publisher import MqttClient
 
 USER = 'me@home.da'
@@ -21,12 +21,16 @@ class TestMqttPublisher(TestCase):
     def setUp(self) -> None:
         config = Configuration()
         config.mqtt_topic = 'saic'
-        config.mqtt_transport_protocol = 'tcp'
+        config.saic_user = 'user+a#b*c>d$e'
+        config.mqtt_transport_protocol = TransportProtocol.TCP
         self.mqtt_client = MqttClient(config)
         self.mqtt_client.on_mqtt_command_received = self.__test_mqtt_command_received
         self.received_vin = ''
         self.received_payload = ''
         self.vehicle_base_topic = f'{self.mqtt_client.configuration.mqtt_topic}/{USER}/vehicles/{VIN}'
+
+    def test_special_character_username(self):
+        self.assertEqual('saic/user_a_b_c_d_e', self.mqtt_client.get_mqtt_account_prefix())
 
     def test_update_mode(self):
         topic = 'refresh/mode/set'
