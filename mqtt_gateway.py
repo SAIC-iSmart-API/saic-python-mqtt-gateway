@@ -611,7 +611,7 @@ def process_arguments() -> Configuration:
 
         config.saic_password = args.saic_password
 
-        if args.ha_discovery_enabled:
+        if args.ha_discovery_enabled is not None:
             config.ha_discovery_enabled = args.ha_discovery_enabled
 
         if args.ha_discovery_prefix:
