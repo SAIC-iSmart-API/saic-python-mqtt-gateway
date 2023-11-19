@@ -6,6 +6,7 @@
 
 * Detection of battery type
 * Remove special characters from username to generate valid MQTT topics
+* Setting ha_discovery_enabled to False had no effect
 
 ## 0.4.5
 
