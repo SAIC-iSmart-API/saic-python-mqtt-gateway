@@ -4,6 +4,7 @@ import threading
 import paho.mqtt.client as mqtt
 
 import mqtt_topics
+from charging_station import ChargingStation
 from configuration import Configuration
 from publisher import Publisher
 
@@ -26,8 +27,9 @@ class MqttClient(Publisher):
         self.port = self.configuration.mqtt_port
         self.transport_protocol = self.configuration.mqtt_transport_protocol
         self.on_mqtt_command_received = None
-        self.vin_by_charge_state_topic = {}
-        self.vin_by_charger_connected_topic = {}
+        self.vin_by_charge_state_topic: dict[str, str] = {}
+        self.last_charge_state_by_vin: [str, str] = {}
+        self.vin_by_charger_connected_topic: dict[str, str] = {}
 
         mqtt_client = mqtt.Client(str(self.publisher_id), transport=self.transport_protocol.transport_mechanism,
                                   protocol=mqtt.MQTTv311)
@@ -100,7 +102,7 @@ class MqttClient(Publisher):
             LOG.debug(f'Received message over topic {msg.topic} with payload {payload}')
             vin = self.vin_by_charge_state_topic[msg.topic]
             charging_station = self.configuration.charging_stations_by_vin[vin]
-            if payload == charging_station.charging_value:
+            if self.should_force_refresh(payload, charging_station):
                 LOG.debug(f'Vehicle with vin {vin} is charging. Setting refresh mode to force')
                 mqtt_account_prefix = self.get_mqtt_account_prefix()
                 topic = f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/{vin}/{mqtt_topics.REFRESH_MODE}/set'
@@ -161,3 +163,24 @@ class MqttClient(Publisher):
         global_topic_removed = topic[len(self.configuration.mqtt_topic) + 1:]
         elements = global_topic_removed.split('/')
         return elements[2]
+
+    def should_force_refresh(self, current_charging_value: str, charging_station: ChargingStation):
+        vin = charging_station.vin
+        last_charging_value: str | None = None
+        if vin in self.last_charge_state_by_vin:
+            last_charging_value = self.last_charge_state_by_vin[vin]
+        self.last_charge_state_by_vin[vin] = current_charging_value
+
+        if current_charging_value == charging_station.charging_value:
+            if last_charging_value:
+                if last_charging_value == current_charging_value:
+                    LOG.debug(f'Last charging value equals current charging value. No refresh needed.')
+                    return False
+                else:
+                    LOG.debug(f'Charging value has changed from {last_charging_value} to {current_charging_value}.')
+                    return True
+            else:
+                return True
+        else:
+            return False
+

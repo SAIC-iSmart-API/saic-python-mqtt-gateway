@@ -14,25 +14,25 @@ class TransportProtocol(Enum):
 
 class Configuration:
     def __init__(self):
-        self.saic_user = ''
-        self.saic_password = ''
-        self.saic_uri = ''
-        self.saic_rest_uri = 'https://gateway-eu.soimt.com/'
-        self.saic_relogin_delay = 15 * 60  # in seconds
+        self.saic_user: str | None = None
+        self.saic_password: str | None = None
+        self.saic_uri: str | None = None
+        self.saic_rest_uri: str = 'https://gateway-eu.soimt.com/'
+        self.saic_relogin_delay: int = 15 * 60  # in seconds
         self.abrp_token_map: dict[str, str] = {}
         self.battery_capacity_map: dict[str, float] = {}
-        self.abrp_api_key = ''
-        self.mqtt_host = ''
-        self.mqtt_port = -1
+        self.abrp_api_key: str | None = None
+        self.mqtt_host: str | None = None
+        self.mqtt_port: int | None = None
         self.mqtt_transport_protocol: TransportProtocol | None = None
         self.tls_server_cert_path: str | None = None
-        self.mqtt_user = ''
-        self.mqtt_password = ''
-        self.mqtt_client_id = 'saic-python-mqtt-gateway'
-        self.mqtt_topic = ''
+        self.mqtt_user: str | None = None
+        self.mqtt_password: str | None = None
+        self.mqtt_client_id: str = 'saic-python-mqtt-gateway'
+        self.mqtt_topic: str | None = None
         self.charging_stations_by_vin: dict[str, ChargingStation] = {}
-        self.anonymized_publishing = False
-        self.messages_request_interval = 60  # in seconds
-        self.ha_discovery_enabled = True
-        self.ha_discovery_prefix = 'homeassistant'
+        self.anonymized_publishing: bool = False
+        self.messages_request_interval: int = 60  # in seconds
+        self.ha_discovery_enabled: bool = True
+        self.ha_discovery_prefix: str = 'homeassistant'
         self.charge_dynamic_polling_min_percentage: float = 1.0
