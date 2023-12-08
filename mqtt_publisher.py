@@ -88,6 +88,12 @@ class MqttClient(Publisher):
                     self.client.subscribe(charging_station.connected_topic)
             self.keepalive()
         else:
+            if mqtt.CONNACK_REFUSED_BAD_USERNAME_PASSWORD:
+                LOG.error(f'MQTT connection error: bad username or password. Return code {rc}')
+            elif mqtt.CONNACK_REFUSED_PROTOCOL_VERSION:
+                LOG.error(f'MQTT connection error: refused protocol version. Return code {rc}')
+            else:
+                LOG.error(f'MQTT connection error.Return code {rc}')
             SystemExit(f'Unable to connect to MQTT broker. Return code: {rc}')
 
     def __on_message(self, client, userdata, msg: mqtt.MQTTMessage) -> None:
