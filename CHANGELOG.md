@@ -9,7 +9,8 @@
 * Setting ha_discovery_enabled to False had no effect
 * Docker image based on python:3.11-slim
 * Force refresh by charging station only if charging value has changed
-* MQTT connection error logging
+* MQTT connection error logging 
+* Front window heating enables "Blowing only"
 
 ## 0.4.5
 
