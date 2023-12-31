@@ -316,7 +316,7 @@ class MqttGateway:
             vin_info = cast(VinInfo, info)
             account_prefix = f'{self.configuration.saic_user}/{mqtt_topics.VEHICLES}/{vin_info.vin}'
             charging_station = self.get_charging_station(vin_info.vin)
-            if charging_station:
+            if charging_station.soc_topic:
                 LOG.debug(f'SoC for charging station will be published over MQTT topic: {charging_station.soc_topic}')
             total_battery_capacity = configuration.battery_capacity_map.get(vin_info.vin, None)
             vehicle_state = VehicleState(
@@ -655,9 +655,11 @@ def process_charging_stations_file(config: Configuration, json_file: str):
             for item in data:
                 charge_state_topic = item['chargeStateTopic']
                 charging_value = item['chargingValue']
-                soc_topic = item['socTopic']
                 vin = item['vin']
-                charging_station = ChargingStation(vin, charge_state_topic, charging_value, soc_topic)
+                if 'socTopic' in item:
+                    charging_station = ChargingStation(vin, charge_state_topic, charging_value, item['socTopic'])
+                else:
+                    charging_station = ChargingStation(vin, charge_state_topic, charging_value)
                 if 'chargerConnectedTopic' in item:
                     charging_station.connected_topic = item['chargerConnectedTopic']
                 if 'chargerConnectedValue' in item:

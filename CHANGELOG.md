@@ -5,6 +5,7 @@
 ### Changed
 
 * Whenever a chargingValue is received that is different from the last received value, a forced refresh is performed
+* The socTopic is an optional field in the charging station configuration
 
 ## 0.4.6
 
