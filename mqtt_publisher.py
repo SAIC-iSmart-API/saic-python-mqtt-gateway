@@ -177,16 +177,12 @@ class MqttClient(Publisher):
             last_charging_value = self.last_charge_state_by_vin[vin]
         self.last_charge_state_by_vin[vin] = current_charging_value
 
-        if current_charging_value == charging_station.charging_value:
-            if last_charging_value:
-                if last_charging_value == current_charging_value:
-                    LOG.debug(f'Last charging value equals current charging value. No refresh needed.')
-                    return False
-                else:
-                    LOG.debug(f'Charging value has changed from {last_charging_value} to {current_charging_value}.')
-                    return True
+        if last_charging_value:
+            if last_charging_value == current_charging_value:
+                LOG.debug(f'Last charging value equals current charging value. No refresh needed.')
+                return False
             else:
+                LOG.debug(f'Charging value has changed from {last_charging_value} to {current_charging_value}.')
                 return True
         else:
-            return False
-
+            return True

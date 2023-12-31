@@ -1,6 +1,10 @@
 # Change Log
 
-## 0.5.0
+## 0.4.7
+
+### Changed
+
+* Whenever a chargingValue is received that is different from the last received value, a forced refresh is performed
 
 ## 0.4.6
 
