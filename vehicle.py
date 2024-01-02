@@ -473,7 +473,10 @@ class VehicleState:
         soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
         if soc <= 100.0:
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC), soc)
-            if self.charging_station.soc_topic:
+            if (
+                self.charging_station
+                and self.charging_station.soc_topic
+            ):
                 self.publisher.publish_int(self.charging_station.soc_topic, int(soc), True)
         estimated_electrical_range = charge_mgmt_data.bms_estd_elec_rng / 10.0
         self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_HYBRID_ELECTRICAL_RANGE),
