@@ -474,8 +474,8 @@ class VehicleState:
         if soc <= 100.0:
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC), soc)
             if (
-                self.charging_station
-                and self.charging_station.soc_topic
+                    self.charging_station
+                    and self.charging_station.soc_topic
             ):
                 self.publisher.publish_int(self.charging_station.soc_topic, int(soc), True)
         estimated_electrical_range = charge_mgmt_data.bms_estd_elec_rng / 10.0
@@ -650,15 +650,18 @@ class VehicleState:
                 return pdict['value']
         return None
 
+    def is_ac_temperature_configured(self) -> bool:
+        return self.__remote_ac_temp is not None
+
     def get_ac_temperature(self) -> int:
-        return DEFAULT_AC_TEMP if self.__remote_ac_temp is None else self.__remote_ac_temp
+        return self.__remote_ac_temp if self.is_ac_temperature_configured() else DEFAULT_AC_TEMP
 
     def set_ac_temperature(self, temp) -> bool:
         if temp is None:
             LOG.error("Cannot set AC temperature to None")
             return False
         temp = max(self.get_min_ac_temperature(), min(self.get_max_ac_temperature(), temp))
-        if (self.__remote_ac_temp is None) or (self.__remote_ac_temp != temp):
+        if (not self.is_ac_temperature_configured()) or (self.__remote_ac_temp != temp):
             self.__remote_ac_temp = temp
             LOG.info(f"Updating remote AC temperature to {temp}")
             self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_REMOTE_TEMPERATURE), temp)

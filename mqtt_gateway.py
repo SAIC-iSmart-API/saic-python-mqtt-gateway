@@ -29,7 +29,7 @@ from Exceptions import MqttGatewayException
 from configuration import Configuration, TransportProtocol
 from mqtt_publisher import MqttClient
 from publisher import Publisher
-from vehicle import RefreshMode, VehicleState
+from vehicle import RefreshMode, VehicleState, DEFAULT_AC_TEMP
 
 MSG_CMD_SUCCESSFUL = 'Success'
 CHARGING_STATIONS_FILE = 'charging-stations.json'
@@ -172,8 +172,13 @@ class VehicleHandler:
                             self.saic_api.start_ac_blowing(self.vin_info)
                         case 'on':
                             LOG.info('A/C will be switched on')
-                            self.saic_api.start_ac(self.vin_info,
-                                                   temperature_idx=self.vehicle_state.get_ac_temperature_idx())
+                            if not self.vehicle_state.is_ac_temperature_configured():
+                                LOG.info("Setting remote climate target temperature to %s", DEFAULT_AC_TEMP)
+                                self.vehicle_state.set_ac_temperature(DEFAULT_AC_TEMP)
+                            self.saic_api.start_ac(
+                                self.vin_info,
+                                temperature_idx=self.vehicle_state.get_ac_temperature_idx()
+                            )
                         case 'front':
                             LOG.info("A/C will be set to front seats only")
                             self.saic_api.start_front_defrost(self.vin_info)
@@ -317,8 +322,8 @@ class MqttGateway:
             account_prefix = f'{self.configuration.saic_user}/{mqtt_topics.VEHICLES}/{vin_info.vin}'
             charging_station = self.get_charging_station(vin_info.vin)
             if (
-                charging_station
-                and charging_station.soc_topic
+                    charging_station
+                    and charging_station.soc_topic
             ):
                 LOG.debug(f'SoC for charging station will be published over MQTT topic: {charging_station.soc_topic}')
             total_battery_capacity = configuration.battery_capacity_map.get(vin_info.vin, None)
