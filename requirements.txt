@@ -1,4 +1,4 @@
-saic-ismart-client~=1.7.2
+saic-ismart-client-ng~=0.0.1
 requests~=2.31.0
 gmqtt~=0.6.13
 inflection~=0.5.1

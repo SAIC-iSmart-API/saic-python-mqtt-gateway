@@ -3,9 +3,8 @@ import logging
 import os
 
 import inflection as inflection
-from saic_ismart_client.common_model import ScheduledChargingMode
-from saic_ismart_client.ota_v1_1.data_model import VinInfo
-from saic_ismart_client.common_model import ChargeCurrentLimitCode
+from saic_ismart_client_ng.api.vehicle.schema import VinInfo
+from saic_ismart_client_ng.api.vehicle_charging import ChargeCurrentLimitCode, ScheduledChargingMode
 
 import mqtt_topics
 from mqtt_publisher import MqttClient
@@ -36,7 +35,7 @@ class HomeAssistantDiscovery:
         self.__publish_select(mqtt_topics.REFRESH_MODE, 'Gateway refresh mode', [m.value for m in RefreshMode],
                               icon='mdi:refresh')
         self.__publish_select(mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT, 'Charge current limit',
-                              [m.get_limit() for m in ChargeCurrentLimitCode if m != ChargeCurrentLimitCode.C_IGNORE],
+                              [m.limit for m in ChargeCurrentLimitCode if m != ChargeCurrentLimitCode.C_IGNORE],
                               icon='mdi:current-ac')
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_ACTIVE, 'Gateway active refresh period',
                               unit_of_measurement='s', icon='mdi:timer', min=30, max=60 * 60, step=1)
@@ -432,10 +431,10 @@ class HomeAssistantDiscovery:
 
     def __get_device_node(self):
         vin = self.__get_vin()
-        brand_name = decode_as_utf8(self.__vin_info.brand_name)
-        model_name = decode_as_utf8(self.__vin_info.model_name)
-        model_year = decode_as_utf8(self.__vin_info.model_year)
-        color_name = decode_as_utf8(self.__vin_info.color_name)
+        brand_name = decode_as_utf8(self.__vin_info.brandName)
+        model_name = decode_as_utf8(self.__vin_info.modelName)
+        model_year = decode_as_utf8(self.__vin_info.modelYear)
+        color_name = decode_as_utf8(self.__vin_info.colorName)
         series = str(self.__vin_info.series)
         # Create a long model name concatenating model_name, model_year and color_name without multiple spaces
         final_model_name = ' '.join([model_name, model_year, color_name]).strip().replace('  ', ' ')

@@ -163,7 +163,11 @@ class MqttClient(Publisher):
     def publish_int(self, key: str, value: int, no_prefix: bool = False) -> None:
         self.publish(topic=self.get_topic(key, no_prefix), payload=value)
 
-    def publish_bool(self, key: str, value: bool, no_prefix: bool = False) -> None:
+    def publish_bool(self, key: str, value: bool | int | None, no_prefix: bool = False) -> None:
+        if value is None:
+            value = False
+        elif isinstance(value, int):
+            value = value == 1
         self.publish(topic=self.get_topic(key, no_prefix), payload=value)
 
     def publish_float(self, key: str, value: float, no_prefix: bool = False) -> None:
