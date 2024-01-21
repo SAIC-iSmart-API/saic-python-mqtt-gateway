@@ -60,7 +60,7 @@ The key-value pairs in the JSON express the following:
 
 ### From Command-line
 
-To run the service from the command line you need to have Python version 3.10 or later.
+To run the service from the command line you need to have Python version 3.12 or later.
 Launch the MQTT gateway with the mandatory parameters.
 
 ```
