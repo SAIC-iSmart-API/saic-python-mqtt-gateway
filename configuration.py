@@ -31,7 +31,7 @@ class Configuration:
         self.mqtt_client_id: str = 'saic-python-mqtt-gateway'
         self.mqtt_topic: str | None = None
         self.charging_stations_by_vin: dict[str, ChargingStation] = {}
-        self.anonymized_publishing: bool = True
+        self.anonymized_publishing: bool = False
         self.messages_request_interval: int = 60  # in seconds
         self.ha_discovery_enabled: bool = True
         self.ha_discovery_prefix: str = 'homeassistant'
