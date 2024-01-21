@@ -314,7 +314,7 @@ class VehicleState:
                 or message.message_time > self.last_car_vehicle_message
         ):
             self.last_car_vehicle_message = message.message_time
-            self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_ID), message.messageId)
+            self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_ID), str(message.messageId))
             self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_TYPE), message.messageType)
             self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_TITLE), message.title)
             self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_TIME),

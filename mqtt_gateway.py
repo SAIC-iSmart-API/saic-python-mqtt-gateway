@@ -90,15 +90,25 @@ class VehicleHandler:
                 try:
                     vehicle_status = await self.update_vehicle_status()
                     charge_status = await self.update_charge_status()
-                    abrp_response = await self.abrp_api.update_abrp(vehicle_status, charge_status.chrgMgmtData)
-                    self.publisher.publish_str(f'{self.vehicle_prefix}/{mqtt_topics.INTERNAL_ABRP}', abrp_response)
                     self.vehicle_state.mark_successful_refresh()
                     LOG.info('Refreshing vehicle status succeeded...')
+                    abrp_response = await self.abrp_api.update_abrp(vehicle_status, charge_status.chrgMgmtData)
+                    self.publisher.publish_str(f'{self.vehicle_prefix}/{mqtt_topics.INTERNAL_ABRP}', abrp_response)
+                    LOG.info('Refreshing ABRP status succeeded...')
                 except SaicApiException as e:
-                    LOG.exception('handle_vehicle loop failed during SAIC API call', exc_info=e)
+                    LOG.exception(
+                        'handle_vehicle loop failed during SAIC API call. Waiting 30s before retrying',
+                        exc_info=e
+                    )
                     await asyncio.sleep(float(30))
                 except AbrpApiException as ae:
                     LOG.exception('handle_vehicle loop failed during ABRP API call', exc_info=ae)
+                except Exception as e:
+                    LOG.exception(
+                        'handle_vehicle loop failed with an unexpected exception. Waiting 30s before retrying',
+                        exc_info=e
+                    )
+                    await asyncio.sleep(float(30))
                 finally:
                     if self.configuration.ha_discovery_enabled:
                         self.ha_discovery.publish_ha_discovery_messages()
