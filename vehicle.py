@@ -18,7 +18,7 @@ from saic_ismart_client_ng.api.vehicle_charging import ChargeInfoResp, TargetBat
 from saic_ismart_client_ng.api.vehicle_charging.schema import ChrgMgmtData
 
 import mqtt_topics
-from Exceptions import MqttGatewayException
+from exceptions import MqttGatewayException
 from charging_station import ChargingStation
 from publisher import Publisher
 
@@ -139,8 +139,8 @@ class VehicleState:
             start_time: datetime.time,
             mode: ScheduledChargingMode
     ):
-        job_id = f'{self.vin}_scheduled_charging'
-        existing_job: Job | None = self.__scheduler.get_job(job_id)
+        scheduled_charging_job_id = f'{self.vin}_scheduled_charging'
+        existing_job: Job | None = self.__scheduler.get_job(scheduled_charging_job_id)
         if mode in [ScheduledChargingMode.UNTIL_CONFIGURED_TIME, ScheduledChargingMode.UNTIL_CONFIGURED_SOC]:
             if self.refresh_period_inactive_grace > 0:
                 # Add a grace period to the start time, so that the car is not woken up too early
@@ -158,8 +158,8 @@ class VehicleState:
                     args=[RefreshMode.FORCE],
                     trigger=trigger,
                     kwargs={},
-                    name=job_id,
-                    id=job_id,
+                    name=scheduled_charging_job_id,
+                    id=scheduled_charging_job_id,
                     replace_existing=True,
                 )
                 LOG.info(f'Scheduled check for charging start for VIN {self.vin} at {start_time}')

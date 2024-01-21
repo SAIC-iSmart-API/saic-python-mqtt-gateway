@@ -43,49 +43,26 @@ class Publisher:
         return data
 
     def anonymize(self, data: dict) -> dict:
-        for key in data.keys():
-            if isinstance(data[key], str):
-                match key:
-                    case 'password':
-                        data[key] = '******'
-                    case 'uid':
-                        data[key] = Publisher.anonymize_str(data[key])
-                    case 'email':
-                        data[key] = Publisher.anonymize_str(data[key])
-                    case 'uid':
-                        data[key] = Publisher.anonymize_str(data[key])
-                    case 'pin':
-                        data[key] = Publisher.anonymize_str(data[key])
-                    case 'token':
-                        data[key] = Publisher.anonymize_str(data[key])
-                    case 'refreshToken':
-                        data[key] = Publisher.anonymize_str(data[key])
-                    case 'vin':
-                        data[key] = Publisher.anonymize_str(data[key])
-                    case 'deviceId':
-                        data[key] = self.anonymize_device_id(data[key])
-                    case 'seconds':
-                        data[key] = Publisher.anonymize_int(data[key])
-                    case 'bindTime':
-                        data[key] = Publisher.anonymize_int(data[key])
-                    case 'eventCreationTime':
-                        data[key] = Publisher.anonymize_int(data[key])
-                    case 'latitude':
-                        data[key] = Publisher.anonymize_int(data[key])
-                    case 'longitude':
-                        data[key] = Publisher.anonymize_int(data[key])
-                    case 'eventID':
-                        data[key] = 9999
-                    case 'lastKeySeen':
-                        data[key] = 9999
-                    case 'content':
-                        data[key] = re.sub('\\(\\*\\*\\*...\\)', '(***XXX)', data[key])
-            elif isinstance(data[key], dict):
-                data[key] = self.anonymize(data[key])
-            elif isinstance(data[key], list):
-                for item in data[key]:
-                    if isinstance(item, dict):
-                        data[key] = self.anonymize(item)
+        if isinstance(data, dict):
+            for key in data.keys():
+                if isinstance(data[key], str):
+                    match key:
+                        case 'password':
+                            data[key] = '******'
+                        case 'uid' | 'email' | 'user_name' | 'account' | 'ping' | 'token' | 'access_token' | 'refreshToken' | 'refresh_token' | 'vin':
+                            data[key] = Publisher.anonymize_str(data[key])
+                        case 'deviceId':
+                            data[key] = self.anonymize_device_id(data[key])
+                        case 'seconds' | 'bindTime' | 'eventCreationTime' | 'latitude' | 'longitude':
+                            data[key] = Publisher.anonymize_int(data[key])
+                        case 'eventID' | 'event-id' | 'event_id' | 'eventId' | 'event_id' | 'eventID' | 'lastKeySeen':
+                            data[key] = 9999
+                        case 'content':
+                            data[key] = re.sub('\\(\\*\\*\\*...\\)', '(***XXX)', data[key])
+                elif isinstance(data[key], dict):
+                    data[key] = self.anonymize(data[key])
+                elif isinstance(data[key], (list, set, tuple)):
+                    data[key] = [self.anonymize(item) for item in data[key]]
         return data
 
     def keepalive(self):

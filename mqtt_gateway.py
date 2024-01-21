@@ -22,13 +22,14 @@ from saic_ismart_client_ng.exceptions import SaicApiException
 from saic_ismart_client_ng.model import SaicApiConfiguration
 
 import mqtt_topics
-from Exceptions import MqttGatewayException
 from abrp_api import AbrpApi, AbrpApiException
 from charging_station import ChargingStation
 from configuration import Configuration, TransportProtocol
+from exceptions import MqttGatewayException
 from home_assistant_discovery import HomeAssistantDiscovery
 from mqtt_publisher import MqttClient, MqttCommandListener
 from publisher import Publisher
+from saic_api_listener import MqttGatewaySaicApiListener
 from vehicle import RefreshMode, VehicleState
 
 MSG_CMD_SUCCESSFUL = 'Success'
@@ -293,7 +294,8 @@ class MqttGateway(MqttCommandListener):
                 password=self.configuration.saic_password,
                 username_is_email="@" in self.configuration.saic_user,
                 relogin_delay=self.configuration.saic_relogin_delay,
-            )
+            ),
+            listener=MqttGatewaySaicApiListener(self.publisher)
         )
         self.saic_api.on_publish_json_value = self.__on_publish_json_value
         self.saic_api.on_publish_raw_value = self.__on_publish_raw_value
