@@ -18,8 +18,8 @@ from saic_ismart_client_ng.api.vehicle_charging import ChargeInfoResp, TargetBat
 from saic_ismart_client_ng.api.vehicle_charging.schema import ChrgMgmtData
 
 import mqtt_topics
-from exceptions import MqttGatewayException
 from charging_station import ChargingStation
+from exceptions import MqttGatewayException
 from publisher import Publisher
 
 DEFAULT_AC_TEMP = 22
@@ -501,7 +501,7 @@ class VehicleState:
 
         self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_TYPE), charge_status.chargingType)
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGER_CONNECTED),
-                                    to_boolean(charge_status.chargingGunState))
+                                    charge_status.chargingGunState)
 
         if has_scheduled_charging_info(charge_mgmt_data):
             try:
@@ -688,10 +688,6 @@ class VehicleState:
 
     def is_remote_ac_running(self) -> bool:
         return self.__remote_ac_running
-
-
-def to_boolean(value: Optional[int]) -> bool:
-    return value is not None and value != 0
 
 
 def has_scheduled_charging_info(charge_mgmt_data: ChrgMgmtData):
