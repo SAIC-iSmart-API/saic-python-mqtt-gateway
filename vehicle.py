@@ -45,13 +45,14 @@ class VehicleState:
             publisher: Publisher,
             scheduler: BaseScheduler,
             account_prefix: str,
-            vin: VinInfo, charging_station: ChargingStation = None,
+            vin: VinInfo,
+            charging_station: Optional[ChargingStation] = None,
             charge_polling_min_percent: float = 1.0,
-            total_battery_capacity: float = None,
+            total_battery_capacity: Optional[float] = None,
     ):
         self.publisher = publisher
         self.vin = vin.vin
-        self.series = str(vin.series).strip().upper()
+        self.series = vin.series.strip().upper()
         self.mqtt_vin_prefix = f'{account_prefix}'
         self.charging_station = charging_station
         self.last_car_activity = datetime.datetime.min
@@ -65,8 +66,8 @@ class VehicleState:
         self.refresh_period_inactive = -1
         self.refresh_period_after_shutdown = -1
         self.refresh_period_inactive_grace = -1
-        self.target_soc = None
-        self.charge_current_limit = None
+        self.target_soc: Optional[TargetBatteryCode] = None
+        self.charge_current_limit: Optional[ChargeCurrentLimitCode] = None
         self.refresh_period_charging = 0
         self.charge_polling_min_percent = charge_polling_min_percent
         self.refresh_mode = RefreshMode.OFF
@@ -575,7 +576,7 @@ class VehicleState:
         self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_KWH), soc_kwh)
 
         if soc is not None and self.target_soc is not None and remaining_charging_time is not None:
-            target_soc_percentage = self.target_soc.get_percentage()
+            target_soc_percentage = self.target_soc.percentage
             # Default to 1% if we are really close (e.g. balancing)
             delta_soc = max(1, int(target_soc_percentage - soc))
             time_for_1pct = remaining_charging_time / delta_soc
