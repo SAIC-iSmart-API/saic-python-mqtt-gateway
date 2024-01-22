@@ -12,13 +12,10 @@ import urllib.parse
 from typing import Callable, cast
 
 import apscheduler.schedulers.asyncio
-import paho.mqtt.client as mqtt
-from saic_ismart_client.exceptions import SaicApiException
-
-from charging_station import ChargingStation
-from home_assistant_discovery import HomeAssistantDiscovery
+import gmqtt
 from saic_ismart_client.abrp_api import AbrpApi, AbrpApiException
 from saic_ismart_client.common_model import TargetBatteryCode, ChargeCurrentLimitCode, ScheduledChargingMode
+from saic_ismart_client.exceptions import SaicApiException
 from saic_ismart_client.ota_v1_1.data_model import VinInfo, MpUserLoggingInRsp, MpAlarmSettingType
 from saic_ismart_client.ota_v2_1.data_model import OtaRvmVehicleStatusResp25857
 from saic_ismart_client.ota_v3_0.data_model import OtaChrgMangDataResp
@@ -26,8 +23,10 @@ from saic_ismart_client.saic_api import SaicApi, create_alarm_switch
 
 import mqtt_topics
 from Exceptions import MqttGatewayException
+from charging_station import ChargingStation
 from configuration import Configuration, TransportProtocol
-from mqtt_publisher import MqttClient
+from home_assistant_discovery import HomeAssistantDiscovery
+from mqtt_publisher import MqttClient, MqttCommandListener
 from publisher import Publisher
 from vehicle import RefreshMode, VehicleState
 
@@ -121,17 +120,12 @@ class VehicleHandler:
 
         return charge_mgmt_data
 
-    def handle_mqtt_command(self, msg: mqtt.MQTTMessage):
-        topic = self.get_topic_without_vehicle_prefix(msg.topic)
+    async def handle_mqtt_command(self, *, topic: str, payload: str):
+        topic = self.get_topic_without_vehicle_prefix(topic)
         try:
-            if msg.retain:
-                raise MqttGatewayException(
-                    f'Message may not be retained but received a retained message on topic {topic}'
-                )
-
             match topic:
                 case mqtt_topics.DRIVETRAIN_HV_BATTERY_ACTIVE:
-                    match msg.payload.decode().strip().lower():
+                    match payload.strip().lower():
                         case 'true':
                             LOG.info("HV battery is now active")
                             self.vehicle_state.set_hv_battery_active(True)
@@ -139,9 +133,9 @@ class VehicleHandler:
                             LOG.info("HV battery is now inactive")
                             self.vehicle_state.set_hv_battery_active(False)
                         case _:
-                            raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
+                            raise MqttGatewayException(f'Unsupported payload {payload}')
                 case mqtt_topics.DRIVETRAIN_CHARGING:
-                    match msg.payload.decode().strip().lower():
+                    match payload.strip().lower():
                         case 'true':
                             LOG.info("Charging will be started")
                             self.saic_api.start_charging_with_retry(self.vin_info)
@@ -149,9 +143,9 @@ class VehicleHandler:
                             LOG.info("Charging will be stopped")
                             self.saic_api.control_charging(True, self.vin_info)
                         case _:
-                            raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
+                            raise MqttGatewayException(f'Unsupported payload {payload}')
                 case mqtt_topics.CLIMATE_REMOTE_TEMPERATURE:
-                    payload = msg.payload.decode().strip()
+                    payload = payload.strip()
                     try:
                         LOG.info("Setting remote climate target temperature to %s", payload)
                         temp = int(payload)
@@ -163,7 +157,7 @@ class VehicleHandler:
                     except ValueError as e:
                         raise MqttGatewayException(f'Error setting SoC target: {e}')
                 case mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE:
-                    match msg.payload.decode().strip().lower():
+                    match payload.strip().lower():
                         case 'off':
                             LOG.info('A/C will be switched off')
                             self.saic_api.stop_ac(self.vin_info)
@@ -178,18 +172,18 @@ class VehicleHandler:
                             LOG.info("A/C will be set to front seats only")
                             self.saic_api.start_front_defrost(self.vin_info)
                         case _:
-                            raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
+                            raise MqttGatewayException(f'Unsupported payload {payload}')
                 case mqtt_topics.DOORS_BOOT:
-                    match msg.payload.decode().strip().lower():
+                    match payload.strip().lower():
                         case 'true':
                             LOG.info(f'We cannot lock vehicle {self.vin_info.vin} boot remotely')
                         case 'false':
                             LOG.info(f'Vehicle {self.vin_info.vin} boot will be unlocked')
                             self.saic_api.open_tailgate(self.vin_info)
                         case _:
-                            raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
+                            raise MqttGatewayException(f'Unsupported payload {payload}')
                 case mqtt_topics.DOORS_LOCKED:
-                    match msg.payload.decode().strip().lower():
+                    match payload.strip().lower():
                         case 'true':
                             LOG.info(f'Vehicle {self.vin_info.vin} will be locked')
                             self.saic_api.lock_vehicle(self.vin_info)
@@ -197,9 +191,9 @@ class VehicleHandler:
                             LOG.info(f'Vehicle {self.vin_info.vin} will be unlocked')
                             self.saic_api.unlock_vehicle(self.vin_info)
                         case _:
-                            raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
+                            raise MqttGatewayException(f'Unsupported payload {payload}')
                 case mqtt_topics.CLIMATE_BACK_WINDOW_HEAT:
-                    match msg.payload.decode().strip().lower():
+                    match payload.strip().lower():
                         case 'off':
                             LOG.info('Rear window heating will be switched off')
                             self.saic_api.stop_rear_window_heat(self.vin_info)
@@ -207,9 +201,9 @@ class VehicleHandler:
                             LOG.info('Rear window heating will be switched on')
                             self.saic_api.start_rear_window_heat(self.vin_info)
                         case _:
-                            raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
+                            raise MqttGatewayException(f'Unsupported payload {payload}')
                 case mqtt_topics.CLIMATE_FRONT_WINDOW_HEAT:
-                    match msg.payload.decode().strip().lower():
+                    match payload.strip().lower():
                         case 'off':
                             LOG.info('Front window heating will be switched off')
                             self.saic_api.stop_front_defrost(self.vin_info)
@@ -217,9 +211,9 @@ class VehicleHandler:
                             LOG.info('Front window heating will be switched on')
                             self.saic_api.start_front_defrost(self.vin_info)
                         case _:
-                            raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
+                            raise MqttGatewayException(f'Unsupported payload {payload}')
                 case mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT:
-                    payload = msg.payload.decode().strip().upper()
+                    payload = payload.strip().upper()
                     if self.vehicle_state.target_soc is not None:
                         try:
                             LOG.info("Setting charging current limit to %s", payload)
@@ -236,7 +230,7 @@ class VehicleHandler:
                         raise MqttGatewayException(
                             f'Error setting charge current limit - SOC {self.vehicle_state.target_soc}')
                 case mqtt_topics.DRIVETRAIN_SOC_TARGET:
-                    payload = msg.payload.decode().strip()
+                    payload = payload.strip()
                     try:
                         LOG.info("Setting SoC target to %s", payload)
                         target_battery_code = TargetBatteryCode.from_percentage(int(payload))
@@ -245,7 +239,7 @@ class VehicleHandler:
                     except ValueError as e:
                         raise MqttGatewayException(f'Error setting SoC target: {e}')
                 case mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE:
-                    payload = msg.payload.decode().strip()
+                    payload = payload.strip()
                     try:
                         LOG.info("Setting charging schedule to %s", payload)
                         payload_json = json.loads(payload)
@@ -258,7 +252,7 @@ class VehicleHandler:
                         raise MqttGatewayException(f'Error setting charging schedule: {e}')
                 case _:
                     # set mode, period (in)-active,...
-                    self.vehicle_state.configure_by_message(topic, msg)
+                    await self.vehicle_state.configure_by_message(topic=topic, payload=payload)
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', 'Success')
             self.vehicle_state.set_refresh_mode(RefreshMode.FORCE)
         except MqttGatewayException as e:
@@ -277,12 +271,12 @@ class VehicleHandler:
         return result[1:]
 
 
-class MqttGateway:
+class MqttGateway(MqttCommandListener):
     def __init__(self, config: Configuration):
         self.configuration = config
         self.vehicle_handler: dict[str, VehicleHandler] = {}
         self.publisher = MqttClient(self.configuration)
-        self.publisher.on_mqtt_command_received = self.__on_mqtt_command_received
+        self.publisher.command_listener = self
         self.saic_api = SaicApi(
             config.saic_uri,
             config.saic_rest_uri,
@@ -292,9 +286,9 @@ class MqttGateway:
         )
         self.saic_api.on_publish_json_value = self.__on_publish_json_value
         self.saic_api.on_publish_raw_value = self.__on_publish_raw_value
-        self.publisher.connect()
 
     async def run(self):
+        await self.publisher.connect()
         scheduler = apscheduler.schedulers.asyncio.AsyncIOScheduler()
         scheduler.start()
         try:
@@ -359,10 +353,10 @@ class MqttGateway:
             LOG.error(f'No vehicle handler found for VIN {vin}')
             return None
 
-    def __on_mqtt_command_received(self, vin: str, msg: mqtt.MQTTMessage) -> None:
+    async def on_mqtt_command_received(self, *, vin: str, topic: str, payload: str) -> None:
         vehicle_handler = self.get_vehicle_handler(vin)
         if vehicle_handler:
-            vehicle_handler.handle_mqtt_command(msg)
+            await vehicle_handler.handle_mqtt_command(topic=topic, payload=payload)
         else:
             LOG.debug(f'Command for unknown vin {vin} received')
 

@@ -1,9 +1,7 @@
-from unittest import TestCase
-
-import paho.mqtt.client as mqtt
+import unittest
 
 from configuration import Configuration, TransportProtocol
-from mqtt_publisher import MqttClient
+from mqtt_publisher import MqttClient, MqttCommandListener
 
 USER = 'me@home.da'
 VIN = 'vin10000000000000'
@@ -13,10 +11,10 @@ LOCK_STATE = 'true'
 REAR_WINDOW_HEAT_STATE = 'on'
 
 
-class TestMqttPublisher(TestCase):
-    def __test_mqtt_command_received(self, vin: str, msg: mqtt.MQTTMessage) -> None:
+class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
+    async def on_mqtt_command_received(self, *, vin: str, topic: str, payload: str) -> None:
         self.received_vin = vin
-        self.received_payload = msg.payload.decode().strip().lower()
+        self.received_payload = payload.strip().lower()
 
     def setUp(self) -> None:
         config = Configuration()
@@ -24,7 +22,7 @@ class TestMqttPublisher(TestCase):
         config.saic_user = 'user+a#b*c>d$e'
         config.mqtt_transport_protocol = TransportProtocol.TCP
         self.mqtt_client = MqttClient(config)
-        self.mqtt_client.on_mqtt_command_received = self.__test_mqtt_command_received
+        self.mqtt_client.command_listener = self
         self.received_vin = ''
         self.received_payload = ''
         self.vehicle_base_topic = f'{self.mqtt_client.configuration.mqtt_topic}/{USER}/vehicles/{VIN}'
@@ -32,32 +30,26 @@ class TestMqttPublisher(TestCase):
     def test_special_character_username(self):
         self.assertEqual('saic/user_a_b_c_d_e', self.mqtt_client.get_mqtt_account_prefix())
 
-    def test_update_mode(self):
+    async def test_update_mode(self):
         topic = 'refresh/mode/set'
         full_topic = f'{self.vehicle_base_topic}/{topic}'
-        msg = mqtt.MQTTMessage(topic=bytes(full_topic, encoding='utf8'))
-        msg.payload = bytes(MODE, encoding='utf8')
-        self.send_message(msg)
+        await self.send_message(full_topic, MODE)
         self.assertEqual(VIN, self.received_vin)
         self.assertEqual(MODE, self.received_payload)
 
-    def test_update_lock_state(self):
+    async def test_update_lock_state(self):
         topic = 'doors/locked/set'
         full_topic = f'{self.vehicle_base_topic}/{topic}'
-        msg = mqtt.MQTTMessage(topic=bytes(full_topic, encoding='utf8'))
-        msg.payload = bytes(LOCK_STATE, encoding='utf8')
-        self.send_message(msg)
+        await self.send_message(full_topic, LOCK_STATE)
         self.assertEqual(VIN, self.received_vin)
         self.assertEqual(LOCK_STATE, self.received_payload)
 
-    def test_update_rear_window_heat_state(self):
+    async def test_update_rear_window_heat_state(self):
         topic = 'climate/rearWindowDefrosterHeating/set'
         full_topic = f'{self.vehicle_base_topic}/{topic}'
-        msg = mqtt.MQTTMessage(topic=bytes(full_topic, encoding='utf8'))
-        msg.payload = bytes(REAR_WINDOW_HEAT_STATE, encoding='utf8')
-        self.send_message(msg)
+        await self.send_message(full_topic, REAR_WINDOW_HEAT_STATE)
         self.assertEqual(VIN, self.received_vin)
         self.assertEqual(REAR_WINDOW_HEAT_STATE, self.received_payload)
 
-    def send_message(self, message: mqtt.MQTTMessage):
-        self.mqtt_client.client.on_message('client', 'userdata', message)
+    async def send_message(self, topic, payload):
+        await self.mqtt_client.client.on_message('client', topic, payload, 0, dict())

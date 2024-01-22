@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 from unittest.mock import patch
 
 from apscheduler.schedulers.blocking import BlockingScheduler
@@ -145,7 +145,7 @@ def mock_charge_status(mocked_charge_status):
     mocked_charge_status.return_value = charge_mgmt_data_rsp_msg
 
 
-class TestVehicleHandler(TestCase):
+class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         config = Configuration()
         saicapi = SaicApi('', '', '', '')
@@ -159,7 +159,7 @@ class TestVehicleHandler(TestCase):
         self.vehicle_handler = VehicleHandler(config, saicapi, publisher, vin_info, vehicle_state)
 
     @patch.object(SaicApi, 'get_vehicle_status_with_retry')
-    def test_update_vehicle_status(self, mocked_vehicle_status):
+    async def test_update_vehicle_status(self, mocked_vehicle_status):
         mock_vehicle_status(mocked_vehicle_status)
         self.vehicle_handler.update_vehicle_status()
 
@@ -207,7 +207,7 @@ class TestVehicleHandler(TestCase):
         self.assertEqual(36, len(self.vehicle_handler.publisher.map))
 
     @patch.object(SaicApi, 'get_charging_status')
-    def test_update_charge_status(self, mocked_charge_status):
+    async def test_update_charge_status(self, mocked_charge_status):
         mock_charge_status(mocked_charge_status)
         self.vehicle_handler.update_charge_status()
 

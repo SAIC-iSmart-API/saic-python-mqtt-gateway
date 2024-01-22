@@ -5,7 +5,6 @@ import os
 from enum import Enum
 from typing import cast
 
-import paho.mqtt.client as mqtt
 from apscheduler.job import Job
 from apscheduler.schedulers.base import BaseScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -410,8 +409,8 @@ class VehicleState:
         if self.refresh_mode in [RefreshMode.OFF, RefreshMode.FORCE]:
             self.set_refresh_mode(RefreshMode.PERIODIC)
 
-    def configure_by_message(self, topic: str, msg: mqtt.MQTTMessage):
-        payload = msg.payload.decode().lower()
+    async def configure_by_message(self, *, topic: str, payload: str):
+        payload = payload.lower()
         match topic:
             case mqtt_topics.REFRESH_MODE:
                 try:
