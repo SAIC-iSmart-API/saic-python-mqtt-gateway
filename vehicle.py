@@ -73,7 +73,7 @@ class VehicleState:
         self.refresh_mode = RefreshMode.OFF
         self.previous_refresh_mode = RefreshMode.OFF
         self.properties = {}
-        self.__remote_ac_temp: int = DEFAULT_AC_TEMP
+        self.__remote_ac_temp: Optional[int] = None
         self.__remote_ac_running: bool = False
         self.__scheduler = scheduler
         self.__total_battery_capacity = total_battery_capacity
@@ -408,6 +408,8 @@ class VehicleState:
             self.set_refresh_period_inactive(86400)
         if self.refresh_period_inactive_grace == -1:
             self.set_refresh_period_inactive_grace(600)
+        if not self.__remote_ac_temp is None:
+            self.set_ac_temperature(DEFAULT_AC_TEMP)
         # Make sure the only refresh mode that is not supported at start is RefreshMode.PERIODIC
         if self.refresh_mode in [RefreshMode.OFF, RefreshMode.FORCE]:
             self.set_refresh_mode(RefreshMode.PERIODIC)
@@ -477,8 +479,8 @@ class VehicleState:
         if soc <= 100.0:
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC), soc)
             if (
-                self.charging_station
-                and self.charging_station.soc_topic
+                    self.charging_station
+                    and self.charging_station.soc_topic
             ):
                 self.publisher.publish_int(self.charging_station.soc_topic, int(soc), True)
         estimated_electrical_range = charge_mgmt_data.bmsEstdElecRng / 10.0
@@ -653,15 +655,15 @@ class VehicleState:
                 return pdict['value']
         return None
 
-    def get_ac_temperature(self) -> int:
-        return DEFAULT_AC_TEMP if self.__remote_ac_temp is None else self.__remote_ac_temp
+    def get_remote_ac_temperature(self) -> int:
+        return self.__remote_ac_temp or DEFAULT_AC_TEMP
 
     def set_ac_temperature(self, temp) -> bool:
         if temp is None:
             LOG.error("Cannot set AC temperature to None")
             return False
         temp = max(self.get_min_ac_temperature(), min(self.get_max_ac_temperature(), temp))
-        if (self.__remote_ac_temp is None) or (self.__remote_ac_temp != temp):
+        if self.__remote_ac_temp != temp:
             self.__remote_ac_temp = temp
             LOG.info(f"Updating remote AC temperature to {temp}")
             self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_REMOTE_TEMPERATURE), temp)
@@ -670,9 +672,9 @@ class VehicleState:
 
     def get_ac_temperature_idx(self) -> int:
         if self.series.startswith('EH32'):
-            return 3 + self.get_ac_temperature() - self.get_min_ac_temperature()
+            return 3 + self.get_remote_ac_temperature() - self.get_min_ac_temperature()
         else:
-            return 2 + self.get_ac_temperature() - self.get_min_ac_temperature()
+            return 2 + self.get_remote_ac_temperature() - self.get_min_ac_temperature()
 
     def get_min_ac_temperature(self) -> int:
         if self.series.startswith('EH32'):

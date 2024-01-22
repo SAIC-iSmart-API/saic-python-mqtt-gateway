@@ -30,7 +30,7 @@ from home_assistant_discovery import HomeAssistantDiscovery
 from mqtt_publisher import MqttClient, MqttCommandListener
 from publisher import Publisher
 from saic_api_listener import MqttGatewaySaicApiListener
-from vehicle import RefreshMode, VehicleState
+from vehicle import RefreshMode, VehicleState, DEFAULT_AC_TEMP
 
 MSG_CMD_SUCCESSFUL = 'Success'
 CHARGING_STATIONS_FILE = 'charging-stations.json'
@@ -335,8 +335,8 @@ class MqttGateway(MqttCommandListener):
             account_prefix = f'{self.configuration.saic_user}/{mqtt_topics.VEHICLES}/{vin_info.vin}'
             charging_station = self.get_charging_station(vin_info.vin)
             if (
-                charging_station
-                and charging_station.soc_topic
+                    charging_station
+                    and charging_station.soc_topic
             ):
                 LOG.debug(f'SoC for charging station will be published over MQTT topic: {charging_station.soc_topic}')
             total_battery_capacity = configuration.battery_capacity_map.get(vin_info.vin, None)
