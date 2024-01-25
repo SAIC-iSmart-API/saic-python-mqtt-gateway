@@ -315,12 +315,14 @@ class MqttGateway(MqttCommandListener):
         scheduler = apscheduler.schedulers.asyncio.AsyncIOScheduler()
         scheduler.start()
         try:
+            LOG.info("Logging in to SAIC API")
             login_response_message = await self.saic_api.login()
             LOG.info("Logged in as %s", login_response_message.account)
         except SaicApiException as e:
             LOG.exception('MqttGateway crashed due to SaicApiException', exc_info=e)
             raise SystemExit(e)
 
+        LOG.info("Fetching vehicle list")
         vin_list = await self.saic_api.vehicle_list()
 
         alarm_switches = [x for x in AlarmType]
@@ -433,7 +435,7 @@ class MessageHandler:
         self.saicapi = saicapi
 
     async def check_for_new_messages(self) -> None:
-        if self.__should_poll():
+        if self.__shoulCd_poll():
             try:
                 LOG.debug("Checking for new messages")
                 await self.__polling()
