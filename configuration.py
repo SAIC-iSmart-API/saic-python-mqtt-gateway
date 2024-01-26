@@ -16,8 +16,9 @@ class Configuration:
     def __init__(self):
         self.saic_user: str | None = None
         self.saic_password: str | None = None
-        self.saic_uri: str | None = None
-        self.saic_rest_uri: str = 'https://gateway-eu.soimt.com/'
+        self.saic_rest_uri: str = 'https://gateway-mg-eu.soimt.com/api.app/v1/'
+        self.saic_region: str = 'eu'
+        self.saic_tenant_id: str = '459771'
         self.saic_relogin_delay: int = 15 * 60  # in seconds
         self.abrp_token_map: dict[str, str] = {}
         self.battery_capacity_map: dict[str, float] = {}
