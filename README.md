@@ -4,7 +4,8 @@ A service that queries the data from an MG iSMART account and publishes the data
 
 MG iSMART is the connectivity system in your MG car (MG5, MG4, ZS...).
 
-The implementation is based on the findings from the [SAIC-iSmart-API Documentation](https://github.com/SAIC-iSmart-API/documentation) project.
+The implementation is based on the findings from
+the [SAIC-iSmart-API Documentation](https://github.com/SAIC-iSmart-API/documentation) project.
 
 ## Prerequisites
 
@@ -13,7 +14,8 @@ The implementation is based on the findings from the [SAIC-iSmart-API Documentat
 
 ## Configuration
 
-Configuration parameters can be provided as command line parameters or environment variables (this is what you typically do when you run the service from a docker container).
+Configuration parameters can be provided as command line parameters or environment variables (this is what you typically
+do when you run the service from a docker container).
 
 | CMD param                  | ENV variable             | Description                                                                                                                                                                         |
 |----------------------------|--------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -25,7 +27,9 @@ Configuration parameters can be provided as command line parameters or environme
 | --mqtt-password            | MQTT_PASSWORD            | MQTT password                                                                                                                                                                       |
 | --mqtt-client-id           | MQTT_CLIENT_ID           | MQTT Client Identifier. Defaults to saic-python-mqtt-gateway.                                                                                                                       |
 | --mqtt-topic-prefix        | MQTT_TOPIC               | Provide a custom MQTT prefix to replace the default: saic                                                                                                                           |
-| --saic-uri                 | SAIC_URI                 | SAIC URI. Default is the European Production endpoint: https://tap-eu.soimt.com                                                                                                     |
+| --saic-rest-uri            | SAIC_REST_URI            | SAIC API URI. Default is the European Production endpoint: https://gateway-mg-eu.soimt.com/api.app/v1/                                                                              |
+| --saic-region              | SAIC_REGION              | SAIC API region. Default is eu.                                                                                                                                                     |
+| --saic-tenant-id           | SAIC_TENANT_ID           | SAIC API tenant ID. Default is 459771.                                                                                                                                              |
 | --abrp-api-key             | ABRP_API_KEY             | API key for the A Better Route Planner telemetry API. Default is the open source telemetry API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.                                            |
 | --abrp-user-token          | ABRP_USER_TOKEN          | Mapping of VIN to ABRP User Token. Multiple mappings can be provided separated by ',' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl                                            |
 | --battery-capacity-mapping | BATTERY_CAPACITY_MAPPING | Mapping of VIN to full battery capacity. Multiple mappings can be provided separated by ',' Example: LSJXXXX=54.0,LSJYYYY=64.0                                                      |
@@ -40,13 +44,17 @@ Configuration parameters can be provided as command line parameters or environme
 
 ### Charging Station Configuration
 
-If your charging station also provides information over MQTT or if you somehow manage to publish information from your charging station, the MQTT gateway can benefit from it. In addition, the MQTT gateway can provide the SoC to your charging station.
+If your charging station also provides information over MQTT or if you somehow manage to publish information from your
+charging station, the MQTT gateway can benefit from it. In addition, the MQTT gateway can provide the SoC to your
+charging station.
 
-An [openWB](https://openwb.de) charging station is capable of providing information over MQTT for instance. You just need to provide the configuration in the file charging-stations.json. A sample configuration for two cars connected to an openWB charging station would be the following.
+An [openWB](https://openwb.de) charging station is capable of providing information over MQTT for instance. You just
+need to provide the configuration in the file charging-stations.json. A sample configuration for two cars connected to
+an openWB charging station would be the following.
 
 Check-out the [sample file](charging-stations.json.sample)
 
-The key-value pairs in the JSON express the following: 
+The key-value pairs in the JSON express the following:
 
 | JSON key              | Description                                                                                       |
 |-----------------------|---------------------------------------------------------------------------------------------------|
@@ -70,23 +78,27 @@ $ python ./mqtt_gateway.py -m tcp://my-broker-host:1883 -u <saic-user> -p <saic-
 
 ### In a docker container
 
-Build the image yourself with the [Dockerfile](Dockerfile) or download the image from [docker hub](https://hub.docker.com/r/saicismartapi/saic-python-mqtt-gateway).
+Build the image yourself with the [Dockerfile](Dockerfile) or download the image
+from [docker hub](https://hub.docker.com/r/saicismartapi/saic-python-mqtt-gateway).
 
 #### Building the docker image
+
 ```
 $ docker build -t saic-mqtt-gateway .
 ```
 
 There is a [docker compose file](docker-compose.yml) that shows how to set up the service.
 
-
 ## A Better Route Planner (ABRP) integration
 
-Telemetry data from your car can be provided to [ABRP](https://abetterrouteplanner.com/). **Be aware that this is not done by default.** The data will be sent only if you provide the mapping of your vehicle identification number (VIN) to an ABRP user token.
+Telemetry data from your car can be provided to [ABRP](https://abetterrouteplanner.com/). **Be aware that this is not
+done by default.** The data will be sent only if you provide the mapping of your vehicle identification number (VIN) to
+an ABRP user token.
 
 ## Commands over MQTT
 
-The MQTT Gateway subscribes to MQTT topics where it is listening for commands. Every topic in the table below starts with the default vehicle prefix: `saic/<saic_user>/vehicles/<vehicle_id>`
+The MQTT Gateway subscribes to MQTT topics where it is listening for commands. Every topic in the table below starts
+with the default vehicle prefix: `saic/<saic_user>/vehicles/<vehicle_id>`
 
 | Topic                                    | Value range              | Description                                                                                                                                                                                                                           |
 |------------------------------------------|--------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -107,4 +119,6 @@ The MQTT Gateway subscribes to MQTT topics where it is listening for commands. E
 
 ## Home Assistant auto-discovery
 
-The gateway supports [Home Assistant MQTT discovery](https://www.home-assistant.io/integrations/mqtt#mqtt-discovery). It publishes configuration information so that the vehicle appears as a MQTT device. This will save you a lot of configuration effort since all the entities provided by the vehicle will automatically show-up in Home Assistant.
+The gateway supports [Home Assistant MQTT discovery](https://www.home-assistant.io/integrations/mqtt#mqtt-discovery). It
+publishes configuration information so that the vehicle appears as a MQTT device. This will save you a lot of
+configuration effort since all the entities provided by the vehicle will automatically show-up in Home Assistant.

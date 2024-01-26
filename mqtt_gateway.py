@@ -304,6 +304,9 @@ class MqttGateway(MqttCommandListener):
                 password=self.configuration.saic_password,
                 username_is_email="@" in self.configuration.saic_user,
                 relogin_delay=self.configuration.saic_relogin_delay,
+                base_uri=self.configuration.saic_rest_uri,
+                region=self.configuration.saic_region,
+                tenant_id=self.configuration.saic_tenant_id
             ),
             listener=MqttGatewaySaicApiListener(self.publisher)
         )
@@ -560,15 +563,23 @@ def process_arguments() -> Configuration:
         parser.add_argument('--mqtt-topic-prefix', help='MQTT topic prefix. Environment Variable: MQTT_TOPIC'
                                                         + 'Default is saic', default='saic', dest='mqtt_topic',
                             required=False, action=EnvDefault, envvar='MQTT_TOPIC')
-        parser.add_argument('-s', '--saic-uri', help='The SAIC uri. Environment Variable: SAIC_URI Default is the'
-                                                     + ' European Production Endpoint: https://tap-eu.soimt.com',
-                            default='https://tap-eu.soimt.com', dest='saic_uri', required=False, action=EnvDefault,
-                            envvar='SAIC_URI')
+        parser.add_argument('-s', '--saic-rest-uri',
+                            help='The SAIC uri. Environment Variable: SAIC_REST_URI Default is the European '
+                                 'Production Endpoint: https://tap-eu.soimt.com',
+                            default='https://gateway-mg-eu.soimt.com/api.app/v1/', dest='saic_rest_uri', required=False,
+                            action=EnvDefault,
+                            envvar='SAIC_REST_URI')
         parser.add_argument('-u', '--saic-user',
                             help='The SAIC user name. Environment Variable: SAIC_USER', dest='saic_user', required=True,
                             action=EnvDefault, envvar='SAIC_USER')
         parser.add_argument('-p', '--saic-password', help='The SAIC password. Environment Variable: SAIC_PASSWORD',
                             dest='saic_password', required=True, action=EnvDefault, envvar='SAIC_PASSWORD')
+        parser.add_argument('--saic-region', '--saic-region',
+                            help='The SAIC API region. Environment Variable: SAIC_REGION', default='eu',
+                            dest='saic_region', required=False, action=EnvDefault, envvar='SAIC_REGION')
+        parser.add_argument('--saic-tenant-id', help='The SAIC API tenant id. Environment Variable: SAIC_TENANT_ID',
+                            default='459771', dest='saic_tenant_id', required=False, action=EnvDefault,
+                            envvar='SAIC_TENANT_ID')
         parser.add_argument('--abrp-api-key', help='The API key for the A Better Route Planer telemetry API.'
                                                    + ' Default is the open source telemetry'
                                                    + ' API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.'
@@ -622,7 +633,8 @@ def process_arguments() -> Configuration:
         if args.saic_relogin_delay:
             config.saic_relogin_delay = args.saic_relogin_delay
         config.mqtt_topic = args.mqtt_topic
-        config.saic_uri = args.saic_uri
+        config.saic_rest_uri = args.saic_rest_uri
+        config.saic_region = args.saic_region
         config.saic_user = args.saic_user
         config.saic_password = args.saic_password
         config.abrp_api_key = args.abrp_api_key
