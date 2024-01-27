@@ -167,7 +167,7 @@ class VehicleHandler:
                         case 'off':
                             LOG.info('A/C will be switched off')
                             self.saic_api.stop_ac(self.vin_info)
-                        case 'blowingOnly':
+                        case 'blowingonly':
                             LOG.info('A/C will be set to blowing only')
                             self.saic_api.start_ac_blowing(self.vin_info)
                         case 'on':
