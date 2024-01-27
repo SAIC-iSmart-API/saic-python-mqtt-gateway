@@ -590,7 +590,7 @@ class VehicleState:
             case 0:
                 return 'off'
             case 1:
-                return 'blowingOnly'
+                return 'blowingonly'
             case 2:
                 return 'on'
             case 5:
