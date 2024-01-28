@@ -635,6 +635,7 @@ def process_arguments() -> Configuration:
         config.mqtt_topic = args.mqtt_topic
         config.saic_rest_uri = args.saic_rest_uri
         config.saic_region = args.saic_region
+        config.saic_tenant_id = str(args.saic_tenant_id)
         config.saic_user = args.saic_user
         config.saic_password = args.saic_password
         config.abrp_api_key = args.abrp_api_key
