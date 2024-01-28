@@ -435,7 +435,7 @@ class MessageHandler:
         self.saicapi = saicapi
 
     async def check_for_new_messages(self) -> None:
-        if self.__shoulCd_poll():
+        if self.__should_poll():
             try:
                 LOG.debug("Checking for new messages")
                 await self.__polling()
