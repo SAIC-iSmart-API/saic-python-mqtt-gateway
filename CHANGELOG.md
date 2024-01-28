@@ -4,7 +4,7 @@
 
 ### Fixed
 
-* Typo in check_for_new_essages() fixed
+* Typo in check_for_new_messages() fixed
 
 ### Added
 
