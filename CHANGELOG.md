@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.5.0
+
+### Changed
+
+* Switch to saic-python-client-ng library (New SAIC API)
+
 ## 0.4.7
 
 ### Changed
