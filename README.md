@@ -34,7 +34,7 @@ Configuration parameters can be provided as command line parameters or environme
 | --saic-relogin-delay       | SAIC_RELOGIN_DELAY       | The gateway detects logins from other devices (e.g. the iSMART app). It then pauses it's activity for 900 seconds (default value). The delay can be configured with this parameter. |
 | --ha-discovery             | HA_DISCOVERY_ENABLED     | Home Assistant auto-discovery is enabled (True) by default. It can be disabled (False) with this parameter.                                                                         |
 | --ha-discovery-prefix      | HA_DISCOVERY_PREFIX      | The default MQTT prefix for Home Assistant auto-discovery is 'homeassistant'. Another prefix can be configured with this parameter                                                  |
-| --messages_request_interval| MESSAGES_REQUEST_INTERVAL| The interval for retrieving messages in seconds. Default is 60 seconds.                                                                                                             |
+| --messages-request-interval| MESSAGES_REQUEST_INTERVAL| The interval for retrieving messages in seconds. Default is 60 seconds.                                                                                                             |
 |                            | LOG_LEVEL                | Log level: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)                            |
 |                            | MQTT_LOG_LEVEL           | Log level of the MQTT Client: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)         |
 
