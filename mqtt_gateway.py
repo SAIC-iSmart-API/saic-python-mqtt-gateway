@@ -172,7 +172,7 @@ class VehicleHandler:
                         case 'off':
                             LOG.info('A/C will be switched off')
                             await self.saic_api.stop_ac(self.vin_info.vin)
-                        case 'blowingOnly':
+                        case 'blowingonly':
                             LOG.info('A/C will be set to blowing only')
                             await self.saic_api.start_ac_blowing(self.vin_info.vin)
                         case 'on':
@@ -438,7 +438,7 @@ class MessageHandler:
         self.saicapi = saicapi
 
     async def check_for_new_messages(self) -> None:
-        if self.__shoulCd_poll():
+        if self.__should_poll():
             try:
                 LOG.debug("Checking for new messages")
                 await self.__polling()
@@ -616,6 +616,10 @@ def process_arguments() -> Configuration:
                                                           'HA_DISCOVERY_PREFIX', dest='ha_discovery_prefix',
                             required=False, action=EnvDefault,
                             envvar='HA_DISCOVERY_PREFIX', default='homeassistant')
+        parser.add_argument('--messages-request-interval', help='The interval for retrieving messages in seconds. Environment Variable: '
+                                                                'MESSAGES_REQUEST_INTERVAL', dest='messages_request_interval',
+                            required=False, action=EnvDefault,
+                            envvar='MESSAGES_REQUEST_INTERVAL', default=60)
         parser.add_argument('--charge-min-percentage',
                             help='How many % points we should try to refresh the charge state. Environment Variable: '
                                  'CHARGE_MIN_PERCENTAGE', dest='charge_dynamic_polling_min_percentage', required=False,
@@ -658,6 +662,11 @@ def process_arguments() -> Configuration:
 
         if args.ha_discovery_prefix:
             config.ha_discovery_prefix = args.ha_discovery_prefix
+
+        try:
+            config.messages_request_interval = int(args.messages_request_interval)
+        except ValueError:
+            raise SystemExit(f'No valid integer value for messages_request_interval: {args.messages_request_interval}')
 
         parse_result = urllib.parse.urlparse(args.mqtt_uri)
         if parse_result.scheme == 'tcp':

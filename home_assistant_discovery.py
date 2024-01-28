@@ -186,10 +186,10 @@ class HomeAssistantDiscovery:
             'icon': 'mdi:fan',
             'state_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE),
             'command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE) + '/set',
-            'value_template': '{% if value == "blowingOnly" %}blowingOnly{% else %}off{% endif %}',
-            'state_on': 'blowingOnly',
+            'value_template': '{% if value == "blowingonly" %}blowingonly{% else %}off{% endif %}',
+            'state_on': 'blowingonly',
             'state_off': 'off',
-            'payload_on': 'blowingOnly',
+            'payload_on': 'blowingonly',
             'payload_off': 'off',
         })
 
