@@ -1,5 +1,15 @@
 # Change Log
 
+## 0.5.1
+
+### Fixed
+
+* Typo in check_for_new_essages() fixed
+
+### Added
+
+* Configurable messages-request-interval
+
 ## 0.5.0
 
 ### Changed
