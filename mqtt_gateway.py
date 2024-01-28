@@ -575,7 +575,7 @@ def process_arguments() -> Configuration:
                                                           'HA_DISCOVERY_PREFIX', dest='ha_discovery_prefix',
                             required=False, action=EnvDefault,
                             envvar='HA_DISCOVERY_PREFIX', default='homeassistant')
-        parser.add_argument('--messages_request_interval', help='The interval for retrieving messages in seconds. Environment Variable: '
+        parser.add_argument('--messages-request-interval', help='The interval for retrieving messages in seconds. Environment Variable: '
                                                                 'MESSAGES_REQUEST_INTERVAL', dest='messages_request_interval',
                             required=False, action=EnvDefault,
                             envvar='MESSAGES_REQUEST_INTERVAL', default=60)
