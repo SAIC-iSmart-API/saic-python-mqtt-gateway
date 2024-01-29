@@ -1,5 +1,25 @@
 # Change Log
 
+## 0.5.2
+
+### Fixed
+
+* Gateway was not logging-in properly after a logout
+
+### Changed
+
+* Config option `SAIC_REST_URI` now points to the new production API endpoint by default
+
+### Added
+
+* Config option `SAIC_REGION` is used to select the new API region
+* Config option `SAIC_TENANT_ID` is used to select the new API tenant
+
+Both values default to the EU instance production values
+
+### Removed
+* Drop config option `SAIC_URI` as it is no longer relevant
+
 ## 0.5.1
 
 ### Fixed
