@@ -1,10 +1,11 @@
 # Change Log
 
-## 0.5.3
+## 0.5.7
 
 ### Fixed
 
 * Align some vehicle control commands to their actual behavior on the official app
+* Door closing command should be more reliable now
 
 ### Added
 
