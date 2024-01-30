@@ -7,6 +7,7 @@ class TransportProtocol(Enum):
     def __init__(self, transport_mechanism: str, with_tls: bool):
         self.transport_mechanism = transport_mechanism
         self.with_tls = with_tls
+
     TCP = 'tcp', False
     WS = 'websockets', False
     TLS = 'tcp', True
@@ -16,6 +17,7 @@ class Configuration:
     def __init__(self):
         self.saic_user: str | None = None
         self.saic_password: str | None = None
+        self.saic_phone_country_code: str | None = None
         self.saic_rest_uri: str = 'https://gateway-mg-eu.soimt.com/api.app/v1/'
         self.saic_region: str = 'eu'
         self.saic_tenant_id: str = '459771'

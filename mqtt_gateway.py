@@ -298,11 +298,13 @@ class MqttGateway(MqttCommandListener):
         self.vehicle_handler: dict[str, VehicleHandler] = {}
         self.publisher = MqttClient(self.configuration)
         self.publisher.command_listener = self
+        username_is_email = "@" in self.configuration.saic_user
         self.saic_api = SaicApi(
             configuration=SaicApiConfiguration(
                 username=self.configuration.saic_user,
                 password=self.configuration.saic_password,
-                username_is_email="@" in self.configuration.saic_user,
+                username_is_email=username_is_email,
+                phone_country_code=None if username_is_email else self.configuration.phone_country_code,
                 relogin_delay=self.configuration.saic_relogin_delay,
                 base_uri=self.configuration.saic_rest_uri,
                 region=self.configuration.saic_region,
@@ -543,26 +545,28 @@ def process_arguments() -> Configuration:
     config = Configuration()
     parser = argparse.ArgumentParser(prog='MQTT Gateway')
     try:
-        parser.add_argument('-m', '--mqtt-uri', help='The URI to the MQTT Server. Environment Variable: MQTT_URI,'
-                                                     + 'TCP: tcp://mqtt.eclipseprojects.io:1883 '
-                                                     + 'WebSocket: ws://mqtt.eclipseprojects.io:9001'
-                                                     + 'TLS: tls://mqtt.eclipseprojects.io:8883',
+        parser.add_argument('-m', '--mqtt-uri',
+                            help='The URI to the MQTT Server. Environment Variable: MQTT_URI,'
+                                 + 'TCP: tcp://mqtt.eclipseprojects.io:1883 '
+                                 + 'WebSocket: ws://mqtt.eclipseprojects.io:9001'
+                                 + 'TLS: tls://mqtt.eclipseprojects.io:8883',
                             dest='mqtt_uri', required=True, action=EnvDefault, envvar='MQTT_URI')
         parser.add_argument('--mqtt-server-cert',
                             help='Path to the server certificate authority file in PEM format for TLS.',
                             dest='tls_server_cert_path', required=False, action=EnvDefault, envvar='MQTT_SERVER_CERT')
         parser.add_argument('--mqtt-user', help='The MQTT user name. Environment Variable: MQTT_USER',
                             dest='mqtt_user', required=False, action=EnvDefault, envvar='MQTT_USER')
-        parser.add_argument('--mqtt-password', help='The MQTT password. Environment Variable: MQTT_PASSWORD',
-                            dest='mqtt_password', required=False, action=EnvDefault, envvar='MQTT_PASSWORD')
+        parser.add_argument('--mqtt-password',
+                            help='The MQTT password. Environment Variable: MQTT_PASSWORD', dest='mqtt_password',
+                            required=False, action=EnvDefault, envvar='MQTT_PASSWORD')
         parser.add_argument('--mqtt-client-id', help='The MQTT Client Identifier. Environment Variable: '
                                                      + 'MQTT_CLIENT_ID '
                                                      + 'Default is saic-python-mqtt-gateway',
                             default='saic-python-mqtt-gateway', dest='mqtt_client_id', required=False,
                             action=EnvDefault, envvar='MQTT_CLIENT_ID')
-        parser.add_argument('--mqtt-topic-prefix', help='MQTT topic prefix. Environment Variable: MQTT_TOPIC'
-                                                        + 'Default is saic', default='saic', dest='mqtt_topic',
-                            required=False, action=EnvDefault, envvar='MQTT_TOPIC')
+        parser.add_argument('--mqtt-topic-prefix',
+                            help='MQTT topic prefix. Environment Variable: MQTT_TOPIC Default is saic', default='saic',
+                            dest='mqtt_topic', required=False, action=EnvDefault, envvar='MQTT_TOPIC')
         parser.add_argument('-s', '--saic-rest-uri',
                             help='The SAIC uri. Environment Variable: SAIC_REST_URI Default is the European '
                                  'Production Endpoint: https://tap-eu.soimt.com',
@@ -572,18 +576,25 @@ def process_arguments() -> Configuration:
         parser.add_argument('-u', '--saic-user',
                             help='The SAIC user name. Environment Variable: SAIC_USER', dest='saic_user', required=True,
                             action=EnvDefault, envvar='SAIC_USER')
-        parser.add_argument('-p', '--saic-password', help='The SAIC password. Environment Variable: SAIC_PASSWORD',
-                            dest='saic_password', required=True, action=EnvDefault, envvar='SAIC_PASSWORD')
+        parser.add_argument('-p', '--saic-password',
+                            help='The SAIC password. Environment Variable: SAIC_PASSWORD', dest='saic_password',
+                            required=True, action=EnvDefault, envvar='SAIC_PASSWORD')
+        parser.add_argument('--saic-phone-country-code',
+                            help='The SAIC phone country code. Environment Variable: SAIC_PHONE_COUNTRY_CODE',
+                            dest='saic_phone_country_code', required=False, action=EnvDefault,
+                            envvar='SAIC_PHONE_COUNTRY_CODE')
         parser.add_argument('--saic-region', '--saic-region',
                             help='The SAIC API region. Environment Variable: SAIC_REGION', default='eu',
                             dest='saic_region', required=False, action=EnvDefault, envvar='SAIC_REGION')
-        parser.add_argument('--saic-tenant-id', help='The SAIC API tenant id. Environment Variable: SAIC_TENANT_ID',
-                            default='459771', dest='saic_tenant_id', required=False, action=EnvDefault,
+        parser.add_argument('--saic-tenant-id',
+                            help='The SAIC API tenant id. Environment Variable: SAIC_TENANT_ID', default='459771',
+                            dest='saic_tenant_id', required=False, action=EnvDefault,
                             envvar='SAIC_TENANT_ID')
-        parser.add_argument('--abrp-api-key', help='The API key for the A Better Route Planer telemetry API.'
-                                                   + ' Default is the open source telemetry'
-                                                   + ' API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.'
-                                                   + ' Environment Variable: ABRP_API_KEY',
+        parser.add_argument('--abrp-api-key',
+                            help='The API key for the A Better Route Planer telemetry API.'
+                                 + ' Default is the open source telemetry'
+                                 + ' API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.'
+                                 + ' Environment Variable: ABRP_API_KEY',
                             default='8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d', dest='abrp_api_key', required=False,
                             action=EnvDefault, envvar='ABRP_API_KEY')
         parser.add_argument('--abrp-user-token', help='The mapping of VIN to ABRP User Token.'
@@ -601,23 +612,24 @@ def process_arguments() -> Configuration:
                                                     + ' Multiple mappings can be provided seperated by ,'
                                                     + ' Example: LSJXXXX=1,LSJYYYY=2',
                             dest='open_wp_lp_map', required=False, action=EnvDefault, envvar='OPENWB_LP_MAP')
-        parser.add_argument('--charging-stations-json', help='Custom charging stations configuration file name',
-                            dest='charging_stations_file', required=False, action=EnvDefault,
-                            envvar='CHARGING_STATIONS_JSON')
-        parser.add_argument('--saic-relogin-delay', help='How long to wait before attempting another login to the SAIC '
-                                                         'API. Environment Variable: SAIC_RELOGIN_DELAY',
-                            dest='saic_relogin_delay', required=False, action=EnvDefault, envvar='SAIC_RELOGIN_DELAY',
-                            type=check_positive)
+        parser.add_argument('--charging-stations-json',
+                            help='Custom charging stations configuration file name', dest='charging_stations_file',
+                            required=False, action=EnvDefault, envvar='CHARGING_STATIONS_JSON')
+        parser.add_argument('--saic-relogin-delay',
+                            help='How long to wait before attempting another login to the SAIC API. Environment '
+                                 'Variable: SAIC_RELOGIN_DELAY', dest='saic_relogin_delay', required=False,
+                            action=EnvDefault, envvar='SAIC_RELOGIN_DELAY', type=check_positive)
         parser.add_argument('--ha-discovery', help='Enable Home Assistant Discovery. Environment Variable: '
                                                    'HA_DISCOVERY_ENABLED', dest='ha_discovery_enabled', required=False,
                             action=EnvDefault,
                             envvar='HA_DISCOVERY_ENABLED', default=True, type=check_bool)
-        parser.add_argument('--ha-discovery-prefix', help='Home Assistant Discovery Prefix. Environment Variable: '
-                                                          'HA_DISCOVERY_PREFIX', dest='ha_discovery_prefix',
-                            required=False, action=EnvDefault,
-                            envvar='HA_DISCOVERY_PREFIX', default='homeassistant')
-        parser.add_argument('--messages-request-interval', help='The interval for retrieving messages in seconds. Environment Variable: '
-                                                                'MESSAGES_REQUEST_INTERVAL', dest='messages_request_interval',
+        parser.add_argument('--ha-discovery-prefix',
+                            help='Home Assistant Discovery Prefix. Environment Variable: HA_DISCOVERY_PREFIX',
+                            dest='ha_discovery_prefix', required=False, action=EnvDefault, envvar='HA_DISCOVERY_PREFIX',
+                            default='homeassistant')
+        parser.add_argument('--messages-request-interval',
+                            help='The interval for retrieving messages in seconds. Environment Variable: '
+                                 'MESSAGES_REQUEST_INTERVAL', dest='messages_request_interval',
                             required=False, action=EnvDefault,
                             envvar='MESSAGES_REQUEST_INTERVAL', default=60)
         parser.add_argument('--charge-min-percentage',
@@ -638,6 +650,7 @@ def process_arguments() -> Configuration:
         config.saic_tenant_id = str(args.saic_tenant_id)
         config.saic_user = args.saic_user
         config.saic_password = args.saic_password
+        config.saic_phone_country_code = args.saic_phone_country_code
         config.abrp_api_key = args.abrp_api_key
         if args.abrp_user_token:
             cfg_value_to_dict(args.abrp_user_token, config.abrp_token_map)
