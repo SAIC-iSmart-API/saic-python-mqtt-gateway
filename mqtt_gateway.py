@@ -304,7 +304,7 @@ class MqttGateway(MqttCommandListener):
                 username=self.configuration.saic_user,
                 password=self.configuration.saic_password,
                 username_is_email=username_is_email,
-                phone_country_code=None if username_is_email else self.configuration.phone_country_code,
+                phone_country_code=None if username_is_email else self.configuration.saic_phone_country_code,
                 relogin_delay=self.configuration.saic_relogin_delay,
                 base_uri=self.configuration.saic_rest_uri,
                 region=self.configuration.saic_region,
