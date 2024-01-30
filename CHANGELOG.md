@@ -1,5 +1,15 @@
 # Change Log
 
+## 0.5.3
+
+### Fixed
+
+* Align some vehicle control commands to their actual behavior on the official app
+
+### Added
+
+* The new option `SAIC_PHONE_COUNTRY_CODE` can be used to specify the country code for the phone number used to login
+
 ## 0.5.2
 
 ### Fixed
@@ -18,6 +28,7 @@
 Both values default to the EU instance production values
 
 ### Removed
+
 * Drop config option `SAIC_URI` as it is no longer relevant
 
 ## 0.5.1
@@ -53,7 +64,7 @@ Both values default to the EU instance production values
 * Setting ha_discovery_enabled to False had no effect
 * Docker image based on python:3.11-slim
 * Force refresh by charging station only if charging value has changed
-* MQTT connection error logging 
+* MQTT connection error logging
 * Front window heating enables "Blowing only"
 
 ## 0.4.5
@@ -78,7 +89,8 @@ Both values default to the EU instance production values
 
 ### Fixed
 
-* Previous fix works only for messages without application data. Those are typically error messages that are provided with wrong dispatcher message size
+* Previous fix works only for messages without application data. Those are typically error messages that are provided
+  with wrong dispatcher message size
 
 ## 0.4.1
 
@@ -144,6 +156,7 @@ Vehicle control commands are finally working
 * Environment variable to configure log level
 
 ### Fixed
+
 * environment variable overwrites the predefined default value
 
 ## 0.2.1
