@@ -166,7 +166,7 @@ class VehicleHandler:
                             )
 
                     except ValueError as e:
-                        raise MqttGatewayException(f'Error setting SoC target: {e}')
+                        raise MqttGatewayException(f'Error setting temperature target: {e}')
                 case mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE:
                     match payload.strip().lower():
                         case 'off':
