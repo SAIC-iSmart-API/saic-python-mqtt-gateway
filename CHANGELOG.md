@@ -1,5 +1,13 @@
 # Change Log
 
+## 0.5.10
+
+## Added
+
+* MQTT: Add support for scheduled battery heating. Payload is JSON with startTime and mode (on or off)
+* HA: Expose scheduled battery heating
+* HA: Expose some switches as sensors as well to ease automations
+
 ## 0.5.9
 
 ## Added
