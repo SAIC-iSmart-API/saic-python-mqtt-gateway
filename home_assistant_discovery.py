@@ -66,8 +66,10 @@ class HomeAssistantDiscovery:
 
         if self.__vehicle_state.has_sunroof:
             self.__publish_switch(mqtt_topics.WINDOWS_SUN_ROOF, 'Sun roof')
+            self.__publish_binary_sensor(mqtt_topics.WINDOWS_SUN_ROOF, 'Sun roof')
         else:
             self.__unpublish_ha_discovery_message('switch', 'Sun roof')
+            self.__unpublish_ha_discovery_message('binary_sensor', 'Sun roof')
 
         self.__publish_switch(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT, 'Rear window defroster heating',
                               icon='mdi:car-defrost-rear', payload_on='on', payload_off='off')
@@ -150,6 +152,7 @@ class HomeAssistantDiscovery:
                                      icon='mdi:power-plug-battery')
         self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_CHARGING, 'Battery Charging',
                                      device_class='battery_charging', icon='mdi:battery-charging')
+        self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_BATTERY_HEATING, 'Battery heating', icon='mdi:heat-wave')
         self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_RUNNING, 'Vehicle Running', device_class='running',
                                      icon='mdi:car-side')
         self.__publish_binary_sensor(mqtt_topics.DOORS_DRIVER, 'Door driver', device_class='door', icon='mdi:car-door')
