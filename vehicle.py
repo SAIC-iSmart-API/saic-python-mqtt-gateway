@@ -75,6 +75,8 @@ class VehicleState:
         self.properties = {}
         self.__remote_ac_temp: Optional[int] = None
         self.__remote_ac_running: bool = False
+        self.__remote_heated_seats_front_left_level: int = 0
+        self.__remote_heated_seats_front_right_level: int = 0
         self.__scheduler = scheduler
         self.__total_battery_capacity = total_battery_capacity
 
@@ -275,6 +277,17 @@ class VehicleState:
         rear_window_heat_state = basic_vehicle_status.rmtHtdRrWndSt
         self.publisher.publish_str(self.get_topic(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT),
                                    'off' if rear_window_heat_state == 0 else 'on')
+
+        if basic_vehicle_status.frontLeftSeatHeatLevel is not None:
+            self.__remote_heated_seats_front_left_level = basic_vehicle_status.frontLeftSeatHeatLevel
+
+        self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_LEFT_LEVEL),
+                                   self.__remote_heated_seats_front_left_level)
+
+        if basic_vehicle_status.frontRightSeatHeatLevel is not None:
+            self.__remote_heated_seats_front_right_level = basic_vehicle_status.frontRightSeatHeatLevel
+        self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_RIGHT_LEVEL),
+                                   self.__remote_heated_seats_front_right_level)
 
         if basic_vehicle_status.mileage > 0:
             mileage = basic_vehicle_status.mileage / 10.0
@@ -627,12 +640,58 @@ class VehicleState:
             self.refresh_mode = mode
             LOG.debug(f'Refresh mode set to {new_mode_value}')
 
+    @property
     def has_sunroof(self):
         return self.__get_property_value('Sunroof') != '0'
 
-    def has_heated_seats(self):
-        return self.__get_property_value('HeatedSeat') == '0'
+    @property
+    def has_on_off_heated_seats(self):
+        return self.__get_property_value('HeatedSeat') == '2'
 
+    @property
+    def has_level_heated_seats(self):
+        return self.__get_property_value('HeatedSeat') == '1'
+
+    @property
+    def has_heated_seats(self):
+        return self.has_level_heated_seats or self.has_on_off_heated_seats
+
+    @property
+    def is_heated_seats_running(self):
+        return (self.__remote_heated_seats_front_right_level + self.__remote_heated_seats_front_left_level) > 0
+
+    @property
+    def remote_heated_seats_front_left_level(self):
+        return self.__remote_heated_seats_front_left_level
+
+    def update_heated_seats_front_left_level(self, level):
+        if not self.__check_heated_seats_level(level):
+            return False
+        changed = self.__remote_heated_seats_front_left_level != level
+        self.__remote_heated_seats_front_left_level = level
+        return changed
+
+    @property
+    def remote_heated_seats_front_right_level(self):
+        return self.__remote_heated_seats_front_right_level
+
+    def update_heated_seats_front_right_level(self, level):
+        if not self.__check_heated_seats_level(level):
+            return False
+        changed = self.__remote_heated_seats_front_right_level != level
+        self.__remote_heated_seats_front_right_level = level
+        return changed
+
+    def __check_heated_seats_level(self, level: int) -> bool:
+        if not self.has_heated_seats:
+            return False
+        if self.has_level_heated_seats and not (0 <= level <= 3):
+            raise ValueError(f'Invalid heated seat level {level}. Range must be from 0 to 3 inclusive')
+        if self.has_on_off_heated_seats and not (0 <= level <= 1):
+            raise ValueError(f'Invalid heated seat level {level}. Range must be from 0 to 1 inclusive')
+        return True
+
+    @property
     def supports_target_soc(self):
         return self.__get_property_value('Battery') == '1'
 
@@ -688,6 +747,7 @@ class VehicleState:
         else:
             return 28
 
+    @property
     def is_remote_ac_running(self) -> bool:
         return self.__remote_ac_running
 
