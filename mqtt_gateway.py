@@ -159,7 +159,7 @@ class VehicleHandler:
                         LOG.info("Setting remote climate target temperature to %s", payload)
                         temp = int(payload)
                         changed = self.vehicle_state.set_ac_temperature(temp)
-                        if changed and self.vehicle_state.is_remote_ac_running():
+                        if changed and self.vehicle_state.is_remote_ac_running:
                             await self.saic_api.start_ac(
                                 self.vin_info.vin,
                                 temperature_idx=self.vehicle_state.get_ac_temperature_idx()
@@ -186,6 +186,38 @@ class VehicleHandler:
                             await self.saic_api.start_front_defrost(self.vin_info.vin)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {payload}')
+                case mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_LEFT_LEVEL:
+                    try:
+                        LOG.info("Setting heated seats front left level to %s", payload)
+                        level = int(payload.strip().lower())
+                        changed = self.vehicle_state.update_heated_seats_front_left_level(level)
+                        if changed:
+                            await self.saic_api.control_heated_seats(
+                                self.vin_info.vin,
+                                left_side_level=self.vehicle_state.remote_heated_seats_front_left_level,
+                                right_side_level=self.vehicle_state.remote_heated_seats_front_right_level
+                            )
+                        else:
+                            LOG.info("Heated seats front left level not changed")
+                    except Exception as e:
+                        raise MqttGatewayException(f'Error setting heated seats: {e}')
+
+                case mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_RIGHT_LEVEL:
+                    try:
+                        LOG.info("Setting heated seats front right level to %s", payload)
+                        level = int(payload.strip().lower())
+                        changed = self.vehicle_state.update_heated_seats_front_right_level(level)
+                        if changed:
+                            await self.saic_api.control_heated_seats(
+                                self.vin_info.vin,
+                                left_side_level=self.vehicle_state.remote_heated_seats_front_left_level,
+                                right_side_level=self.vehicle_state.remote_heated_seats_front_right_level
+                            )
+                        else:
+                            LOG.info("Heated seats front right level not changed")
+                    except Exception as e:
+                        raise MqttGatewayException(f'Error setting heated seats: {e}')
+
                 case mqtt_topics.DOORS_BOOT:
                     match payload.strip().lower():
                         case 'true':

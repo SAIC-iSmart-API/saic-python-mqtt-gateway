@@ -55,6 +55,7 @@ class HomeAssistantDiscovery:
 
         # Complex sensors
         self.__publish_remote_ac()
+        self.__publish_heated_seats()
         self.__publish_vehicle_tracker()
         self.__publish_scheduled_charging()
 
@@ -64,7 +65,7 @@ class HomeAssistantDiscovery:
         self.__publish_switch(mqtt_topics.WINDOWS_PASSENGER, 'Window passenger')
         self.__publish_switch(mqtt_topics.WINDOWS_REAR_LEFT, 'Window rear left')
         self.__publish_switch(mqtt_topics.WINDOWS_REAR_RIGHT, 'Window rear right')
-        self.__publish_switch(mqtt_topics.WINDOWS_SUN_ROOF, 'Sun roof', enabled=self.__vehicle_state.has_sunroof())
+        self.__publish_switch(mqtt_topics.WINDOWS_SUN_ROOF, 'Sun roof', enabled=self.__vehicle_state.has_sunroof)
         self.__publish_switch(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT, 'Rear window defroster heating',
                               icon='mdi:car-defrost-rear', payload_on='on', payload_off='off')
 
@@ -83,7 +84,7 @@ class HomeAssistantDiscovery:
             step=10,
             mode='slider',
             icon='mdi:battery-charging-70',
-            enabled=self.__vehicle_state.supports_target_soc(),
+            enabled=self.__vehicle_state.supports_target_soc,
         )
 
         # Standard sensors
@@ -544,6 +545,57 @@ class HomeAssistantDiscovery:
             min=4, max=5, pattern='^([01][0-9]|2[0-3]):[0-5][0-9]$',
             icon='mdi:clock-end'
         )
+
+    def __publish_heated_seats(self):
+        if self.__vehicle_state.has_level_heated_seats:
+            self.__unpublish_heated_seat_switch('Front Left')
+            self.__unpublish_heated_seat_switch('Front Right')
+            self.__publish_heated_seat_level('Front Left', mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_LEFT_LEVEL)
+            self.__publish_heated_seat_level('Front Right', mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_RIGHT_LEVEL)
+        elif self.__vehicle_state.has_on_off_heated_seats:
+            self.__unpublish_heated_seat_level('Front Left')
+            self.__unpublish_heated_seat_level('Front Right')
+            self.__publish_heated_seat_switch('Front Left', mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_LEFT_LEVEL)
+            self.__publish_heated_seat_switch('Front Right', mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_RIGHT_LEVEL)
+        else:
+            self.__unpublish_heated_seat_level('Front Left')
+            self.__unpublish_heated_seat_level('Front Right')
+            self.__unpublish_heated_seat_switch('Front Left')
+            self.__unpublish_heated_seat_switch('Front Right')
+
+    def __publish_heated_seat_level(self, seat: str, topic: str):
+        self.__publish_select(
+            topic,
+            f'Heated Seat {seat} Level',
+            options=['OFF', 'LOW', 'MEDIUM', 'HIGH'],
+            value_template='{% set v = value | int %}'
+                           '{% if v == 0 %}OFF'
+                           '{% elif v == 1 %}LOW'
+                           '{% elif v == 2 %}MEDIUM'
+                           '{% else %}HIGH'
+                           '{% endif %}',
+            command_template='{% if value == "OFF" %}0'
+                             '{% elif value == "LOW" %}1'
+                             '{% elif value == "MEDIUM" %}2'
+                             '{% else %}3'
+                             '{% endif %}',
+            icon='mdi:car-seat-heater',
+        )
+
+    def __unpublish_heated_seat_level(self, seat: str):
+        self.__unpublish_ha_discovery_message('select', f'Heated Seat {seat} Level')
+
+    def __publish_heated_seat_switch(self, seat: str, topic: str):
+        self.__publish_switch(
+            topic,
+            f'Heated Seat {seat}',
+            payload_off='0',
+            payload_on='1',
+            icon='mdi:car-seat-heater',
+        )
+
+    def __unpublish_heated_seat_switch(self, seat: str):
+        self.__unpublish_ha_discovery_message('switch', f'Heated Seat {seat}')
 
 
 def snake_case(s):
