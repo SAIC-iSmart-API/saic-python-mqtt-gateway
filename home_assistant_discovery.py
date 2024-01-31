@@ -65,7 +65,12 @@ class HomeAssistantDiscovery:
         self.__publish_switch(mqtt_topics.WINDOWS_PASSENGER, 'Window passenger')
         self.__publish_switch(mqtt_topics.WINDOWS_REAR_LEFT, 'Window rear left')
         self.__publish_switch(mqtt_topics.WINDOWS_REAR_RIGHT, 'Window rear right')
-        self.__publish_switch(mqtt_topics.WINDOWS_SUN_ROOF, 'Sun roof', enabled=self.__vehicle_state.has_sunroof)
+
+        if self.__vehicle_state.has_sunroof:
+            self.__publish_switch(mqtt_topics.WINDOWS_SUN_ROOF, 'Sun roof')
+        else:
+            self.__unpublish_ha_discovery_message('switch', 'Sun roof')
+
         self.__publish_switch(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT, 'Rear window defroster heating',
                               icon='mdi:car-defrost-rear', payload_on='on', payload_off='off')
 
