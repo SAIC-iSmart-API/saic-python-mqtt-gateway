@@ -68,6 +68,8 @@ class HomeAssistantDiscovery:
         self.__publish_switch(mqtt_topics.WINDOWS_SUN_ROOF, 'Sun roof', enabled=self.__vehicle_state.has_sunroof)
         self.__publish_switch(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT, 'Rear window defroster heating',
                               icon='mdi:car-defrost-rear', payload_on='on', payload_off='off')
+        self.__publish_switch(mqtt_topics.DRIVETRAIN_BATTERYHEATING, 'Battery heating',
+                              payload_on='on', payload_off='off')
 
         # Locks
         self.__publish_lock(mqtt_topics.DOORS_LOCKED, 'Doors Lock', icon='mdi:car-door-lock')
@@ -159,6 +161,8 @@ class HomeAssistantDiscovery:
                                      icon='mdi:car-light-high')
         self.__publish_binary_sensor(mqtt_topics.LIGHTS_DIPPED_BEAM, 'Lights Dipped Beam', device_class='light',
                                      icon='mdi:car-light-dimmed')
+        self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_BATTERYHEATING, 'Battery heating')
+
 
         # Remove deprecated sensors
         self.__unpublish_ha_discovery_message('sensor', 'Front window defroster heating')

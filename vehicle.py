@@ -471,6 +471,9 @@ class VehicleState:
                                      round(charge_mgmt_data.decoded_voltage, 3))
         self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_POWER),
                                      round(charge_mgmt_data.decoded_power, 3))
+        self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_BATTERYHEATING),
+                                     charge_mgmt_data.is_battery_heating)
+
         raw_charge_current_limit = charge_mgmt_data.bmsAltngChrgCrntDspCmd
         if (
                 raw_charge_current_limit is not None

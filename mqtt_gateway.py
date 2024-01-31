@@ -257,6 +257,16 @@ class VehicleHandler:
                             await self.saic_api.start_front_defrost(self.vin_info.vin)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {payload}')
+                case mqtt_topics.DRIVETRAIN_BATTERYHEATING:
+                    match payload.strip().lower():
+                        case 'off':                
+                            LOG.info('Battery heater wil be will be switched off')
+                            await self.saic_api.control_battery_heating(self.vin_info.vin,enable=False)
+                        case 'on':
+                            LOG.info('Battery heater wil be will be switched on')
+                            await self.saic_api.control_battery_heating(self.vin_info.vin,enable=True)
+                        case _:
+                            raise MqttGatewayException(f'Unsupported payload {msg.payload.decode()}')
                 case mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT:
                     payload = payload.strip().upper()
                     if self.vehicle_state.target_soc is not None:
