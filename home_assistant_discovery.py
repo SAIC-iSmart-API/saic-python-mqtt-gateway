@@ -55,6 +55,7 @@ class HomeAssistantDiscovery:
         self.__publish_heated_seats()
         self.__publish_vehicle_tracker()
         self.__publish_scheduled_charging()
+        self.__publish_scheduled_battery_heating()
 
         # Switches
         self.__publish_switch(mqtt_topics.DRIVETRAIN_CHARGING, 'Charging')
@@ -225,14 +226,17 @@ class HomeAssistantDiscovery:
             self,
             topic: str,
             name: str,
+            *,
             enabled=True,
             icon: str | None = None,
+            value_template: str = '{{ value }}',
             payload_on='True',
             payload_off='False',
     ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
             'command_topic': self.__get_vehicle_topic(topic) + '/set',
+            'value_template': value_template,
             'payload_on': payload_on,
             'payload_off': payload_off,
             'optimistic': False,
@@ -553,6 +557,44 @@ class HomeAssistantDiscovery:
             command_template=change_end_cmd_template,
             min=4, max=5, pattern='^([01][0-9]|2[0-3]):[0-5][0-9]$',
             icon='mdi:clock-end'
+        )
+
+    def __publish_scheduled_battery_heating(self):
+        start_time_id = self.__publish_sensor(
+            mqtt_topics.DRIVETRAIN_BATTERY_HEATING_SCHEDULE,
+            'Scheduled Battery Heating Start',
+            value_template='{{ value_json["startTime"] }}', icon='mdi:clock-start'
+        )
+        mode_id = self.__publish_binary_sensor(
+            mqtt_topics.DRIVETRAIN_BATTERY_HEATING_SCHEDULE,
+            'Scheduled Battery Heating',
+            value_template='{{ value_json["mode"] }}', icon='mdi:clock-outline',
+            payload_on='on', payload_off='off'
+        )
+        change_mode_cmd_template = json.dumps({
+            "startTime": f"{{{{ states('{start_time_id}') }}}}",
+            "mode": "{{ value }}"
+        })
+        self.__publish_select(
+            mqtt_topics.DRIVETRAIN_BATTERY_HEATING_SCHEDULE,
+            'Scheduled Battery Heating',
+            options=["on", "off"],
+            value_template='{{ value_json["mode"] }}',
+            command_template=change_mode_cmd_template,
+            icon='mdi:clock-outline',
+        )
+
+        change_start_cmd_template = json.dumps({
+            "startTime": "{{ value }}",
+            "mode": f"{{{{ states('{mode_id}') }}}}"
+        })
+        self.__publish_text(
+            mqtt_topics.DRIVETRAIN_BATTERY_HEATING_SCHEDULE,
+            'Scheduled Battery Heating Start',
+            value_template='{{ value_json["startTime"] }}',
+            command_template=change_start_cmd_template,
+            min=4, max=5, pattern='^([01][0-9]|2[0-3]):[0-5][0-9]$',
+            icon='mdi:clock-start'
         )
 
     def __publish_heated_seats(self):

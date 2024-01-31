@@ -17,7 +17,7 @@ from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.alarm import AlarmType
 from saic_ismart_client_ng.api.vehicle.schema import VinInfo
 from saic_ismart_client_ng.api.vehicle_charging import ChargeInfoResp, ChargeCurrentLimitCode, TargetBatteryCode, \
-    ScheduledChargingMode
+    ScheduledChargingMode, ScheduledBatteryHeatingResp
 from saic_ismart_client_ng.exceptions import SaicApiException
 from saic_ismart_client_ng.model import SaicApiConfiguration
 
@@ -30,7 +30,7 @@ from home_assistant_discovery import HomeAssistantDiscovery
 from mqtt_publisher import MqttClient, MqttCommandListener
 from publisher import Publisher
 from saic_api_listener import MqttGatewaySaicApiListener
-from vehicle import RefreshMode, VehicleState, DEFAULT_AC_TEMP
+from vehicle import RefreshMode, VehicleState
 
 MSG_CMD_SUCCESSFUL = 'Success'
 CHARGING_STATIONS_FILE = 'charging-stations.json'
@@ -90,6 +90,10 @@ class VehicleHandler:
                 try:
                     vehicle_status = await self.update_vehicle_status()
                     charge_status = await self.update_charge_status()
+                    try:
+                        await self.update_scheduled_battery_heating_status()
+                    except Exception as e:
+                        LOG.exception('Error updating scheduled battery heating status', exc_info=e)
                     self.vehicle_state.mark_successful_refresh()
                     LOG.info('Refreshing vehicle status succeeded...')
                     abrp_response = await self.abrp_api.update_abrp(vehicle_status, charge_status.chrgMgmtData)
@@ -128,6 +132,12 @@ class VehicleHandler:
         charge_mgmt_data = await self.saic_api.get_vehicle_charging_management_data(self.vin_info.vin)
         self.vehicle_state.handle_charge_status(charge_mgmt_data)
         return charge_mgmt_data
+
+    async def update_scheduled_battery_heating_status(self) -> ScheduledBatteryHeatingResp:
+        LOG.info('Updating scheduled battery heating status')
+        scheduled_battery_heating_status = await self.saic_api.get_vehicle_battery_heating_schedule(self.vin_info.vin)
+        self.vehicle_state.handle_scheduled_battery_heating_status(scheduled_battery_heating_status)
+        return scheduled_battery_heating_status
 
     async def handle_mqtt_command(self, *, topic: str, payload: str):
         topic = self.get_topic_without_vehicle_prefix(topic)
@@ -313,6 +323,30 @@ class VehicleHandler:
                         self.vehicle_state.update_scheduled_charging(start_time, mode)
                     except Exception as e:
                         raise MqttGatewayException(f'Error setting charging schedule: {e}')
+                case mqtt_topics.DRIVETRAIN_BATTERY_HEATING_SCHEDULE:
+                    payload = payload.strip()
+                    try:
+                        LOG.info("Setting battery heating schedule to %s", payload)
+                        payload_json = json.loads(payload)
+                        start_time = datetime.time.fromisoformat(payload_json['startTime'])
+                        mode = payload_json['mode'].upper()
+                        should_enable = mode == 'ON'
+                        changed = self.vehicle_state.update_scheduled_battery_heating(start_time, should_enable)
+                        if changed:
+                            if should_enable:
+                                LOG.info(f'Setting battery heating schedule to {start_time}')
+                                await self.saic_api.enable_schedule_battery_heating(
+                                    self.vin_info.vin,
+                                    start_time=start_time
+                                )
+                            else:
+                                LOG.info(f'Disabling battery heating schedule')
+                                await self.saic_api.disable_schedule_battery_heating(self.vin_info.vin)
+                        else:
+                            LOG.info(f'Battery heating schedule not changed')
+                    except Exception as e:
+                        raise MqttGatewayException(f'Error setting battery heating schedule: {e}')
+
                 case _:
                     # set mode, period (in)-active,...
                     await self.vehicle_state.configure_by_message(topic=topic, payload=payload)
