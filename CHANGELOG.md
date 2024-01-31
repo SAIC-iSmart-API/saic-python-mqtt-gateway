@@ -1,5 +1,12 @@
 # Change Log
 
+## 0.5.9
+
+## Added
+
+* MQTT: Add support for battery heating. True means ON, False means OFF
+* HA: Expose battery heating as an ON-OFF switch
+
 ## 0.5.8
 
 ## Added

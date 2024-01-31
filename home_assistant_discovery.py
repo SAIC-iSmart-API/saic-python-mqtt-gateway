@@ -34,9 +34,6 @@ class HomeAssistantDiscovery:
         # Gateway Control
         self.__publish_select(mqtt_topics.REFRESH_MODE, 'Gateway refresh mode', [m.value for m in RefreshMode],
                               icon='mdi:refresh')
-        self.__publish_select(mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT, 'Charge current limit',
-                              [m.limit for m in ChargeCurrentLimitCode if m != ChargeCurrentLimitCode.C_IGNORE],
-                              icon='mdi:current-ac')
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_ACTIVE, 'Gateway active refresh period',
                               unit_of_measurement='s', icon='mdi:timer', min=30, max=60 * 60, step=1)
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_INACTIVE, 'Gateway inactive refresh period',
@@ -92,6 +89,9 @@ class HomeAssistantDiscovery:
             icon='mdi:battery-charging-70',
             enabled=self.__vehicle_state.supports_target_soc,
         )
+        self.__publish_select(mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT, 'Charge current limit',
+                              [m.limit for m in ChargeCurrentLimitCode if m != ChargeCurrentLimitCode.C_IGNORE],
+                              icon='mdi:current-ac')
 
         # Standard sensors
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_SOC, 'SoC', device_class='battery', state_class='measurement',
