@@ -1,5 +1,14 @@
 # Change Log
 
+## 0.5.8
+
+## Added
+
+* MQTT: Add support for heated seats control on both front left and front right seats. Values range from 0-3 on some
+  models, 0-1 on others. 0 means OFF
+* HA: Expose heated seats control as either a select with 4 states (OFF, LOW, MEDIUM, HIGH) or as a ON-OFF switch
+  depending on the reported car feature set
+
 ## 0.5.7
 
 ### Fixed
