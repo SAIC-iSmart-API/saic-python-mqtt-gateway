@@ -408,6 +408,7 @@ class VehicleState:
             property_code_topic = f'{mqtt_topics.INFO_CONFIGURATION}/{property_code}'
             property_name_topic = f'{mqtt_topics.INFO_CONFIGURATION}/{property_name}'
             self.properties[property_name] = {'code': property_code, 'value': property_value}
+            self.properties[property_code] = {'name': property_name, 'value': property_value}
             self.publisher.publish_str(self.get_topic(property_code_topic), property_value)
             self.publisher.publish_str(self.get_topic(property_name_topic), property_value)
 
@@ -601,6 +602,11 @@ class VehicleState:
             self.set_refresh_period_charging(computed_refresh_period)
         else:
             self.set_refresh_period_charging(0)
+
+        self.publisher.publish_bool(
+            self.get_topic(mqtt_topics.DRIVETRAIN_BATTERY_HEATING),
+            charge_mgmt_data.is_battery_heating
+        )
 
     def get_topic(self, sub_topic: str):
         return f'{self.mqtt_vin_prefix}/{sub_topic}'

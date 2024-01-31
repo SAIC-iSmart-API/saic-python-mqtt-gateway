@@ -153,6 +153,16 @@ class VehicleHandler:
                             await self.saic_api.control_charging(self.vin_info.vin, stop_charging=True)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {payload}')
+                case mqtt_topics.DRIVETRAIN_BATTERY_HEATING:
+                    match payload.strip().lower():
+                        case 'true':
+                            LOG.info("Battery heating will be started")
+                            await self.saic_api.control_battery_heating(self.vin_info.vin, enable=True)
+                        case 'false':
+                            LOG.info("Battery heating will be stopped")
+                            await self.saic_api.control_battery_heating(self.vin_info.vin, enable=False)
+                        case _:
+                            raise MqttGatewayException(f'Unsupported payload {payload}')
                 case mqtt_topics.CLIMATE_REMOTE_TEMPERATURE:
                     payload = payload.strip()
                     try:

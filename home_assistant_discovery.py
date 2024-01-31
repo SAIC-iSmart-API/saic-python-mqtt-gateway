@@ -61,6 +61,7 @@ class HomeAssistantDiscovery:
 
         # Switches
         self.__publish_switch(mqtt_topics.DRIVETRAIN_CHARGING, 'Charging')
+        self.__publish_switch(mqtt_topics.DRIVETRAIN_BATTERY_HEATING, 'Battery heating', icon='mdi:heat-wave')
         self.__publish_switch(mqtt_topics.WINDOWS_DRIVER, 'Window driver')
         self.__publish_switch(mqtt_topics.WINDOWS_PASSENGER, 'Window passenger')
         self.__publish_switch(mqtt_topics.WINDOWS_REAR_LEFT, 'Window rear left')
