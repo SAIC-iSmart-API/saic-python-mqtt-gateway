@@ -14,7 +14,7 @@ from saic_ismart_client_ng.api.message.schema import MessageEntity
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.schema import VinInfo
 from saic_ismart_client_ng.api.vehicle_charging import ChargeInfoResp, TargetBatteryCode, ChargeCurrentLimitCode, \
-    ScheduledChargingMode
+    ScheduledChargingMode, ScheduledBatteryHeatingResp
 from saic_ismart_client_ng.api.vehicle_charging.schema import ChrgMgmtData
 
 import mqtt_topics
@@ -79,6 +79,8 @@ class VehicleState:
         self.__remote_heated_seats_front_right_level: int = 0
         self.__scheduler = scheduler
         self.__total_battery_capacity = total_battery_capacity
+        self.__scheduled_battery_heating_enabled = False
+        self.__scheduled_battery_heating_start = None
 
     def set_refresh_period_active(self, seconds: int):
         self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_ACTIVE), seconds)
@@ -422,7 +424,7 @@ class VehicleState:
             self.set_refresh_period_inactive(86400)
         if self.refresh_period_inactive_grace == -1:
             self.set_refresh_period_inactive_grace(600)
-        if not self.__remote_ac_temp is None:
+        if self.__remote_ac_temp is not None:
             self.set_ac_temperature(DEFAULT_AC_TEMP)
         # Make sure the only refresh mode that is not supported at start is RefreshMode.PERIODIC
         if self.refresh_mode in [RefreshMode.OFF, RefreshMode.FORCE]:
@@ -607,6 +609,40 @@ class VehicleState:
             self.get_topic(mqtt_topics.DRIVETRAIN_BATTERY_HEATING),
             charge_mgmt_data.is_battery_heating
         )
+
+    def handle_scheduled_battery_heating_status(self, scheduled_battery_heating_status: ScheduledBatteryHeatingResp):
+        if scheduled_battery_heating_status:
+            is_enabled = scheduled_battery_heating_status.status
+            if is_enabled:
+                start_time = scheduled_battery_heating_status.decoded_start_time
+            else:
+                start_time = self.__scheduled_battery_heating_start
+        else:
+            start_time = self.__scheduled_battery_heating_start
+            is_enabled = False
+
+        self.update_scheduled_battery_heating(
+            start_time,
+            is_enabled
+        )
+
+    def update_scheduled_battery_heating(self, start_time: datetime.time, enabled: bool):
+        changed = False
+        if self.__scheduled_battery_heating_start != start_time:
+            self.__scheduled_battery_heating_start = start_time
+            changed = True
+        if self.__scheduled_battery_heating_enabled != enabled:
+            self.__scheduled_battery_heating_enabled = enabled
+            changed = True
+
+        has_start_time = self.__scheduled_battery_heating_start is not None
+        computed_mode = 'on' if has_start_time and self.__scheduled_battery_heating_enabled else 'off'
+        computed_start_time = self.__scheduled_battery_heating_start.strftime('%H:%M') if has_start_time else '00:00'
+        self.publisher.publish_json(self.get_topic(mqtt_topics.DRIVETRAIN_BATTERY_HEATING_SCHEDULE), {
+            'mode': computed_mode,
+            'startTime': computed_start_time
+        })
+        return changed
 
     def get_topic(self, sub_topic: str):
         return f'{self.mqtt_vin_prefix}/{sub_topic}'

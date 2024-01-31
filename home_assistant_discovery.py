@@ -34,9 +34,6 @@ class HomeAssistantDiscovery:
         # Gateway Control
         self.__publish_select(mqtt_topics.REFRESH_MODE, 'Gateway refresh mode', [m.value for m in RefreshMode],
                               icon='mdi:refresh')
-        self.__publish_select(mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT, 'Charge current limit',
-                              [m.limit for m in ChargeCurrentLimitCode if m != ChargeCurrentLimitCode.C_IGNORE],
-                              icon='mdi:current-ac')
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_ACTIVE, 'Gateway active refresh period',
                               unit_of_measurement='s', icon='mdi:timer', min=30, max=60 * 60, step=1)
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_INACTIVE, 'Gateway inactive refresh period',
@@ -58,6 +55,7 @@ class HomeAssistantDiscovery:
         self.__publish_heated_seats()
         self.__publish_vehicle_tracker()
         self.__publish_scheduled_charging()
+        self.__publish_scheduled_battery_heating()
 
         # Switches
         self.__publish_switch(mqtt_topics.DRIVETRAIN_CHARGING, 'Charging')
@@ -69,8 +67,10 @@ class HomeAssistantDiscovery:
 
         if self.__vehicle_state.has_sunroof:
             self.__publish_switch(mqtt_topics.WINDOWS_SUN_ROOF, 'Sun roof')
+            self.__publish_binary_sensor(mqtt_topics.WINDOWS_SUN_ROOF, 'Sun roof')
         else:
             self.__unpublish_ha_discovery_message('switch', 'Sun roof')
+            self.__unpublish_ha_discovery_message('binary_sensor', 'Sun roof')
 
         self.__publish_switch(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT, 'Rear window defroster heating',
                               icon='mdi:car-defrost-rear', payload_on='on', payload_off='off')
@@ -92,6 +92,9 @@ class HomeAssistantDiscovery:
             icon='mdi:battery-charging-70',
             enabled=self.__vehicle_state.supports_target_soc,
         )
+        self.__publish_select(mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT, 'Charge current limit',
+                              [m.limit for m in ChargeCurrentLimitCode if m != ChargeCurrentLimitCode.C_IGNORE],
+                              icon='mdi:current-ac')
 
         # Standard sensors
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_SOC, 'SoC', device_class='battery', state_class='measurement',
@@ -150,6 +153,7 @@ class HomeAssistantDiscovery:
                                      icon='mdi:power-plug-battery')
         self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_CHARGING, 'Battery Charging',
                                      device_class='battery_charging', icon='mdi:battery-charging')
+        self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_BATTERY_HEATING, 'Battery heating', icon='mdi:heat-wave')
         self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_RUNNING, 'Vehicle Running', device_class='running',
                                      icon='mdi:car-side')
         self.__publish_binary_sensor(mqtt_topics.DOORS_DRIVER, 'Door driver', device_class='door', icon='mdi:car-door')
@@ -222,14 +226,17 @@ class HomeAssistantDiscovery:
             self,
             topic: str,
             name: str,
+            *,
             enabled=True,
             icon: str | None = None,
+            value_template: str = '{{ value }}',
             payload_on='True',
             payload_off='False',
     ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
             'command_topic': self.__get_vehicle_topic(topic) + '/set',
+            'value_template': value_template,
             'payload_on': payload_on,
             'payload_off': payload_off,
             'optimistic': False,
@@ -550,6 +557,44 @@ class HomeAssistantDiscovery:
             command_template=change_end_cmd_template,
             min=4, max=5, pattern='^([01][0-9]|2[0-3]):[0-5][0-9]$',
             icon='mdi:clock-end'
+        )
+
+    def __publish_scheduled_battery_heating(self):
+        start_time_id = self.__publish_sensor(
+            mqtt_topics.DRIVETRAIN_BATTERY_HEATING_SCHEDULE,
+            'Scheduled Battery Heating Start',
+            value_template='{{ value_json["startTime"] }}', icon='mdi:clock-start'
+        )
+        mode_id = self.__publish_binary_sensor(
+            mqtt_topics.DRIVETRAIN_BATTERY_HEATING_SCHEDULE,
+            'Scheduled Battery Heating',
+            value_template='{{ value_json["mode"] }}', icon='mdi:clock-outline',
+            payload_on='on', payload_off='off'
+        )
+        change_mode_cmd_template = json.dumps({
+            "startTime": f"{{{{ states('{start_time_id}') }}}}",
+            "mode": "{{ value }}"
+        })
+        self.__publish_select(
+            mqtt_topics.DRIVETRAIN_BATTERY_HEATING_SCHEDULE,
+            'Scheduled Battery Heating',
+            options=["on", "off"],
+            value_template='{{ value_json["mode"] }}',
+            command_template=change_mode_cmd_template,
+            icon='mdi:clock-outline',
+        )
+
+        change_start_cmd_template = json.dumps({
+            "startTime": "{{ value }}",
+            "mode": f"{{{{ states('{mode_id}') }}}}"
+        })
+        self.__publish_text(
+            mqtt_topics.DRIVETRAIN_BATTERY_HEATING_SCHEDULE,
+            'Scheduled Battery Heating Start',
+            value_template='{{ value_json["startTime"] }}',
+            command_template=change_start_cmd_template,
+            min=4, max=5, pattern='^([01][0-9]|2[0-3]):[0-5][0-9]$',
+            icon='mdi:clock-start'
         )
 
     def __publish_heated_seats(self):
