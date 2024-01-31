@@ -156,10 +156,10 @@ class VehicleHandler:
                 case mqtt_topics.DRIVETRAIN_BATTERY_HEATING:
                     match payload.strip().lower():
                         case 'true':
-                            LOG.info("Battery heating will be started")
+                            LOG.info("Battery heater wil be will be switched on")
                             await self.saic_api.control_battery_heating(self.vin_info.vin, enable=True)
                         case 'false':
-                            LOG.info("Battery heating will be stopped")
+                            LOG.info("Battery heater wil be will be switched off")
                             await self.saic_api.control_battery_heating(self.vin_info.vin, enable=False)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {payload}')
