@@ -740,6 +740,9 @@ class VehicleState:
     def get_actual_battery_capacity(self) -> float | None:
         if self.__total_battery_capacity is not None and self.__total_battery_capacity > 0:
             return float(self.__total_battery_capacity)
+        # MG4 Trophy Extended Range
+        elif self.series.startswith('EH32 X3'):
+            return 77.0
         # MG4 Lux/Trophy 2022
         elif self.series.startswith('EH32 S'):
             return 64.0
