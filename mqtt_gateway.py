@@ -346,6 +346,16 @@ class VehicleHandler:
                             LOG.info(f'Battery heating schedule not changed')
                     except Exception as e:
                         raise MqttGatewayException(f'Error setting battery heating schedule: {e}')
+                case mqtt_topics.DRIVETRAIN_CHARGINGCABLE:
+                    match payload.strip().lower():
+                        case 'false':
+                            LOG.info(f'Vehicle {self.vin_info.vin} charging cable will be unlocked')
+                            await self.saic_api.control_charging_port_lock(self.vin_info.vin, unlock=True)
+                        case 'true':
+                            LOG.info(f'Vehicle {self.vin_info.vin} charging cable will be locked')
+                            await self.saic_api.control_charging_port_lock(self.vin_info.vin, unlock=False)
+                        case _:
+                            raise MqttGatewayException(f'Unsupported payload {payload}')
 
                 case _:
                     # set mode, period (in)-active,...
