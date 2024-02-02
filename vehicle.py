@@ -52,7 +52,8 @@ class VehicleState:
     ):
         self.publisher = publisher
         self.vin = vin.vin
-        self.series = vin.series.strip().upper()
+        self.series = str(vin.series).strip().upper()
+        self.model = str(vin.model).strip().upper()
         self.mqtt_vin_prefix = f'{account_prefix}'
         self.charging_station = charging_station
         self.last_car_activity = datetime.datetime.min
@@ -740,12 +741,14 @@ class VehicleState:
     def get_actual_battery_capacity(self) -> float | None:
         if self.__total_battery_capacity is not None and self.__total_battery_capacity > 0:
             return float(self.__total_battery_capacity)
-        # MG4 Trophy Extended Range
-        elif self.series.startswith('EH32 X3'):
-            return 77.0
-        # MG4 Lux/Trophy 2022
+        # MG4 "Lux/Trophy"
         elif self.series.startswith('EH32 S'):
-            return 64.0
+            if self.model.startsWith('EH32 X3'):
+                # MG4 Trophy Extended Range
+                return 77.0
+            else:
+                # MG4 Lux/Trophy 2022
+                return 64.0
         # MG4 Standard 2022
         elif self.series.startswith('EH32 L'):
             return 51.0
