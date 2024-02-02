@@ -743,7 +743,7 @@ class VehicleState:
             return float(self.__total_battery_capacity)
         # MG4 "Lux/Trophy"
         elif self.series.startswith('EH32 S'):
-            if self.model.startsWith('EH32 X3'):
+            if self.model.startswith('EH32 X3'):
                 # MG4 Trophy Extended Range
                 return 77.0
             else:
