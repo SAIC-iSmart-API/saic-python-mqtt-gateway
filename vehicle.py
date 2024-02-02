@@ -53,7 +53,7 @@ class VehicleState:
         self.publisher = publisher
         self.vin = vin.vin
         self.series = str(vin.series).strip().upper()
-        self.model = str(vin.model).strip().upper()
+        self.model = str(vin.modelName).strip().upper()
         self.mqtt_vin_prefix = f'{account_prefix}'
         self.charging_station = charging_station
         self.last_car_activity = datetime.datetime.min
