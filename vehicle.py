@@ -592,7 +592,7 @@ class VehicleState:
                 real_total_battery_capacity
             )
         soc_kwh = (battery_capacity_correction_factor * charge_status.realtimePower) / 10.0
-        self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_KWH), soc_kwh)
+        self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_KWH), round(soc_kwh, 2))
 
         if soc is not None and self.target_soc is not None and remaining_charging_time is not None:
             target_soc_percentage = self.target_soc.percentage
