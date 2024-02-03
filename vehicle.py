@@ -752,6 +752,9 @@ class VehicleState:
         # MG4 Standard 2022
         elif self.series.startswith('EH32 L'):
             return 51.0
+        # Model: MG5 Electric, variant MG5 SR Comfort
+        elif self.series.startswith('EP2CP3'):
+            return 50.3
         else:
             return None
 
