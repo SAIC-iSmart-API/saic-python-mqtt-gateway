@@ -755,6 +755,9 @@ class VehicleState:
         # Model: MG5 Electric, variant MG5 SR Comfort
         elif self.series.startswith('EP2CP3'):
             return 50.3
+        # ZS EV Standard 2021
+        elif self.series.startswith('ZS EV S'):
+            return 49.0
         else:
             return None
 
