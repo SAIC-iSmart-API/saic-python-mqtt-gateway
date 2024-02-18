@@ -298,6 +298,11 @@ class VehicleState:
         if basic_vehicle_status.fuelRangeElec > 0:
             electric_range = basic_vehicle_status.fuelRangeElec / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_RANGE), electric_range)
+            if (
+                self.charging_station
+                and self.charging_station.range_topic
+            ):
+                self.publisher.publish_float(self.charging_station.range_topic, electric_range, True)
 
         self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_VEHICLE_STATE),
                                    VehicleState.datetime_to_str(datetime.datetime.now()))

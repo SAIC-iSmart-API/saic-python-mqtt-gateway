@@ -418,10 +418,17 @@ class MqttGateway(MqttCommandListener):
             account_prefix = f'{self.configuration.saic_user}/{mqtt_topics.VEHICLES}/{vin_info.vin}'
             charging_station = self.get_charging_station(vin_info.vin)
             if (
-                    charging_station
-                    and charging_station.soc_topic
+                charging_station
+                and charging_station.soc_topic
             ):
-                LOG.debug(f'SoC for charging station will be published over MQTT topic: {charging_station.soc_topic}')
+                LOG.debug('SoC of %s for charging station will be published over MQTT topic: %s', vin_info.vin,
+                          charging_station.soc_topic)
+            if (
+                charging_station
+                and charging_station.range_topic
+            ):
+                LOG.debug('Range of %s for charging station will be published over MQTT topic: %s', vin_info.vin,
+                          charging_station.range_topic)
             total_battery_capacity = configuration.battery_capacity_map.get(vin_info.vin, None)
             vehicle_state = VehicleState(
                 self.publisher,
