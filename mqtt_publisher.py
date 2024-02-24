@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import ssl
@@ -124,10 +125,11 @@ class MqttClient(Publisher):
             vin = self.vin_by_charge_state_topic[topic]
             charging_station = self.configuration.charging_stations_by_vin[vin]
             if self.should_force_refresh(payload, charging_station):
-                LOG.debug(f'Vehicle with vin {vin} is charging. Setting refresh mode to force')
+                LOG.info(f'Vehicle with vin {vin} is charging. Setting refresh mode to force')
                 mqtt_account_prefix = self.get_mqtt_account_prefix()
                 topic = f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/{vin}/{mqtt_topics.REFRESH_MODE}/set'
                 if self.command_listener is not None:
+                    await asyncio.sleep(delay=5.0)
                     await self.command_listener.on_mqtt_command_received(vin=vin, topic=topic, payload='force')
         elif topic in self.vin_by_charger_connected_topic:
             LOG.debug(f'Received message over topic {topic} with payload {payload}')
@@ -190,7 +192,7 @@ class MqttClient(Publisher):
                 LOG.debug(f'Last charging value equals current charging value. No refresh needed.')
                 return False
             else:
-                LOG.debug(f'Charging value has changed from {last_charging_value} to {current_charging_value}.')
+                LOG.info(f'Charging value has changed from {last_charging_value} to {current_charging_value}.')
                 return True
         else:
             return True
