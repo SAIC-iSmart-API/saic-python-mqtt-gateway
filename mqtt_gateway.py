@@ -477,7 +477,7 @@ class MqttGateway(MqttCommandListener):
     async def on_charging_detected(self, vin: str) -> None:
         vehicle_handler = self.get_vehicle_handler(vin)
         if vehicle_handler:
-            # just make sure that we don't set the is_charging app too early
+            # just make sure that we don't set the is_charging flag too early
             # and that it is immediately overwritten by a running vehicle state request
             await asyncio.sleep(delay=5.0)
             vehicle_handler.vehicle_state.set_is_charging(True)
