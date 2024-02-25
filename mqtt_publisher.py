@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import os
 import ssl
@@ -21,6 +20,9 @@ MQTT_LOG.setLevel(level=os.getenv('MQTT_LOG_LEVEL', 'INFO').upper())
 
 class MqttCommandListener(ABC):
     async def on_mqtt_command_received(self, *, vin: str, topic: str, payload: str) -> None:
+        raise NotImplementedError("Should have implemented this")
+
+    async def on_charging_detected(self, vin: str) -> None:
         raise NotImplementedError("Should have implemented this")
 
 
@@ -126,11 +128,8 @@ class MqttClient(Publisher):
             charging_station = self.configuration.charging_stations_by_vin[vin]
             if self.should_force_refresh(payload, charging_station):
                 LOG.info(f'Vehicle with vin {vin} is charging. Setting refresh mode to force')
-                mqtt_account_prefix = self.get_mqtt_account_prefix()
-                topic = f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/{vin}/{mqtt_topics.REFRESH_MODE}/set'
                 if self.command_listener is not None:
-                    await asyncio.sleep(delay=5.0)
-                    await self.command_listener.on_mqtt_command_received(vin=vin, topic=topic, payload='force')
+                    await self.command_listener.on_charging_detected(vin)
         elif topic in self.vin_by_charger_connected_topic:
             LOG.debug(f'Received message over topic {topic} with payload {payload}')
             vin = self.vin_by_charger_connected_topic[topic]

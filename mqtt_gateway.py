@@ -474,6 +474,16 @@ class MqttGateway(MqttCommandListener):
         else:
             LOG.debug(f'Command for unknown vin {vin} received')
 
+    async def on_charging_detected(self, vin: str) -> None:
+        vehicle_handler = self.get_vehicle_handler(vin)
+        if vehicle_handler:
+            # just make sure that we don't set the is_charging app too early
+            # and that it is immediately overwritten by a running vehicle state request
+            await asyncio.sleep(delay=5.0)
+            vehicle_handler.vehicle_state.set_is_charging(True)
+        else:
+            LOG.debug(f'Charging detected for unknown vin {vin}')
+
     def __on_publish_raw_value(self, key: str, raw: str):
         self.publisher.publish_str(key, raw)
 
