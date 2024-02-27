@@ -479,7 +479,7 @@ class MqttGateway(MqttCommandListener):
         if vehicle_handler:
             # just make sure that we don't set the is_charging flag too early
             # and that it is immediately overwritten by a running vehicle state request
-            await asyncio.sleep(delay=5.0)
+            await asyncio.sleep(delay=3.0)
             vehicle_handler.vehicle_state.set_is_charging(True)
         else:
             LOG.debug(f'Charging detected for unknown vin {vin}')
