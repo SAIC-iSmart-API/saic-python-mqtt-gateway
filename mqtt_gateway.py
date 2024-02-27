@@ -418,10 +418,17 @@ class MqttGateway(MqttCommandListener):
             account_prefix = f'{self.configuration.saic_user}/{mqtt_topics.VEHICLES}/{vin_info.vin}'
             charging_station = self.get_charging_station(vin_info.vin)
             if (
-                    charging_station
-                    and charging_station.soc_topic
+                charging_station
+                and charging_station.soc_topic
             ):
-                LOG.debug(f'SoC for charging station will be published over MQTT topic: {charging_station.soc_topic}')
+                LOG.debug('SoC of %s for charging station will be published over MQTT topic: %s', vin_info.vin,
+                          charging_station.soc_topic)
+            if (
+                charging_station
+                and charging_station.range_topic
+            ):
+                LOG.debug('Range of %s for charging station will be published over MQTT topic: %s', vin_info.vin,
+                          charging_station.range_topic)
             total_battery_capacity = configuration.battery_capacity_map.get(vin_info.vin, None)
             vehicle_state = VehicleState(
                 self.publisher,
@@ -466,6 +473,16 @@ class MqttGateway(MqttCommandListener):
             await vehicle_handler.handle_mqtt_command(topic=topic, payload=payload)
         else:
             LOG.debug(f'Command for unknown vin {vin} received')
+
+    async def on_charging_detected(self, vin: str) -> None:
+        vehicle_handler = self.get_vehicle_handler(vin)
+        if vehicle_handler:
+            # just make sure that we don't set the is_charging flag too early
+            # and that it is immediately overwritten by a running vehicle state request
+            await asyncio.sleep(delay=3.0)
+            vehicle_handler.vehicle_state.set_is_charging(True)
+        else:
+            LOG.debug(f'Charging detected for unknown vin {vin}')
 
     def __on_publish_raw_value(self, key: str, raw: str):
         self.publisher.publish_str(key, raw)
@@ -605,18 +622,6 @@ class EnvDefault(argparse.Action):
         setattr(namespace, self.dest, values)
 
 
-def get_charging_stations(open_wb_lp_map: dict[str, str]) -> dict[str, ChargingStation]:
-    LOG.info(f'OPENWB_LP_MAP is deprecated! Please provide {CHARGING_STATIONS_FILE} file instead!')
-    charging_stations = {}
-    for loading_point_no in open_wb_lp_map.keys():
-        vin = open_wb_lp_map[loading_point_no]
-        charging_station = ChargingStation(vin, f'openWB/lp/{loading_point_no}/boolChargeStat', '1',
-                                           f'openWB/set/lp/{loading_point_no}/%Soc')
-        charging_stations[vin] = charging_station
-
-    return charging_stations
-
-
 def process_arguments() -> Configuration:
     config = Configuration()
     parser = argparse.ArgumentParser(prog='MQTT Gateway')
@@ -684,10 +689,6 @@ def process_arguments() -> Configuration:
                                                                + ' Environment Variable: BATTERY_CAPACITY_MAPPING',
                             dest='battery_capacity_mapping', required=False, action=EnvDefault,
                             envvar='BATTERY_CAPACITY_MAPPING')
-        parser.add_argument('--openwb-lp-map', help='The mapping of VIN to openWB charging point.'
-                                                    + ' Multiple mappings can be provided seperated by ,'
-                                                    + ' Example: LSJXXXX=1,LSJYYYY=2',
-                            dest='open_wp_lp_map', required=False, action=EnvDefault, envvar='OPENWB_LP_MAP')
         parser.add_argument('--charging-stations-json',
                             help='Custom charging stations configuration file name', dest='charging_stations_file',
                             required=False, action=EnvDefault, envvar='CHARGING_STATIONS_JSON')
@@ -736,10 +737,6 @@ def process_arguments() -> Configuration:
                 config.battery_capacity_map,
                 value_type=check_positive_float
             )
-        if args.open_wp_lp_map:
-            open_wb_lp_map = {}
-            cfg_value_to_dict(args.open_wp_lp_map, open_wb_lp_map)
-            config.charging_stations_by_vin = get_charging_stations(open_wb_lp_map)
         if args.charging_stations_file:
             process_charging_stations_file(config, args.charging_stations_file)
         else:
@@ -801,6 +798,8 @@ def process_charging_stations_file(config: Configuration, json_file: str):
                     charging_station = ChargingStation(vin, charge_state_topic, charging_value, item['socTopic'])
                 else:
                     charging_station = ChargingStation(vin, charge_state_topic, charging_value)
+                if 'rangeTopic' in item:
+                    charging_station.range_topic = item['rangeTopic']
                 if 'chargerConnectedTopic' in item:
                     charging_station.connected_topic = item['chargerConnectedTopic']
                 if 'chargerConnectedValue' in item:

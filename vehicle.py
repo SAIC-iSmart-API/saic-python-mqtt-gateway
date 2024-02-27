@@ -180,6 +180,11 @@ class VehicleState:
             and self.refresh_period_inactive_grace != -1 \
             and self.refresh_mode
 
+    def set_is_charging(self, is_charging: bool):
+        self.is_charging = is_charging
+        self.set_hv_battery_active(self.is_charging)
+        self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING), self.is_charging)
+
     def handle_vehicle_status(self, vehicle_status: VehicleStatusResp) -> None:
         is_engine_running = vehicle_status.is_engine_running
         self.is_charging = vehicle_status.is_charging
@@ -298,6 +303,11 @@ class VehicleState:
         if basic_vehicle_status.fuelRangeElec > 0:
             electric_range = basic_vehicle_status.fuelRangeElec / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_RANGE), electric_range)
+            if (
+                self.charging_station
+                and self.charging_station.range_topic
+            ):
+                self.publisher.publish_float(self.charging_station.range_topic, electric_range, True)
 
         self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_VEHICLE_STATE),
                                    VehicleState.datetime_to_str(datetime.datetime.now()))
