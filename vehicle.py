@@ -435,7 +435,7 @@ class VehicleState:
             self.set_refresh_period_inactive(86400)
         if self.refresh_period_inactive_grace == -1:
             self.set_refresh_period_inactive_grace(600)
-        if self.__remote_ac_temp is not None:
+        if self.__remote_ac_temp is None:
             self.set_ac_temperature(DEFAULT_AC_TEMP)
         # Make sure the only refresh mode that is not supported at start is RefreshMode.PERIODIC
         if self.refresh_mode in [RefreshMode.OFF, RefreshMode.FORCE]:
