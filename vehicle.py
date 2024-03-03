@@ -561,13 +561,6 @@ class VehicleState:
 
         self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_CHARGE_STATE),
                                    VehicleState.datetime_to_str(datetime.datetime.now()))
-        if (
-                charge_status.lastChargeEndingPower is not None
-                and charge_status.lastChargeEndingPower > 0
-        ):
-            last_charge_ending_power = charge_status.lastChargeEndingPower / 10.0
-            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_LAST_CHARGE_ENDING_POWER),
-                                         last_charge_ending_power)
 
         real_total_battery_capacity = self.get_actual_battery_capacity()
         raw_total_battery_capacity = None
@@ -603,6 +596,14 @@ class VehicleState:
             )
         soc_kwh = (battery_capacity_correction_factor * charge_status.realtimePower) / 10.0
         self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_KWH), round(soc_kwh, 2))
+
+        if (
+                charge_status.lastChargeEndingPower is not None
+                and charge_status.lastChargeEndingPower > 0
+        ):
+            last_charge_ending_power = (battery_capacity_correction_factor * charge_status.lastChargeEndingPower) / 10.0
+            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_LAST_CHARGE_ENDING_POWER),
+                                         round(last_charge_ending_power, 2))
 
         if soc is not None and self.target_soc is not None and remaining_charging_time is not None:
             target_soc_percentage = self.target_soc.percentage
