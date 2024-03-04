@@ -35,14 +35,14 @@ class HomeAssistantDiscovery:
         self.__publish_select(mqtt_topics.REFRESH_MODE, 'Gateway refresh mode', [m.value for m in RefreshMode],
                               icon='mdi:refresh')
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_ACTIVE, 'Gateway active refresh period',
-                              unit_of_measurement='s', icon='mdi:timer', min=30, max=60 * 60, step=1)
+                              unit_of_measurement='s', icon='mdi:timer', min_value=30, max_value=60 * 60, step=1)
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_INACTIVE, 'Gateway inactive refresh period',
-                              unit_of_measurement='s', icon='mdi:timer', min=1 * 60 * 60,
-                              max=5 * 24 * 60 * 60, step=1)
+                              unit_of_measurement='s', icon='mdi:timer', min_value=1 * 60 * 60,
+                              max_value=5 * 24 * 60 * 60, step=1)
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_AFTER_SHUTDOWN, 'Gateway refresh period after car shutdown',
-                              unit_of_measurement='s', icon='mdi:timer', min=30, max=12 * 60 * 60, step=1)
+                              unit_of_measurement='s', icon='mdi:timer', min_value=30, max_value=12 * 60 * 60, step=1)
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_INACTIVE_GRACE, 'Gateway grace period after car shutdown',
-                              unit_of_measurement='s', icon='mdi:timer', min=30, max=12 * 60 * 60, step=1)
+                              unit_of_measurement='s', icon='mdi:timer', min_value=30, max_value=12 * 60 * 60, step=1)
 
         self.__publish_sensor(mqtt_topics.REFRESH_PERIOD_CHARGING, 'Gateway charging refresh period',
                               unit_of_measurement='s', icon='mdi:timer')
@@ -85,8 +85,8 @@ class HomeAssistantDiscovery:
             'Target SoC',
             device_class='battery',
             unit_of_measurement='%',
-            min=40,
-            max=100,
+            min_value=40,
+            max_value=100,
             step=10,
             mode='slider',
             icon='mdi:battery-charging-70',
@@ -341,8 +341,8 @@ class HomeAssistantDiscovery:
             value_template: str = '{{ value }}',
             retain: bool = False,
             mode: str = 'auto',
-            min: float = 1.0,
-            max: float = 100.0,
+            min_value: float = 1.0,
+            max_value: float = 100.0,
             step: float = 1.0,
     ) -> str:
         payload = {
@@ -351,8 +351,8 @@ class HomeAssistantDiscovery:
             'value_template': value_template,
             'retain': str(retain).lower(),
             'mode': mode,
-            'min': min,
-            'max': max,
+            'min': min_value,
+            'max': max_value,
             'step': step,
             'enabled_by_default': enabled,
         }
@@ -376,8 +376,8 @@ class HomeAssistantDiscovery:
             value_template: str = '{{ value }}',
             command_template: str = '{{ value }}',
             retain: bool = False,
-            min: int | None = None,
-            max: int | None = None,
+            min_value: int | None = None,
+            max_value: int | None = None,
             pattern: str | None = None,
     ) -> str:
         payload = {
@@ -388,10 +388,10 @@ class HomeAssistantDiscovery:
             'retain': str(retain).lower(),
             'enabled_by_default': enabled,
         }
-        if min is not None:
-            payload['min'] = min
-        if max is not None:
-            payload['max'] = max
+        if min_value is not None:
+            payload['min'] = min_value
+        if max_value is not None:
+            payload['max'] = max_value
         if pattern is not None:
             payload['pattern'] = pattern
         if icon is not None:
@@ -569,7 +569,7 @@ class HomeAssistantDiscovery:
             'Scheduled Charging Start',
             value_template='{{ value_json["startTime"] }}',
             command_template=change_start_cmd_template,
-            min=4, max=5, pattern='^([01][0-9]|2[0-3]):[0-5][0-9]$',
+            min_value=4, max_value=5, pattern='^([01][0-9]|2[0-3]):[0-5][0-9]$',
             icon='mdi:clock-start'
         )
 
@@ -583,7 +583,7 @@ class HomeAssistantDiscovery:
             'Scheduled Charging End',
             value_template='{{ value_json["endTime"] }}',
             command_template=change_end_cmd_template,
-            min=4, max=5, pattern='^([01][0-9]|2[0-3]):[0-5][0-9]$',
+            min_value=4, max_value=5, pattern='^([01][0-9]|2[0-3]):[0-5][0-9]$',
             icon='mdi:clock-end'
         )
 
@@ -621,7 +621,7 @@ class HomeAssistantDiscovery:
             'Scheduled Battery Heating Start',
             value_template='{{ value_json["startTime"] }}',
             command_template=change_start_cmd_template,
-            min=4, max=5, pattern='^([01][0-9]|2[0-3]):[0-5][0-9]$',
+            min_value=4, max_value=5, pattern='^([01][0-9]|2[0-3]):[0-5][0-9]$',
             icon='mdi:clock-start'
         )
 
