@@ -304,10 +304,10 @@ class VehicleState:
         self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_RIGHT_LEVEL),
                                    self.__remote_heated_seats_front_right_level)
 
-        if basic_vehicle_status.mileage > 0:
+        if basic_vehicle_status.mileage >= 0:
             mileage = basic_vehicle_status.mileage / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE), mileage)
-        if basic_vehicle_status.fuelRangeElec > 0:
+        if basic_vehicle_status.fuelRangeElec >= 0:
             electric_range = basic_vehicle_status.fuelRangeElec / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_RANGE), electric_range)
             if (
@@ -523,13 +523,13 @@ class VehicleState:
         charge_status = charge_info_resp.rvsChargeStatus
         if (
                 charge_status.mileageOfDay is not None
-                and charge_status.mileageOfDay > 0
+                and charge_status.mileageOfDay >= 0
         ):
             mileage_of_the_day = charge_status.mileageOfDay / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE_OF_DAY), mileage_of_the_day)
         if (
                 charge_status.mileageSinceLastCharge is not None
-                and charge_status.mileageSinceLastCharge > 0
+                and charge_status.mileageSinceLastCharge >= 0
         ):
             mileage_since_last_charge = charge_status.mileageSinceLastCharge / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE_SINCE_LAST_CHARGE),
