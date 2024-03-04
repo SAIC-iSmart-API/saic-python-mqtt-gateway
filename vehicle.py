@@ -604,13 +604,29 @@ class VehicleState:
         soc_kwh = (battery_capacity_correction_factor * charge_status.realtimePower) / 10.0
         self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_KWH), round(soc_kwh, 2))
 
-        if (
-                charge_status.lastChargeEndingPower is not None
-                and charge_status.lastChargeEndingPower > 0
-        ):
-            last_charge_ending_power = (battery_capacity_correction_factor * charge_status.lastChargeEndingPower) / 10.0
-            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_LAST_CHARGE_ENDING_POWER),
-                                         round(last_charge_ending_power, 2))
+        last_charge_ending_power = charge_status.lastChargeEndingPower
+        if last_charge_ending_power is not None:
+            last_charge_ending_power = (battery_capacity_correction_factor * last_charge_ending_power) / 10.0
+            self.publisher.publish_float(
+                self.get_topic(mqtt_topics.DRIVETRAIN_LAST_CHARGE_ENDING_POWER),
+                round(last_charge_ending_power, 2)
+            )
+
+        power_usage_of_day = charge_status.powerUsageOfDay
+        if power_usage_of_day is not None:
+            power_usage_of_day = (battery_capacity_correction_factor * power_usage_of_day) / 10.0
+            self.publisher.publish_float(
+                self.get_topic(mqtt_topics.DRIVETRAIN_POWER_USAGE_OF_DAY),
+                round(power_usage_of_day, 2)
+            )
+
+        power_usage_since_last_charge = charge_status.powerUsageSinceLastCharge
+        if power_usage_since_last_charge is not None:
+            power_usage_since_last_charge = (battery_capacity_correction_factor * power_usage_since_last_charge) / 10.0
+            self.publisher.publish_float(
+                self.get_topic(mqtt_topics.DRIVETRAIN_POWER_USAGE_SINCE_LAST_CHARGE),
+                round(power_usage_since_last_charge, 2)
+            )
 
         if soc is not None and self.target_soc is not None and remaining_charging_time is not None:
             target_soc_percentage = self.target_soc.percentage
