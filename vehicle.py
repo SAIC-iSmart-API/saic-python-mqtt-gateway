@@ -190,8 +190,16 @@ class VehicleState:
         self.is_charging = vehicle_status.is_charging
         basic_vehicle_status = vehicle_status.basicVehicleStatus
         remote_climate_status = basic_vehicle_status.remoteClimateStatus
+        rear_window_heat_state = basic_vehicle_status.rmtHtdRrWndSt
 
-        self.set_hv_battery_active(self.is_charging or is_engine_running or remote_climate_status > 0)
+        hv_battery_active = (
+                self.is_charging
+                or is_engine_running
+                or remote_climate_status > 0
+                or rear_window_heat_state > 0
+        )
+
+        self.set_hv_battery_active(hv_battery_active)
 
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_RUNNING), is_engine_running)
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING), self.is_charging)
@@ -282,7 +290,6 @@ class VehicleState:
                                    VehicleState.to_remote_climate(remote_climate_status))
         self.__remote_ac_running = remote_climate_status == 2
 
-        rear_window_heat_state = basic_vehicle_status.rmtHtdRrWndSt
         self.publisher.publish_str(self.get_topic(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT),
                                    'off' if rear_window_heat_state == 0 else 'on')
 
@@ -304,8 +311,8 @@ class VehicleState:
             electric_range = basic_vehicle_status.fuelRangeElec / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_RANGE), electric_range)
             if (
-                self.charging_station
-                and self.charging_station.range_topic
+                    self.charging_station
+                    and self.charging_station.range_topic
             ):
                 self.publisher.publish_float(self.charging_station.range_topic, electric_range, True)
 
