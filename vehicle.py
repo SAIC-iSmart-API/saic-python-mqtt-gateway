@@ -304,10 +304,10 @@ class VehicleState:
         self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_RIGHT_LEVEL),
                                    self.__remote_heated_seats_front_right_level)
 
-        if basic_vehicle_status.mileage > 0:
+        if basic_vehicle_status.mileage >= 0:
             mileage = basic_vehicle_status.mileage / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE), mileage)
-        if basic_vehicle_status.fuelRangeElec > 0:
+        if basic_vehicle_status.fuelRangeElec >= 0:
             electric_range = basic_vehicle_status.fuelRangeElec / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_RANGE), electric_range)
             if (
@@ -523,13 +523,13 @@ class VehicleState:
         charge_status = charge_info_resp.rvsChargeStatus
         if (
                 charge_status.mileageOfDay is not None
-                and charge_status.mileageOfDay > 0
+                and charge_status.mileageOfDay >= 0
         ):
             mileage_of_the_day = charge_status.mileageOfDay / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE_OF_DAY), mileage_of_the_day)
         if (
                 charge_status.mileageSinceLastCharge is not None
-                and charge_status.mileageSinceLastCharge > 0
+                and charge_status.mileageSinceLastCharge >= 0
         ):
             mileage_since_last_charge = charge_status.mileageSinceLastCharge / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE_SINCE_LAST_CHARGE),
@@ -604,13 +604,29 @@ class VehicleState:
         soc_kwh = (battery_capacity_correction_factor * charge_status.realtimePower) / 10.0
         self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_KWH), round(soc_kwh, 2))
 
-        if (
-                charge_status.lastChargeEndingPower is not None
-                and charge_status.lastChargeEndingPower > 0
-        ):
-            last_charge_ending_power = (battery_capacity_correction_factor * charge_status.lastChargeEndingPower) / 10.0
-            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_LAST_CHARGE_ENDING_POWER),
-                                         round(last_charge_ending_power, 2))
+        last_charge_ending_power = charge_status.lastChargeEndingPower
+        if last_charge_ending_power is not None:
+            last_charge_ending_power = (battery_capacity_correction_factor * last_charge_ending_power) / 10.0
+            self.publisher.publish_float(
+                self.get_topic(mqtt_topics.DRIVETRAIN_LAST_CHARGE_ENDING_POWER),
+                round(last_charge_ending_power, 2)
+            )
+
+        power_usage_of_day = charge_status.powerUsageOfDay
+        if power_usage_of_day is not None:
+            power_usage_of_day = (battery_capacity_correction_factor * power_usage_of_day) / 10.0
+            self.publisher.publish_float(
+                self.get_topic(mqtt_topics.DRIVETRAIN_POWER_USAGE_OF_DAY),
+                round(power_usage_of_day, 2)
+            )
+
+        power_usage_since_last_charge = charge_status.powerUsageSinceLastCharge
+        if power_usage_since_last_charge is not None:
+            power_usage_since_last_charge = (battery_capacity_correction_factor * power_usage_since_last_charge) / 10.0
+            self.publisher.publish_float(
+                self.get_topic(mqtt_topics.DRIVETRAIN_POWER_USAGE_SINCE_LAST_CHARGE),
+                round(power_usage_since_last_charge, 2)
+            )
 
         if soc is not None and self.target_soc is not None and remaining_charging_time is not None:
             target_soc_percentage = self.target_soc.percentage
