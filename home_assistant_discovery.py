@@ -153,8 +153,10 @@ class HomeAssistantDiscovery:
         self.__publish_sensor(mqtt_topics.TYRES_REAR_RIGHT_PRESSURE, 'Tyres rear right pressure',
                               device_class='pressure', unit_of_measurement='bar', icon='mdi:tire')
         # Binary sensors
-        self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_CHARGER_CONNECTED, 'Charger connected', device_class='plug',
-                                     icon='mdi:power-plug-battery')
+        self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_CHARGER_CONNECTED, 'Charger connected',
+                                     device_class='plug', icon='mdi:power-plug-battery')
+        self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_HV_BATTERY_ACTIVE, 'HV Battery Active',
+                                     device_class='power', icon='mdi:battery-check')
         self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_CHARGING, 'Battery Charging',
                                      device_class='battery_charging', icon='mdi:battery-charging')
         self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_BATTERY_HEATING, 'Battery heating', icon='mdi:heat-wave')
