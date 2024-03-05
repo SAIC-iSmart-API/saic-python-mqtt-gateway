@@ -1,5 +1,12 @@
 # Change Log
 
+## 0.5.15
+
+## Added
+
+* Battery capacity for MG4 Trophy Extended Range
+* Battery capacity for MG5 SR Comfort
+
 ## 0.5.10
 
 ## Added
