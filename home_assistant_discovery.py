@@ -117,14 +117,16 @@ class HomeAssistantDiscovery:
                               device_class='ENERGY_STORAGE',
                               state_class='measurement',
                               icon='mdi:battery-charging-70',
-                              unit_of_measurement='kWh'
+                              unit_of_measurement='kWh',
+                              enabled=False
                               )
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_POWER_USAGE_OF_DAY,
                               'Energy Usage of the Day',
                               device_class='ENERGY_STORAGE',
                               state_class='measurement',
                               icon='mdi:battery-charging-70',
-                              unit_of_measurement='kWh'
+                              unit_of_measurement='kWh',
+                              enabled=False
                               )
 
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME, 'Remaining charging time',
@@ -142,9 +144,11 @@ class HomeAssistantDiscovery:
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE, 'Mileage', device_class='distance',
                               state_class='total_increasing', unit_of_measurement='km')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE_OF_DAY, 'Mileage of the day', device_class='distance',
-                              state_class='total_increasing', unit_of_measurement='km')
+                              state_class='total_increasing', unit_of_measurement='km',
+                              enabled=False)
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE_SINCE_LAST_CHARGE, 'Mileage since last charge',
-                              device_class='distance', state_class='total_increasing', unit_of_measurement='km')
+                              device_class='distance', state_class='total_increasing', unit_of_measurement='km',
+                              enabled=False)
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE, 'Auxiliary battery voltage',
                               device_class='voltage', state_class='measurement', unit_of_measurement='V',
                               icon='mdi:car-battery')
