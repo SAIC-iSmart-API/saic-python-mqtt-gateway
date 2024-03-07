@@ -96,7 +96,7 @@ class VehicleState:
         human_readable_period = str(datetime.timedelta(seconds=seconds))
         LOG.info(f'Setting inactive query interval in vehicle handler for VIN {self.vin} to {human_readable_period}')
         self.refresh_period_inactive = seconds
-        # Recompute charging refresh period, if active refresh period is changed
+        # Recompute charging refresh period, if inactive refresh period is changed
         self.set_refresh_period_charging(self.refresh_period_charging)
 
     def set_refresh_period_charging(self, seconds: int):
@@ -521,8 +521,8 @@ class VehicleState:
             electric_range = charge_status.fuelRangeElec / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_RANGE), electric_range)
             if (
-                self.charging_station
-                and self.charging_station.range_topic
+                    self.charging_station
+                    and self.charging_station.range_topic
             ):
                 self.publisher.publish_float(self.charging_station.range_topic, electric_range, True)
 
@@ -633,13 +633,15 @@ class VehicleState:
                 round(power_usage_since_last_charge, 2)
             )
 
-        if soc is not None and self.target_soc is not None and remaining_charging_time is not None:
-            target_soc_percentage = self.target_soc.percentage
-            # Default to 1% if we are really close (e.g. balancing)
-            delta_soc = max(1, int(target_soc_percentage - soc))
-            time_for_1pct = remaining_charging_time / delta_soc
+        # Only compute a dynamic refresh period if we have detected at least 1kW of power during charging
+        if (
+                charge_status.chargingGunState
+                and charge_mgmt_data.decoded_power < -1
+                and remaining_charging_time > 0
+        ):
+            time_for_1pct = 36.0 * self.get_actual_battery_capacity() / abs(charge_mgmt_data.decoded_power)
             time_for_min_pct = math.ceil(self.charge_polling_min_percent * time_for_1pct)
-            # It doesn't make sense to refresh less than the estimated time for completion
+            # It doesn't make sense to refresh less often than the estimated time for completion
             computed_refresh_period = min(remaining_charging_time, time_for_min_pct)
             self.set_refresh_period_charging(computed_refresh_period)
         else:
