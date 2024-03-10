@@ -32,7 +32,8 @@ class AbrpApi:
             # Request
             tlm_send_url = 'https://api.iternio.com/1/tlm/send'
             data = {
-                'utc': int(time.time()), # We assume the timestamp is now, we will update it later from GPS if available
+                # We assume the timestamp is now, we will update it later from GPS if available
+                'utc': int(time.time()),
                 'soc': (charge_status.bmsPackSOCDsp / 10.0),
                 'power': charge_status.decoded_power,
                 'voltage': charge_status.decoded_voltage,
@@ -91,7 +92,7 @@ class AbrpApi:
     def __extract_gps_position(gps_position: GpsPosition) -> dict:
 
         # Do not transmit GPS data if we have no timestamp
-        if gps_position.timeStamp is None:
+        if gps_position.timeStamp is None or gps_position.timeStamp <= 0:
             return {}
 
         way_point = gps_position.wayPoint
@@ -101,21 +102,27 @@ class AbrpApi:
             return {}
 
         data = {
-            'utc': gps_position.timeStamp, #FIXME: check this is actually UTC seconds
+            'utc': gps_position.timeStamp,  # FIXME: check this is actually UTC seconds
             'speed': (way_point.speed / 10.0),
             'heading': way_point.heading,
         }
 
         position = way_point.position
 
-        if position is None or position.latitude <= 0 or position.longitude <= 0:
+        if position is None:
             return data
 
-        data.update({
-            'lat': (position.latitude / 1000000.0),
-            'lon': (position.longitude / 1000000.0),
-            'elevation': position.altitude,
-        })
+        lat_degrees = position.latitude / 1000000.0
+        lon_degrees = position.longitude / 1000000.0
+
+        if (
+                abs(lat_degrees) <= 90
+                and abs(lon_degrees) <= 180
+        ):
+            data.update({
+                'lat': lat_degrees,
+                'lon': lon_degrees,
+                'elevation': position.altitude,
+            })
 
         return data
-
