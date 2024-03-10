@@ -304,7 +304,7 @@ class VehicleState:
         self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_RIGHT_LEVEL),
                                    self.__remote_heated_seats_front_right_level)
 
-        if basic_vehicle_status.mileage >= 0:
+        if basic_vehicle_status.mileage > 0:
             mileage = basic_vehicle_status.mileage / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE), mileage)
 
