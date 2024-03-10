@@ -100,6 +100,7 @@ class VehicleHandler:
                     self.publisher.publish_str(f'{self.vehicle_prefix}/{mqtt_topics.INTERNAL_ABRP}', abrp_response)
                     LOG.info('Refreshing ABRP status succeeded...')
                 except SaicApiException as e:
+                    self.vehicle_state.mark_failed_refresh()
                     LOG.exception(
                         'handle_vehicle loop failed during SAIC API call. Waiting 30s before retrying',
                         exc_info=e
@@ -108,6 +109,7 @@ class VehicleHandler:
                 except AbrpApiException as ae:
                     LOG.exception('handle_vehicle loop failed during ABRP API call', exc_info=ae)
                 except Exception as e:
+                    self.vehicle_state.mark_failed_refresh()
                     LOG.exception(
                         'handle_vehicle loop failed with an unexpected exception. Waiting 30s before retrying',
                         exc_info=e

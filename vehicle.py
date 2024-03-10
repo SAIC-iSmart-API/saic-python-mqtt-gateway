@@ -396,6 +396,10 @@ class VehicleState:
 
     def mark_successful_refresh(self):
         self.last_successful_refresh = datetime.datetime.now()
+        self.publisher.publish_str(self.get_topic(mqtt_topics.AVAILABLE), 'online')
+
+    def mark_failed_refresh(self):
+        self.publisher.publish_str(self.get_topic(mqtt_topics.AVAILABLE), 'offline')
 
     def configure(self, vin_info: VinInfo):
         self.publisher.publish_str(

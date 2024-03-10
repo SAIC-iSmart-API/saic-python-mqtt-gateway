@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from typing import List
 
 import inflection as inflection
 from saic_ismart_client_ng.api.vehicle.schema import VinInfo
@@ -10,19 +11,73 @@ import mqtt_topics
 from publisher.mqtt_publisher import MqttClient
 from vehicle import VehicleState, RefreshMode
 
-PAYLOAD_NOT_AVAILABLE = 'payload_not_available'
-PAYLOAD_AVAILABLE = 'payload_available'
-AVAILABILITY_TOPIC = 'availability_topic'
-AVAILABILITY_TEMPLATE = 'availability_template'
-
 LOG = logging.getLogger(__name__)
 LOG.setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
+
+
+class HaCustomAvailabilityEntry:
+    def __init__(
+            self, *,
+            topic: str,
+            template: str | None = None,
+            payload_available: str = 'online',
+            payload_not_available: str = 'offline',
+    ):
+        self.__topic = topic
+        self.__template = template
+        self.__payload_available = payload_available
+        self.__payload_not_available = payload_not_available
+
+    def to_dict(self):
+        result = {
+            'topic': self.__topic,
+            'payload_available': self.__payload_available,
+            'payload_not_available': self.__payload_not_available
+        }
+        if self.__template:
+            result.update({
+                'value_template': self.__template
+            })
+        return result
+
+
+class HaCustomAvailabilityConfig:
+    def __init__(
+            self, *,
+            rules: List[HaCustomAvailabilityEntry],
+            mode: str = 'all',
+    ):
+        self.__rules = rules
+        self.__mode = mode
+
+    def to_dict(self):
+        return {
+            'availability': [r.to_dict() for r in self.__rules],
+            'availability_mode': self.__mode
+        }
 
 
 class HomeAssistantDiscovery:
     def __init__(self, vehicle_state: VehicleState, vin_info: VinInfo):
         self.__vehicle_state = vehicle_state
         self.__vin_info = vin_info
+        self.__vehicle_availability = HaCustomAvailabilityEntry(
+            topic=self.__get_vehicle_topic(mqtt_topics.AVAILABLE)
+        )
+        self.__system_availability = HaCustomAvailabilityEntry(
+            topic=self.__get_system_topic(mqtt_topics.INTERNAL_LWT)
+        )
+        self.__system_availability_config = HaCustomAvailabilityConfig(
+            rules=[
+                self.__system_availability
+            ]
+        )
+        self.__standard_availability_config = HaCustomAvailabilityConfig(
+            rules=[
+                self.__system_availability,
+                self.__vehicle_availability
+            ]
+        )
 
     def publish_ha_discovery_messages(self):
         if not self.__vehicle_state.is_complete():
@@ -33,22 +88,29 @@ class HomeAssistantDiscovery:
 
         # Gateway Control
         self.__publish_select(mqtt_topics.REFRESH_MODE, 'Gateway refresh mode', [m.value for m in RefreshMode],
-                              icon='mdi:refresh')
+                              icon='mdi:refresh', custom_availability=self.__system_availability_config)
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_ACTIVE, 'Gateway active refresh period',
-                              unit_of_measurement='s', icon='mdi:timer', min_value=30, max_value=60 * 60, step=1)
+                              unit_of_measurement='s', icon='mdi:timer', min_value=30, max_value=60 * 60, step=1,
+                              custom_availability=self.__system_availability_config)
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_INACTIVE, 'Gateway inactive refresh period',
                               unit_of_measurement='s', icon='mdi:timer', min_value=1 * 60 * 60,
-                              max_value=5 * 24 * 60 * 60, step=1)
+                              max_value=5 * 24 * 60 * 60, step=1,
+                              custom_availability=self.__system_availability_config)
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_AFTER_SHUTDOWN, 'Gateway refresh period after car shutdown',
-                              unit_of_measurement='s', icon='mdi:timer', min_value=30, max_value=12 * 60 * 60, step=1)
+                              unit_of_measurement='s', icon='mdi:timer', min_value=30, max_value=12 * 60 * 60, step=1,
+                              custom_availability=self.__system_availability_config)
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_INACTIVE_GRACE, 'Gateway grace period after car shutdown',
-                              unit_of_measurement='s', icon='mdi:timer', min_value=30, max_value=12 * 60 * 60, step=1)
-
+                              unit_of_measurement='s', icon='mdi:timer', min_value=30, max_value=12 * 60 * 60, step=1,
+                              custom_availability=self.__system_availability_config)
         self.__publish_sensor(mqtt_topics.REFRESH_PERIOD_CHARGING, 'Gateway charging refresh period',
-                              unit_of_measurement='s', icon='mdi:timer')
-        self.__publish_sensor(mqtt_topics.REFRESH_LAST_ACTIVITY, 'Last car activity', device_class='timestamp', )
-        self.__publish_sensor(mqtt_topics.REFRESH_LAST_CHARGE_STATE, 'Last charge state', device_class='timestamp', )
-        self.__publish_sensor(mqtt_topics.REFRESH_LAST_VEHICLE_STATE, 'Last vehicle state', device_class='timestamp', )
+                              unit_of_measurement='s', icon='mdi:timer',
+                              custom_availability=self.__system_availability_config)
+        self.__publish_sensor(mqtt_topics.REFRESH_LAST_ACTIVITY, 'Last car activity', device_class='timestamp',
+                              custom_availability=self.__system_availability_config)
+        self.__publish_sensor(mqtt_topics.REFRESH_LAST_CHARGE_STATE, 'Last charge state', device_class='timestamp',
+                              custom_availability=self.__system_availability_config)
+        self.__publish_sensor(mqtt_topics.REFRESH_LAST_VEHICLE_STATE, 'Last vehicle state', device_class='timestamp',
+                              custom_availability=self.__system_availability_config)
 
         # Complex sensors
         self.__publish_remote_ac()
@@ -133,12 +195,14 @@ class HomeAssistantDiscovery:
 
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME, 'Remaining charging time',
                               device_class='duration', state_class='measurement', unit_of_measurement='s')
-        custom_availability = {
-            AVAILABILITY_TOPIC: self.__get_vehicle_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME),
-            AVAILABILITY_TEMPLATE: "{{ 'online' if (value | int) > 0 else 'offline' }}",
-            PAYLOAD_NOT_AVAILABLE: 'online',
-            PAYLOAD_AVAILABLE: 'offline',
-        }
+        custom_availability = HaCustomAvailabilityConfig(rules=[
+            self.__standard_availability_config,
+            self.__vehicle_availability,
+            HaCustomAvailabilityEntry(
+                topic=self.__get_vehicle_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME),
+                template="{{ 'online' if (value | int) > 0 else 'offline' }}"
+            )
+        ])
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME, 'Charging finished',
                               device_class='timestamp',
                               value_template='{{ (now() + timedelta(seconds = value | int)).isoformat() }}',
@@ -266,6 +330,7 @@ class HomeAssistantDiscovery:
             value_template: str = '{{ value }}',
             payload_on='True',
             payload_off='False',
+            custom_availability: HaCustomAvailabilityConfig | None = None
     ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
@@ -279,7 +344,7 @@ class HomeAssistantDiscovery:
         }
         if icon is not None:
             payload['icon'] = icon
-        return self.__publish_ha_discovery_message('switch', name, payload)
+        return self.__publish_ha_discovery_message('switch', name, payload, custom_availability)
 
     def __publish_lock(
             self,
@@ -291,6 +356,7 @@ class HomeAssistantDiscovery:
             payload_unlock: str = 'False',
             state_locked: str = 'True',
             state_unlocked: str = 'False',
+            custom_availability: HaCustomAvailabilityConfig | None = None
     ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
@@ -305,7 +371,7 @@ class HomeAssistantDiscovery:
         }
         if icon is not None:
             payload['icon'] = icon
-        return self.__publish_ha_discovery_message('lock', name, payload)
+        return self.__publish_ha_discovery_message('lock', name, payload, custom_availability)
 
     def __publish_sensor(
             self,
@@ -317,7 +383,7 @@ class HomeAssistantDiscovery:
             unit_of_measurement: str | None = None,
             icon: str | None = None,
             value_template: str = '{{ value }}',
-            custom_availability: dict[str, str] | None = None
+            custom_availability: HaCustomAvailabilityConfig | None = None
     ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
@@ -350,6 +416,7 @@ class HomeAssistantDiscovery:
             min_value: float = 1.0,
             max_value: float = 100.0,
             step: float = 1.0,
+            custom_availability: HaCustomAvailabilityConfig | None = None
     ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
@@ -371,7 +438,7 @@ class HomeAssistantDiscovery:
         if icon is not None:
             payload['icon'] = icon
 
-        return self.__publish_ha_discovery_message('number', name, payload)
+        return self.__publish_ha_discovery_message('number', name, payload, custom_availability)
 
     def __publish_text(
             self,
@@ -385,6 +452,7 @@ class HomeAssistantDiscovery:
             min_value: int | None = None,
             max_value: int | None = None,
             pattern: str | None = None,
+            custom_availability: HaCustomAvailabilityConfig | None = None
     ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
@@ -403,7 +471,7 @@ class HomeAssistantDiscovery:
         if icon is not None:
             payload['icon'] = icon
 
-        return self.__publish_ha_discovery_message('text', name, payload)
+        return self.__publish_ha_discovery_message('text', name, payload, custom_availability)
 
     def __publish_binary_sensor(
             self,
@@ -415,6 +483,7 @@ class HomeAssistantDiscovery:
             payload_on: str = 'True',
             payload_off: str = 'False',
             icon: str | None = None,
+            custom_availability: HaCustomAvailabilityConfig | None = None
     ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
@@ -428,7 +497,7 @@ class HomeAssistantDiscovery:
         if icon is not None:
             payload['icon'] = icon
 
-        return self.__publish_ha_discovery_message('binary_sensor', name, payload)
+        return self.__publish_ha_discovery_message('binary_sensor', name, payload, custom_availability)
 
     def __publish_select(
             self,
@@ -439,6 +508,7 @@ class HomeAssistantDiscovery:
             value_template: str = '{{ value }}',
             command_template: str = '{{ value }}',
             icon: str | None = None,
+            custom_availability: HaCustomAvailabilityConfig | None = None
     ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
@@ -451,9 +521,13 @@ class HomeAssistantDiscovery:
         if icon is not None:
             payload['icon'] = icon
 
-        return self.__publish_ha_discovery_message('select', name, payload)
+        return self.__publish_ha_discovery_message('select', name, payload, custom_availability)
 
-    def __get_common_attributes(self, unique_id: str, name: str, custom_availability: dict[str, str] | None = None):
+    def __get_common_attributes(
+            self,
+            unique_id: str, name: str,
+            custom_availability: HaCustomAvailabilityConfig | None = None
+    ):
         common_attributes = {
             'name': name,
             'device': self.__get_device_node(),
@@ -462,18 +536,9 @@ class HomeAssistantDiscovery:
         }
 
         if custom_availability is not None:
-            if AVAILABILITY_TOPIC in custom_availability:
-                common_attributes[AVAILABILITY_TOPIC] = custom_availability[AVAILABILITY_TOPIC]
-            if AVAILABILITY_TEMPLATE in custom_availability:
-                common_attributes[AVAILABILITY_TEMPLATE] = custom_availability[AVAILABILITY_TEMPLATE]
-            if PAYLOAD_AVAILABLE in custom_availability:
-                common_attributes[PAYLOAD_AVAILABLE] = custom_availability[PAYLOAD_AVAILABLE]
-            if PAYLOAD_NOT_AVAILABLE in custom_availability:
-                common_attributes[PAYLOAD_NOT_AVAILABLE] = custom_availability[PAYLOAD_NOT_AVAILABLE]
+            common_attributes.update(custom_availability.to_dict())
         else:
-            common_attributes[AVAILABILITY_TOPIC] = self.__get_system_topic(mqtt_topics.INTERNAL_LWT)
-            common_attributes[PAYLOAD_AVAILABLE] = 'online'
-            common_attributes[PAYLOAD_NOT_AVAILABLE] = 'offline'
+            common_attributes.update(self.__standard_availability_config.to_dict())
 
         return common_attributes
 
