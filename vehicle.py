@@ -212,7 +212,7 @@ class VehicleState:
         battery_voltage = basic_vehicle_status.batteryVoltage / 10.0
         self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE), battery_voltage)
 
-        if vehicle_status.gpsPosition:
+        if vehicle_status.gpsPosition and vehicle_status.gpsPosition.timeStamp > 0:
             way_point = vehicle_status.gpsPosition.wayPoint
             if way_point:
                 speed = way_point.speed / 10.0
@@ -220,16 +220,12 @@ class VehicleState:
                 self.publisher.publish_int(self.get_topic(mqtt_topics.LOCATION_HEADING), way_point.heading)
                 position = way_point.position
                 if position:
-                    latitude = None
-                    if position.latitude and abs(position.latitude) > 0:
-                        latitude = position.latitude / 1000000.0
+                    latitude = position.latitude / 1000000.0
+                    longitude = position.longitude / 1000000.0
+                    if abs(latitude) <= 90 and abs(longitude) <= 180:
                         self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_LATITUDE), latitude)
-                    longitude = None
-                    if abs(position.longitude) > 0:
-                        longitude = position.longitude / 1000000.0
                         self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_LONGITUDE), longitude)
-                    self.publisher.publish_int(self.get_topic(mqtt_topics.LOCATION_ELEVATION), position.altitude)
-                    if latitude is not None and longitude is not None:
+                        self.publisher.publish_int(self.get_topic(mqtt_topics.LOCATION_ELEVATION), position.altitude)
                         self.publisher.publish_json(self.get_topic(mqtt_topics.LOCATION_POSITION), {
                             'latitude': latitude,
                             'longitude': longitude,
@@ -304,7 +300,7 @@ class VehicleState:
         self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_RIGHT_LEVEL),
                                    self.__remote_heated_seats_front_right_level)
 
-        if basic_vehicle_status.mileage >= 0:
+        if basic_vehicle_status.mileage > 0:
             mileage = basic_vehicle_status.mileage / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE), mileage)
 
