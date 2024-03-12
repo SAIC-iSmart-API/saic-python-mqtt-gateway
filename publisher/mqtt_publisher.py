@@ -188,7 +188,7 @@ class MqttClient(Publisher):
 
         if last_charging_value:
             if last_charging_value == current_charging_value:
-                LOG.debug(f'Last charging value equals current charging value. No refresh needed.')
+                LOG.debug('Last charging value equals current charging value. No refresh needed.')
                 return False
             else:
                 LOG.info(f'Charging value has changed from {last_charging_value} to {current_charging_value}.')

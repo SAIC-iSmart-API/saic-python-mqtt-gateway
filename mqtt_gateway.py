@@ -294,7 +294,7 @@ class VehicleHandler:
                             raise MqttGatewayException(f'Error setting value for payload {payload}')
                     else:
                         logging.info(
-                            f'Unknown Target SOC: waiting for state update before changing charge current limit')
+                            'Unknown Target SOC: waiting for state update before changing charge current limit')
                         raise MqttGatewayException(
                             f'Error setting charge current limit - SOC {self.vehicle_state.target_soc}')
                 case mqtt_topics.DRIVETRAIN_SOC_TARGET:
@@ -340,10 +340,10 @@ class VehicleHandler:
                                     start_time=start_time
                                 )
                             else:
-                                LOG.info(f'Disabling battery heating schedule')
+                                LOG.info('Disabling battery heating schedule')
                                 await self.saic_api.disable_schedule_battery_heating(self.vin_info.vin)
                         else:
-                            LOG.info(f'Battery heating schedule not changed')
+                            LOG.info('Battery heating schedule not changed')
                     except Exception as e:
                         raise MqttGatewayException(f'Error setting battery heating schedule: {e}')
                 case mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK:
@@ -523,7 +523,7 @@ class MqttGateway(MqttCommandListener):
                 task_name = task.get_name()
                 if task.cancelled():
                     LOG.debug(f'{task_name !r} task was cancelled, this is only supposed if the application is '
-                              + f'shutting down')
+                              + 'shutting down')
                 else:
                     exception = task.exception()
                     if exception is not None:
