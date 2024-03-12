@@ -18,9 +18,9 @@ from saic_ismart_client_ng.api.vehicle_charging import ChargeInfoResp, TargetBat
 from saic_ismart_client_ng.api.vehicle_charging.schema import ChrgMgmtData
 
 import mqtt_topics
-from charging_station import ChargingStation
+from integrations.openwb.charging_station import ChargingStation
 from exceptions import MqttGatewayException
-from publisher import Publisher
+from publisher.core import Publisher
 
 DEFAULT_AC_TEMP = 22
 PRESSURE_TO_BAR_FACTOR = 0.04
@@ -649,7 +649,7 @@ class VehicleState:
         )
 
         self.publisher.publish_bool(
-            self.get_topic(mqtt_topics.DRIVETRAIN_CHARGINGCABLE),
+            self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK),
             charge_mgmt_data.charging_port_locked
         )
 

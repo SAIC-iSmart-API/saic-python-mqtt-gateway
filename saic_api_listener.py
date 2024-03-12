@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Optional
 from urllib.parse import parse_qs
 from urllib.parse import urlparse
@@ -6,7 +7,9 @@ from urllib.parse import urlparse
 from saic_ismart_client_ng.listener import SaicApiListener
 
 from mqtt_topics import INTERNAL_API
-from publisher import Publisher
+from publisher.core import Publisher
+
+LOG = logging.getLogger(__name__)
 
 
 class MqttGatewaySaicApiListener(SaicApiListener):
@@ -19,8 +22,8 @@ class MqttGatewaySaicApiListener(SaicApiListener):
         if body:
             try:
                 body = json.loads(body)
-            except:
-                pass
+            except Exception as e:
+                LOG.debug("Could not parse body as JSON", exc_info=e)
         json_message = {
             "path": parsed_url.path,
             "query": query_string,
@@ -39,8 +42,8 @@ class MqttGatewaySaicApiListener(SaicApiListener):
         if body:
             try:
                 body = json.loads(body)
-            except:
-                pass
+            except Exception as e:
+                LOG.debug("Could not parse body as JSON", exc_info=e)
         json_message = {
             "path": parsed_url.path,
             "query": query_string,

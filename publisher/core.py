@@ -8,41 +8,35 @@ from configuration import Configuration
 class Publisher:
     def __init__(self, config: Configuration):
         self.configuration = config
-        self.mode_by_vin = {}
-        self.map = {}
 
     def publish_json(self, key: str, data: dict, no_prefix: bool = False) -> None:
-        self.map[key] = data
+        raise NotImplementedError()
 
     def publish_str(self, key: str, value: str, no_prefix: bool = False) -> None:
-        self.map[key] = value
+        raise NotImplementedError()
 
     def publish_int(self, key: str, value: int, no_prefix: bool = False) -> None:
-        self.map[key] = value
+        raise NotImplementedError()
 
     def publish_bool(self, key: str, value: bool | int | None, no_prefix: bool = False) -> None:
-        if value is None:
-            value = False
-        elif isinstance(value, int):
-            value = value == 1
-        self.map[key] = value
+        raise NotImplementedError()
 
     def publish_float(self, key: str, value: float, no_prefix: bool = False) -> None:
-        self.map[key] = value
+        raise NotImplementedError()
 
-    def remove_byte_strings(self, data: dict) -> dict:
+    def __remove_byte_strings(self, data: dict) -> dict:
         for key in data.keys():
             if isinstance(data[key], bytes):
                 data[key] = str(data[key])
             elif isinstance(data[key], dict):
-                data[key] = self.remove_byte_strings(data[key])
+                data[key] = self.__remove_byte_strings(data[key])
             elif isinstance(data[key], list):
                 for item in data[key]:
                     if isinstance(item, dict):
-                        self.remove_byte_strings(item)
+                        self.__remove_byte_strings(item)
         return data
 
-    def anonymize(self, data: dict) -> dict:
+    def __anonymize(self, data: dict) -> dict:
         if isinstance(data, dict):
             for key in data.keys():
                 if isinstance(data[key], str):
@@ -60,9 +54,9 @@ class Publisher:
                         case 'content':
                             data[key] = re.sub('\\(\\*\\*\\*...\\)', '(***XXX)', data[key])
                 elif isinstance(data[key], dict):
-                    data[key] = self.anonymize(data[key])
+                    data[key] = self.__anonymize(data[key])
                 elif isinstance(data[key], (list, set, tuple)):
-                    data[key] = [self.anonymize(item) for item in data[key]]
+                    data[key] = [self.__anonymize(item) for item in data[key]]
         return data
 
     def keepalive(self):
@@ -82,9 +76,9 @@ class Publisher:
         return int(value / 100000 * 100000)
 
     def dict_to_anonymized_json(self, data):
-        no_binary_strings = self.remove_byte_strings(data)
+        no_binary_strings = self.__remove_byte_strings(data)
         if self.configuration.anonymized_publishing:
-            result = self.anonymize(no_binary_strings)
+            result = self.__anonymize(no_binary_strings)
         else:
             result = no_binary_strings
         return json.dumps(result, indent=2)

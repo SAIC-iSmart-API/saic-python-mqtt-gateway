@@ -22,13 +22,13 @@ from saic_ismart_client_ng.exceptions import SaicApiException
 from saic_ismart_client_ng.model import SaicApiConfiguration
 
 import mqtt_topics
-from abrp_api import AbrpApi, AbrpApiException
-from charging_station import ChargingStation
+from integrations.abrp.api import AbrpApi, AbrpApiException
+from integrations.openwb.charging_station import ChargingStation
 from configuration import Configuration, TransportProtocol
 from exceptions import MqttGatewayException
-from home_assistant_discovery import HomeAssistantDiscovery
-from mqtt_publisher import MqttClient, MqttCommandListener
-from publisher import Publisher
+from integrations.home_assistant.discovery import HomeAssistantDiscovery
+from publisher.mqtt_publisher import MqttClient, MqttCommandListener
+from publisher.core import Publisher
 from saic_api_listener import MqttGatewaySaicApiListener
 from vehicle import RefreshMode, VehicleState
 
@@ -294,7 +294,7 @@ class VehicleHandler:
                             raise MqttGatewayException(f'Error setting value for payload {payload}')
                     else:
                         logging.info(
-                            f'Unknown Target SOC: waiting for state update before changing charge current limit')
+                            'Unknown Target SOC: waiting for state update before changing charge current limit')
                         raise MqttGatewayException(
                             f'Error setting charge current limit - SOC {self.vehicle_state.target_soc}')
                 case mqtt_topics.DRIVETRAIN_SOC_TARGET:
@@ -340,13 +340,13 @@ class VehicleHandler:
                                     start_time=start_time
                                 )
                             else:
-                                LOG.info(f'Disabling battery heating schedule')
+                                LOG.info('Disabling battery heating schedule')
                                 await self.saic_api.disable_schedule_battery_heating(self.vin_info.vin)
                         else:
-                            LOG.info(f'Battery heating schedule not changed')
+                            LOG.info('Battery heating schedule not changed')
                     except Exception as e:
                         raise MqttGatewayException(f'Error setting battery heating schedule: {e}')
-                case mqtt_topics.DRIVETRAIN_CHARGINGCABLE:
+                case mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK:
                     match payload.strip().lower():
                         case 'false':
                             LOG.info(f'Vehicle {self.vin_info.vin} charging cable will be unlocked')
@@ -428,14 +428,14 @@ class MqttGateway(MqttCommandListener):
             account_prefix = f'{self.configuration.saic_user}/{mqtt_topics.VEHICLES}/{vin_info.vin}'
             charging_station = self.get_charging_station(vin_info.vin)
             if (
-                charging_station
-                and charging_station.soc_topic
+                    charging_station
+                    and charging_station.soc_topic
             ):
                 LOG.debug('SoC of %s for charging station will be published over MQTT topic: %s', vin_info.vin,
                           charging_station.soc_topic)
             if (
-                charging_station
-                and charging_station.range_topic
+                    charging_station
+                    and charging_station.range_topic
             ):
                 LOG.debug('Range of %s for charging station will be published over MQTT topic: %s', vin_info.vin,
                           charging_station.range_topic)
@@ -523,7 +523,7 @@ class MqttGateway(MqttCommandListener):
                 task_name = task.get_name()
                 if task.cancelled():
                     LOG.debug(f'{task_name !r} task was cancelled, this is only supposed if the application is '
-                              + f'shutting down')
+                              + 'shutting down')
                 else:
                     exception = task.exception()
                     if exception is not None:
