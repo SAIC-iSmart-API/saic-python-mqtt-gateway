@@ -7,9 +7,9 @@ from typing import Optional
 import gmqtt
 
 import mqtt_topics
-from charging_station import ChargingStation
+from integrations.openwb.charging_station import ChargingStation
 from configuration import Configuration
-from publisher import Publisher
+from publisher.core import Publisher
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())

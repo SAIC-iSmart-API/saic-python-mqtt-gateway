@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 from saic_ismart_client_ng.listener import SaicApiListener
 
 from mqtt_topics import INTERNAL_API
-from publisher import Publisher
+from publisher.core import Publisher
 
 
 class MqttGatewaySaicApiListener(SaicApiListener):

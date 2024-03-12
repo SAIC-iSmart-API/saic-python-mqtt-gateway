@@ -6,14 +6,14 @@ from saic_ismart_client_ng import SaicApi
 from saic_ismart_client_ng.api.schema import GpsPosition
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.schema import VinInfo, BasicVehicleStatus
-from saic_ismart_client_ng.api.vehicle_charging import ChargeStatusResp, ChargeInfoResp
+from saic_ismart_client_ng.api.vehicle_charging import ChargeInfoResp
 from saic_ismart_client_ng.api.vehicle_charging.schema import RvsChargeStatus, ChrgMgmtData
 from saic_ismart_client_ng.model import SaicApiConfiguration
 
 import mqtt_topics
 from configuration import Configuration
 from mqtt_gateway import VehicleHandler
-from publisher import Publisher
+from publisher.log_publisher import Logger
 from vehicle import VehicleState
 
 VIN = 'vin10000000000000'
@@ -150,11 +150,12 @@ def mock_charge_status(mocked_charge_status):
 class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         config = Configuration()
+        config.anonymized_publishing = False
         saicapi = SaicApi(configuration=SaicApiConfiguration(
             username='aaa@nowhere.org',
             password='xxxxxxxxx'
         ), listener=None)
-        publisher = Publisher(config)
+        publisher = Logger(config)
         vin_info = VinInfo()
         vin_info.vin = VIN
         vin_info.series = 'EH32 S'

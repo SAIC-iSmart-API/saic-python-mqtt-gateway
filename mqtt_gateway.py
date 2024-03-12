@@ -22,13 +22,13 @@ from saic_ismart_client_ng.exceptions import SaicApiException
 from saic_ismart_client_ng.model import SaicApiConfiguration
 
 import mqtt_topics
-from abrp_api import AbrpApi, AbrpApiException
-from charging_station import ChargingStation
+from integrations.abrp.api import AbrpApi, AbrpApiException
+from integrations.openwb.charging_station import ChargingStation
 from configuration import Configuration, TransportProtocol
 from exceptions import MqttGatewayException
-from home_assistant_discovery import HomeAssistantDiscovery
-from mqtt_publisher import MqttClient, MqttCommandListener
-from publisher import Publisher
+from integrations.home_assistant.discovery import HomeAssistantDiscovery
+from publisher.mqtt_publisher import MqttClient, MqttCommandListener
+from publisher.core import Publisher
 from saic_api_listener import MqttGatewaySaicApiListener
 from vehicle import RefreshMode, VehicleState
 
@@ -428,14 +428,14 @@ class MqttGateway(MqttCommandListener):
             account_prefix = f'{self.configuration.saic_user}/{mqtt_topics.VEHICLES}/{vin_info.vin}'
             charging_station = self.get_charging_station(vin_info.vin)
             if (
-                charging_station
-                and charging_station.soc_topic
+                    charging_station
+                    and charging_station.soc_topic
             ):
                 LOG.debug('SoC of %s for charging station will be published over MQTT topic: %s', vin_info.vin,
                           charging_station.soc_topic)
             if (
-                charging_station
-                and charging_station.range_topic
+                    charging_station
+                    and charging_station.range_topic
             ):
                 LOG.debug('Range of %s for charging station will be published over MQTT topic: %s', vin_info.vin,
                           charging_station.range_topic)

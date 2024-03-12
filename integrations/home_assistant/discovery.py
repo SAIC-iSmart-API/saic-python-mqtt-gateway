@@ -7,7 +7,7 @@ from saic_ismart_client_ng.api.vehicle.schema import VinInfo
 from saic_ismart_client_ng.api.vehicle_charging import ChargeCurrentLimitCode, ScheduledChargingMode
 
 import mqtt_topics
-from mqtt_publisher import MqttClient
+from publisher.mqtt_publisher import MqttClient
 from vehicle import VehicleState, RefreshMode
 
 PAYLOAD_NOT_AVAILABLE = 'payload_not_available'
