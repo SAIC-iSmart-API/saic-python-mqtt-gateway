@@ -648,6 +648,11 @@ class VehicleState:
             charge_mgmt_data.is_battery_heating
         )
 
+        self.publisher.publish_bool(
+            self.get_topic(mqtt_topics.DRIVETRAIN_CHARGINGCABLE),
+            charge_mgmt_data.charging_port_locked
+        )
+
     def handle_scheduled_battery_heating_status(self, scheduled_battery_heating_status: ScheduledBatteryHeatingResp):
         if scheduled_battery_heating_status:
             is_enabled = scheduled_battery_heating_status.status
