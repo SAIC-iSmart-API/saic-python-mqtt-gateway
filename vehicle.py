@@ -649,7 +649,7 @@ class VehicleState:
         )
 
         self.publisher.publish_bool(
-            self.get_topic(mqtt_topics.DRIVETRAIN_CHARGINGCABLE),
+            self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK),
             charge_mgmt_data.charging_port_locked
         )
 

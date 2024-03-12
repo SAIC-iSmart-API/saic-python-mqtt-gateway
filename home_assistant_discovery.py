@@ -79,7 +79,7 @@ class HomeAssistantDiscovery:
         self.__publish_lock(mqtt_topics.DOORS_LOCKED, 'Doors Lock', icon='mdi:car-door-lock')
         self.__publish_lock(mqtt_topics.DOORS_BOOT, 'Boot Lock', icon='mdi:car-door-lock', state_locked='False',
                             state_unlocked='True')
-        self.__publish_lock(mqtt_topics.DRIVETRAIN_CHARGINGCABLE, 'Charging Cable Lock', icon='mdi:lock')
+        self.__publish_lock(mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK, 'Charging Cable Lock', icon='mdi:lock')
 
         # Target SoC
         self.__publish_number(

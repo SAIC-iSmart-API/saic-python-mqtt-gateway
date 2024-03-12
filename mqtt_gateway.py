@@ -346,7 +346,7 @@ class VehicleHandler:
                             LOG.info(f'Battery heating schedule not changed')
                     except Exception as e:
                         raise MqttGatewayException(f'Error setting battery heating schedule: {e}')
-                case mqtt_topics.DRIVETRAIN_CHARGINGCABLE:
+                case mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK:
                     match payload.strip().lower():
                         case 'false':
                             LOG.info(f'Vehicle {self.vin_info.vin} charging cable will be unlocked')
