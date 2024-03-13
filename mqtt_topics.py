@@ -1,3 +1,5 @@
+AVAILABLE = 'available'
+
 CLIMATE = 'climate'
 CLIMATE_BACK_WINDOW_HEAT = CLIMATE + '/rearWindowDefrosterHeating'
 CLIMATE_FRONT_WINDOW_HEAT = CLIMATE + '/frontWindowDefrosterHeating'

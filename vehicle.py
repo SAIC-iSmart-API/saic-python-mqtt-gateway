@@ -189,8 +189,8 @@ class VehicleState:
         is_engine_running = vehicle_status.is_engine_running
         self.is_charging = vehicle_status.is_charging
         basic_vehicle_status = vehicle_status.basicVehicleStatus
-        remote_climate_status = basic_vehicle_status.remoteClimateStatus
-        rear_window_heat_state = basic_vehicle_status.rmtHtdRrWndSt
+        remote_climate_status = basic_vehicle_status.remoteClimateStatus or 0
+        rear_window_heat_state = basic_vehicle_status.rmtHtdRrWndSt or 0
 
         hv_battery_active = (
                 self.is_charging
@@ -396,6 +396,10 @@ class VehicleState:
 
     def mark_successful_refresh(self):
         self.last_successful_refresh = datetime.datetime.now()
+        self.publisher.publish_str(self.get_topic(mqtt_topics.AVAILABLE), 'online')
+
+    def mark_failed_refresh(self):
+        self.publisher.publish_str(self.get_topic(mqtt_topics.AVAILABLE), 'offline')
 
     def configure(self, vin_info: VinInfo):
         self.publisher.publish_str(
