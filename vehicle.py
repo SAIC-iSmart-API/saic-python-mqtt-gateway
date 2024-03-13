@@ -189,8 +189,8 @@ class VehicleState:
         is_engine_running = vehicle_status.is_engine_running
         self.is_charging = vehicle_status.is_charging
         basic_vehicle_status = vehicle_status.basicVehicleStatus
-        remote_climate_status = basic_vehicle_status.remoteClimateStatus
-        rear_window_heat_state = basic_vehicle_status.rmtHtdRrWndSt
+        remote_climate_status = basic_vehicle_status.remoteClimateStatus or 0
+        rear_window_heat_state = basic_vehicle_status.rmtHtdRrWndSt or 0
 
         hv_battery_active = (
                 self.is_charging
