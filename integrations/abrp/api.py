@@ -1,10 +1,12 @@
 import json
 import time
+from typing import Any, Tuple
 
 import httpx
 from saic_ismart_client_ng.api.schema import GpsPosition
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.schema import BasicVehicleStatus
+from saic_ismart_client_ng.api.vehicle_charging import ChargeInfoResp
 from saic_ismart_client_ng.api.vehicle_charging.schema import ChrgMgmtData
 
 
@@ -22,7 +24,11 @@ class AbrpApi:
         self.abrp_user_token = abrp_user_token
         self.client = httpx.AsyncClient()
 
-    async def update_abrp(self, vehicle_status: VehicleStatusResp, charge_status: ChrgMgmtData) -> str:
+    async def update_abrp(self, vehicle_status: VehicleStatusResp, charge_info: ChargeInfoResp) \
+            -> Tuple[bool, Any | None]:
+
+        charge_status = None if charge_info is None else charge_info.chrgMgmtData
+
         if (
                 self.abrp_api_key is not None
                 and self.abrp_user_token is not None
@@ -60,7 +66,7 @@ class AbrpApi:
                     'tlm': json.dumps(data)
                 })
                 await response.aread()
-                return response.json()
+                return True, response.text
             except httpx.ConnectError as ece:
                 raise AbrpApiException(f'Connection error: {ece}')
             except httpx.TimeoutException as et:
@@ -70,7 +76,7 @@ class AbrpApi:
             except httpx.HTTPError as ehttp:
                 raise AbrpApiException(f'HTTP error {ehttp}')
         else:
-            return 'ABRP request skipped because of missing configuration'
+            return False, 'ABRP request skipped because of missing configuration'
 
     @staticmethod
     def __extract_basic_vehicle_status(basic_vehicle_status: BasicVehicleStatus) -> dict:
