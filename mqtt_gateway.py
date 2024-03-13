@@ -89,16 +89,23 @@ class VehicleHandler:
             ):
                 try:
                     vehicle_status = await self.update_vehicle_status()
-                    charge_status = await self.update_charge_status()
+
+                    try:
+                        charge_status = await self.update_charge_status()
+                    except Exception as e:
+                        LOG.exception('Error updating charge status', exc_info=e)
+                        charge_status = None
+
                     try:
                         await self.update_scheduled_battery_heating_status()
                     except Exception as e:
                         LOG.exception('Error updating scheduled battery heating status', exc_info=e)
+
                     self.vehicle_state.mark_successful_refresh()
                     LOG.info('Refreshing vehicle status succeeded...')
-                    abrp_response = await self.abrp_api.update_abrp(vehicle_status, charge_status.chrgMgmtData)
-                    self.publisher.publish_str(f'{self.vehicle_prefix}/{mqtt_topics.INTERNAL_ABRP}', abrp_response)
-                    LOG.info('Refreshing ABRP status succeeded...')
+
+                    await self.__refresh_abrp(charge_status, vehicle_status)
+
                 except SaicApiException as e:
                     self.vehicle_state.mark_failed_refresh()
                     LOG.exception(
@@ -121,6 +128,14 @@ class VehicleHandler:
             else:
                 # car not active, wait a second
                 await asyncio.sleep(1.0)
+
+    async def __refresh_abrp(self, charge_status, vehicle_status):
+        abrp_refreshed, abrp_response = await self.abrp_api.update_abrp(vehicle_status, charge_status)
+        self.publisher.publish_str(f'{self.vehicle_prefix}/{mqtt_topics.INTERNAL_ABRP}', abrp_response)
+        if abrp_refreshed:
+            LOG.info('Refreshing ABRP status succeeded...')
+        else:
+            LOG.info(f'ABRP not refreshed, reason {abrp_response}')
 
     async def update_vehicle_status(self) -> VehicleStatusResp:
         LOG.info('Updating vehicle status')
