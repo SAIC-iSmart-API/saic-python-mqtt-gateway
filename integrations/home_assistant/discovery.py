@@ -105,11 +105,16 @@ class HomeAssistantDiscovery:
         self.__publish_sensor(mqtt_topics.REFRESH_PERIOD_CHARGING, 'Gateway charging refresh period',
                               unit_of_measurement='s', icon='mdi:timer',
                               custom_availability=self.__system_availability_config)
+        self.__publish_sensor(mqtt_topics.REFRESH_PERIOD_ERROR, 'Gateway error refresh period',
+                              unit_of_measurement='s', icon='mdi:timer',
+                              custom_availability=self.__system_availability_config)
         self.__publish_sensor(mqtt_topics.REFRESH_LAST_ACTIVITY, 'Last car activity', device_class='timestamp',
                               custom_availability=self.__system_availability_config)
         self.__publish_sensor(mqtt_topics.REFRESH_LAST_CHARGE_STATE, 'Last charge state', device_class='timestamp',
                               custom_availability=self.__system_availability_config)
         self.__publish_sensor(mqtt_topics.REFRESH_LAST_VEHICLE_STATE, 'Last vehicle state', device_class='timestamp',
+                              custom_availability=self.__system_availability_config)
+        self.__publish_sensor(mqtt_topics.REFRESH_LAST_ERROR, 'Last poll error', device_class='timestamp',
                               custom_availability=self.__system_availability_config)
 
         # Complex sensors
