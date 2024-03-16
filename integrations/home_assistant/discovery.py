@@ -200,18 +200,17 @@ class HomeAssistantDiscovery:
 
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME, 'Remaining charging time',
                               device_class='duration', state_class='measurement', unit_of_measurement='s')
-        custom_availability = HaCustomAvailabilityConfig(rules=[
-            self.__standard_availability_config,
-            self.__vehicle_availability,
-            HaCustomAvailabilityEntry(
-                topic=self.__get_vehicle_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME),
-                template="{{ 'online' if (value | int) > 0 else 'offline' }}"
-            )
-        ])
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME, 'Charging finished',
                               device_class='timestamp',
                               value_template='{{ (now() + timedelta(seconds = value | int)).isoformat() }}',
-                              custom_availability=custom_availability)
+                              custom_availability=HaCustomAvailabilityConfig(rules=[
+                                  self.__system_availability,
+                                  self.__vehicle_availability,
+                                  HaCustomAvailabilityEntry(
+                                      topic=self.__get_vehicle_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME),
+                                      template="{{ 'online' if (value | int) > 0 else 'offline' }}"
+                                  )
+                              ]))
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE, 'Mileage', device_class='distance',
                               state_class='total_increasing', unit_of_measurement='km')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE_OF_DAY, 'Mileage of the day', device_class='distance',
