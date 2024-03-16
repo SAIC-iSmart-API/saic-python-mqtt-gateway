@@ -39,6 +39,8 @@ class AbrpApi:
             data = {
                 # We assume the timestamp is now, we will update it later from GPS if available
                 'utc': int(time.time()),
+                # We assume the vehicle is stationary, we will update it later from GPS if available
+                'speed': 0.0,
                 'soc': (charge_status.bmsPackSOCDsp / 10.0),
                 'power': charge_status.decoded_power,
                 'voltage': charge_status.decoded_voltage,

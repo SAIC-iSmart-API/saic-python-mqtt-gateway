@@ -215,11 +215,11 @@ class VehicleState:
         battery_voltage = basic_vehicle_status.batteryVoltage / 10.0
         self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE), battery_voltage)
 
+        speed = 0.0
         if vehicle_status.gpsPosition and vehicle_status.gpsPosition.timeStamp > 0:
             way_point = vehicle_status.gpsPosition.wayPoint
             if way_point:
                 speed = way_point.speed / 10.0
-                self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_SPEED), speed)
                 self.publisher.publish_int(self.get_topic(mqtt_topics.LOCATION_HEADING), way_point.heading)
                 position = way_point.position
                 if position:
@@ -233,6 +233,7 @@ class VehicleState:
                             'latitude': latitude,
                             'longitude': longitude,
                         })
+        self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_SPEED), speed)
 
         self.publisher.publish_bool(self.get_topic(mqtt_topics.WINDOWS_DRIVER), basic_vehicle_status.driverWindow)
         self.publisher.publish_bool(self.get_topic(mqtt_topics.WINDOWS_PASSENGER),
@@ -435,7 +436,7 @@ class VehicleState:
             self.__failed_refresh_counter = 0
             self.__refresh_period_error = 30
         else:
-            self.__refresh_period_error = min(30 + ((2 ** self.__failed_refresh_counter) - 1), 3600)
+            self.__refresh_period_error = round(min(30 + 0.5 * ((2 ** self.__failed_refresh_counter) - 1), 3600))
             self.__failed_refresh_counter = self.__failed_refresh_counter + 1
             self.publisher.publish_str(
                 self.get_topic(mqtt_topics.REFRESH_LAST_ERROR),
