@@ -7,7 +7,6 @@ from saic_ismart_client_ng.api.schema import GpsPosition
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.schema import BasicVehicleStatus
 from saic_ismart_client_ng.api.vehicle_charging import ChargeInfoResp
-from saic_ismart_client_ng.api.vehicle_charging.schema import ChrgMgmtData
 
 
 class AbrpApiException(Exception):
