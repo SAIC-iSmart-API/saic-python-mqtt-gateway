@@ -29,7 +29,7 @@ from exceptions import MqttGatewayException
 from integrations.home_assistant.discovery import HomeAssistantDiscovery
 from publisher.mqtt_publisher import MqttClient, MqttCommandListener
 from publisher.core import Publisher
-from saic_api_listener import MqttGatewaySaicApiListener
+from saic_api_listener import MqttGatewaySaicApiListener, MqttGatewayAbrpListener
 from vehicle import RefreshMode, VehicleState
 
 MSG_CMD_SUCCESSFUL = 'Success'
@@ -70,7 +70,11 @@ class VehicleHandler:
             abrp_user_token = self.configuration.abrp_token_map[vin_info.vin]
         else:
             abrp_user_token = None
-        self.abrp_api = AbrpApi(self.configuration.abrp_api_key, abrp_user_token)
+        self.abrp_api = AbrpApi(
+            self.configuration.abrp_api_key,
+            abrp_user_token,
+            listener=MqttGatewayAbrpListener(self.publisher)
+        )
 
     async def handle_vehicle(self) -> None:
         self.vehicle_state.configure(self.vin_info)

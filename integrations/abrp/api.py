@@ -1,12 +1,16 @@
 import json
+import logging
 import time
-from typing import Any, Tuple
+from abc import ABC
+from typing import Any, Tuple, Optional
 
 import httpx
 from saic_ismart_client_ng.api.schema import GpsPosition
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.schema import BasicVehicleStatus
 from saic_ismart_client_ng.api.vehicle_charging import ChargeInfoResp
+
+LOG = logging.getLogger(__name__)
 
 
 class AbrpApiException(Exception):
@@ -17,11 +21,26 @@ class AbrpApiException(Exception):
         return self.message
 
 
+class AbrpApiListener(ABC):
+    async def on_request(self, path: str, body: Optional[str] = None, headers: Optional[dict] = None):
+        pass
+
+    async def on_response(self, path: str, body: Optional[str] = None, headers: Optional[dict] = None):
+        pass
+
+
 class AbrpApi:
-    def __init__(self, abrp_api_key: str, abrp_user_token: str) -> None:
+    def __init__(self, abrp_api_key: str, abrp_user_token: str, listener: Optional[AbrpApiListener] = None) -> None:
         self.abrp_api_key = abrp_api_key
         self.abrp_user_token = abrp_user_token
-        self.client = httpx.AsyncClient()
+        self.__listener = listener
+        self.__base_uri = 'https://api.iternio.com/1/'
+        self.client = httpx.AsyncClient(
+            event_hooks={
+                "request": [self.invoke_request_listener],
+                "response": [self.invoke_response_listener]
+            }
+        )
 
     async def update_abrp(self, vehicle_status: VehicleStatusResp, charge_info: ChargeInfoResp) \
             -> Tuple[bool, Any | None]:
@@ -35,7 +54,7 @@ class AbrpApi:
                 and charge_status is not None
         ):
             # Request
-            tlm_send_url = 'https://api.iternio.com/1/tlm/send'
+            tlm_send_url = f'{self.__base_uri}tlm/send'
             data = {
                 # We assume the timestamp is now, we will update it later from GPS if available
                 'utc': int(time.time()),
@@ -133,3 +152,42 @@ class AbrpApi:
             })
 
         return data
+
+    async def invoke_request_listener(self, request: httpx.Request):
+        if not self.__listener:
+            return
+        try:
+            body = None
+            if request.content:
+                try:
+
+                    body = request.content.decode("utf-8")
+                except Exception as e:
+                    LOG.warning(f"Error decoding request content: {e}")
+
+            await self.__listener.on_request(
+                path=str(request.url).replace(self.__base_uri, "/"),
+                body=body,
+                headers=dict(request.headers),
+            )
+        except Exception as e:
+            LOG.warning(f"Error invoking request listener: {e}")
+
+    async def invoke_response_listener(self, response: httpx.Response):
+        if not self.__listener:
+            return
+        try:
+            body = await response.aread()
+            if body:
+                try:
+                    body = body.decode("utf-8")
+                except Exception as e:
+                    LOG.warning(f"Error decoding request content: {e}")
+
+            await self.__listener.on_response(
+                path=str(response.url).replace(self.__base_uri, "/"),
+                body=body,
+                headers=dict(response.headers),
+            )
+        except Exception as e:
+            LOG.warning(f"Error invoking request listener: {e}")
