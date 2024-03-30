@@ -102,7 +102,9 @@ def mock_vehicle_status(mocked_vehicle_status):
             rearLeftTyrePressure=int(TYRES_REAR_LEFT_PRESSURE * 25),
             rearRightTyrePressure=int(TYRES_REAR_RIGHT_PRESSURE * 25),
             mainBeamStatus=LIGHTS_MAIN_BEAM,
-            dippedBeamStatus=LIGHTS_DIPPED_BEAM
+            dippedBeamStatus=LIGHTS_DIPPED_BEAM,
+            frontLeftSeatHeatLevel=0,
+            frontRightSeatHeatLevel=1
         ),
         gpsPosition=GpsPosition(
             timeStamp=42,
@@ -209,7 +211,46 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
                                TYRES_REAR_RIGHT_PRESSURE)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.LIGHTS_MAIN_BEAM), LIGHTS_MAIN_BEAM)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.LIGHTS_DIPPED_BEAM), LIGHTS_DIPPED_BEAM)
-        self.assertEqual(37, len(self.vehicle_handler.publisher.map))
+        expected_topics = {
+            '/vehicles/vin10000000000000/drivetrain/hvBatteryActive',
+            '/vehicles/vin10000000000000/refresh/lastActivity',
+            '/vehicles/vin10000000000000/drivetrain/running',
+            '/vehicles/vin10000000000000/drivetrain/charging',
+            '/vehicles/vin10000000000000/climate/interiorTemperature',
+            '/vehicles/vin10000000000000/climate/exteriorTemperature',
+            '/vehicles/vin10000000000000/drivetrain/auxiliaryBatteryVoltage',
+            '/vehicles/vin10000000000000/location/heading',
+            '/vehicles/vin10000000000000/location/latitude',
+            '/vehicles/vin10000000000000/location/longitude',
+            '/vehicles/vin10000000000000/location/elevation',
+            '/vehicles/vin10000000000000/location/position',
+            '/vehicles/vin10000000000000/location/speed',
+            '/vehicles/vin10000000000000/windows/driver',
+            '/vehicles/vin10000000000000/windows/passenger',
+            '/vehicles/vin10000000000000/windows/rearLeft',
+            '/vehicles/vin10000000000000/windows/rearRight',
+            '/vehicles/vin10000000000000/windows/sunRoof',
+            '/vehicles/vin10000000000000/doors/locked',
+            '/vehicles/vin10000000000000/doors/driver',
+            '/vehicles/vin10000000000000/doors/passenger',
+            '/vehicles/vin10000000000000/doors/rearLeft',
+            '/vehicles/vin10000000000000/doors/rearRight',
+            '/vehicles/vin10000000000000/doors/bonnet',
+            '/vehicles/vin10000000000000/doors/boot',
+            '/vehicles/vin10000000000000/tyres/frontLeftPressure',
+            '/vehicles/vin10000000000000/tyres/frontRightPressure',
+            '/vehicles/vin10000000000000/tyres/rearLeftPressure',
+            '/vehicles/vin10000000000000/tyres/rearRightPressure',
+            '/vehicles/vin10000000000000/lights/mainBeam',
+            '/vehicles/vin10000000000000/lights/dippedBeam',
+            '/vehicles/vin10000000000000/climate/remoteClimateState',
+            '/vehicles/vin10000000000000/climate/rearWindowDefrosterHeating',
+            '/vehicles/vin10000000000000/climate/heatedSeatsFrontLeftLevel',
+            '/vehicles/vin10000000000000/climate/heatedSeatsFrontRightLevel',
+            '/vehicles/vin10000000000000/drivetrain/mileage',
+            '/vehicles/vin10000000000000/refresh/lastVehicleState'
+        }
+        self.assertSetEqual(expected_topics, set(self.vehicle_handler.publisher.map.keys()))
 
     @patch.object(SaicApi, 'get_vehicle_charging_management_data')
     async def test_update_charge_status(self, mocked_charge_status):
