@@ -207,13 +207,15 @@ class VehicleState:
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_RUNNING), is_engine_running)
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING), self.is_charging)
         interior_temperature = basic_vehicle_status.interiorTemperature
-        if interior_temperature > -128:
+        if interior_temperature in range(-127, 127):
             self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_INTERIOR_TEMPERATURE), interior_temperature)
         exterior_temperature = basic_vehicle_status.exteriorTemperature
-        if exterior_temperature > -128:
+        if exterior_temperature in range(-127, 127):
             self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_EXTERIOR_TEMPERATURE), exterior_temperature)
-        battery_voltage = basic_vehicle_status.batteryVoltage / 10.0
-        self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE), battery_voltage)
+        battery_voltage = basic_vehicle_status.batteryVoltage
+        if battery_voltage in range(1, 65535):
+            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE),
+                                         battery_voltage / 10.0)
 
         speed = 0.0
         if vehicle_status.gpsPosition and vehicle_status.gpsPosition.timeStamp > 0:
@@ -234,15 +236,20 @@ class VehicleState:
                             'longitude': longitude,
                         })
         self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_SPEED), speed)
-
-        self.publisher.publish_bool(self.get_topic(mqtt_topics.WINDOWS_DRIVER), basic_vehicle_status.driverWindow)
-        self.publisher.publish_bool(self.get_topic(mqtt_topics.WINDOWS_PASSENGER),
-                                    basic_vehicle_status.passengerWindow)
-        self.publisher.publish_bool(self.get_topic(mqtt_topics.WINDOWS_REAR_LEFT),
-                                    basic_vehicle_status.rearLeftWindow)
-        self.publisher.publish_bool(self.get_topic(mqtt_topics.WINDOWS_REAR_RIGHT),
-                                    basic_vehicle_status.rearRightWindow)
-        self.publisher.publish_bool(self.get_topic(mqtt_topics.WINDOWS_SUN_ROOF), basic_vehicle_status.sunroofStatus)
+        if basic_vehicle_status.driverWindow is not None:
+            self.publisher.publish_bool(self.get_topic(mqtt_topics.WINDOWS_DRIVER), basic_vehicle_status.driverWindow)
+        if basic_vehicle_status.passengerWindow is not None:
+            self.publisher.publish_bool(self.get_topic(mqtt_topics.WINDOWS_PASSENGER),
+                                        basic_vehicle_status.passengerWindow)
+        if basic_vehicle_status.rearLeftWindow is not None:
+            self.publisher.publish_bool(self.get_topic(mqtt_topics.WINDOWS_REAR_LEFT),
+                                        basic_vehicle_status.rearLeftWindow)
+        if basic_vehicle_status.rearRightWindow is not None:
+            self.publisher.publish_bool(self.get_topic(mqtt_topics.WINDOWS_REAR_RIGHT),
+                                        basic_vehicle_status.rearRightWindow)
+        if basic_vehicle_status.sunroofStatus is not None:
+            self.publisher.publish_bool(self.get_topic(mqtt_topics.WINDOWS_SUN_ROOF),
+                                        basic_vehicle_status.sunroofStatus)
 
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DOORS_LOCKED), basic_vehicle_status.lockStatus)
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DOORS_DRIVER), basic_vehicle_status.driverDoor)
@@ -252,35 +259,10 @@ class VehicleState:
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DOORS_BONNET), basic_vehicle_status.bonnetStatus)
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DOORS_BOOT), basic_vehicle_status.bootStatus)
 
-        if (
-                basic_vehicle_status.frontLeftTyrePressure is not None
-                and basic_vehicle_status.frontLeftTyrePressure > 0
-        ):
-            front_left_tyre_bar = basic_vehicle_status.frontLeftTyrePressure * PRESSURE_TO_BAR_FACTOR
-            self.publisher.publish_float(self.get_topic(mqtt_topics.TYRES_FRONT_LEFT_PRESSURE),
-                                         round(front_left_tyre_bar, 2))
-
-        if (
-                basic_vehicle_status.frontRightTyrePressure is not None
-                and basic_vehicle_status.frontRightTyrePressure > 0
-        ):
-            front_right_tyre_bar = basic_vehicle_status.frontRightTyrePressure * PRESSURE_TO_BAR_FACTOR
-            self.publisher.publish_float(self.get_topic(mqtt_topics.TYRES_FRONT_RIGHT_PRESSURE),
-                                         round(front_right_tyre_bar, 2))
-        if (
-                basic_vehicle_status.rearLeftTyrePressure
-                and basic_vehicle_status.rearLeftTyrePressure > 0
-        ):
-            rear_left_tyre_bar = basic_vehicle_status.rearLeftTyrePressure * PRESSURE_TO_BAR_FACTOR
-            self.publisher.publish_float(self.get_topic(mqtt_topics.TYRES_REAR_LEFT_PRESSURE),
-                                         round(rear_left_tyre_bar, 2))
-        if (
-                basic_vehicle_status.rearRightTyrePressure is not None
-                and basic_vehicle_status.rearRightTyrePressure > 0
-        ):
-            rear_right_tyre_bar = basic_vehicle_status.rearRightTyrePressure * PRESSURE_TO_BAR_FACTOR
-            self.publisher.publish_float(self.get_topic(mqtt_topics.TYRES_REAR_RIGHT_PRESSURE),
-                                         round(rear_right_tyre_bar, 2))
+        self.__publish_tyre(basic_vehicle_status.frontLeftTyrePressure, mqtt_topics.TYRES_FRONT_LEFT_PRESSURE)
+        self.__publish_tyre(basic_vehicle_status.frontRightTyrePressure, mqtt_topics.TYRES_FRONT_RIGHT_PRESSURE)
+        self.__publish_tyre(basic_vehicle_status.rearLeftTyrePressure, mqtt_topics.TYRES_REAR_LEFT_PRESSURE)
+        self.__publish_tyre(basic_vehicle_status.rearRightTyrePressure, mqtt_topics.TYRES_REAR_RIGHT_PRESSURE)
 
         self.publisher.publish_bool(self.get_topic(mqtt_topics.LIGHTS_MAIN_BEAM), basic_vehicle_status.mainBeamStatus)
         self.publisher.publish_bool(self.get_topic(mqtt_topics.LIGHTS_DIPPED_BEAM),
@@ -293,23 +275,27 @@ class VehicleState:
         self.publisher.publish_str(self.get_topic(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT),
                                    'off' if rear_window_heat_state == 0 else 'on')
 
-        if basic_vehicle_status.frontLeftSeatHeatLevel is not None:
+        if basic_vehicle_status.frontLeftSeatHeatLevel in range(0, 255):
             self.__remote_heated_seats_front_left_level = basic_vehicle_status.frontLeftSeatHeatLevel
+            self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_LEFT_LEVEL),
+                                       self.__remote_heated_seats_front_left_level)
 
-        self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_LEFT_LEVEL),
-                                   self.__remote_heated_seats_front_left_level)
-
-        if basic_vehicle_status.frontRightSeatHeatLevel is not None:
+        if basic_vehicle_status.frontRightSeatHeatLevel in range(0, 255):
             self.__remote_heated_seats_front_right_level = basic_vehicle_status.frontRightSeatHeatLevel
-        self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_RIGHT_LEVEL),
-                                   self.__remote_heated_seats_front_right_level)
+            self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_RIGHT_LEVEL),
+                                       self.__remote_heated_seats_front_right_level)
 
-        if basic_vehicle_status.mileage > 0:
+        if basic_vehicle_status.mileage in range(1, 2147483647):
             mileage = basic_vehicle_status.mileage / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE), mileage)
 
         self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_VEHICLE_STATE),
                                    VehicleState.datetime_to_str(datetime.datetime.now()))
+
+    def __publish_tyre(self, raw_value: int, topic: str):
+        if int(raw_value) in range(1, 255):
+            bar_value = raw_value * PRESSURE_TO_BAR_FACTOR
+            self.publisher.publish_float(self.get_topic(topic), round(bar_value, 2))
 
     def set_hv_battery_active(self, hv_battery_active: bool):
         if (
@@ -521,12 +507,20 @@ class VehicleState:
 
     def handle_charge_status(self, charge_info_resp: ChargeInfoResp) -> None:
         charge_mgmt_data = charge_info_resp.chrgMgmtData
-        self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_CURRENT),
-                                     round(charge_mgmt_data.decoded_current, 3))
-        self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_VOLTAGE),
-                                     round(charge_mgmt_data.decoded_voltage, 3))
-        self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_POWER),
-                                     round(charge_mgmt_data.decoded_power, 3))
+        is_valid_current = charge_mgmt_data.bmsPackCrnt in range(0, 65535)
+        if is_valid_current:
+            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_CURRENT),
+                                         round(charge_mgmt_data.decoded_current, 3))
+
+        is_valid_voltage = charge_mgmt_data.bmsPackVol
+        if is_valid_voltage in range(0, 65535):
+            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_VOLTAGE),
+                                         round(charge_mgmt_data.decoded_voltage, 3))
+        is_valid_power = is_valid_current and is_valid_voltage
+        if is_valid_power:
+            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_POWER),
+                                         round(charge_mgmt_data.decoded_power, 3))
+
         raw_charge_current_limit = charge_mgmt_data.bmsAltngChrgCrntDspCmd
         if (
                 raw_charge_current_limit is not None
@@ -553,14 +547,13 @@ class VehicleState:
             ):
                 self.publisher.publish_int(self.charging_station.soc_topic, int(soc), True)
 
-        estimated_electrical_range = charge_mgmt_data.bmsEstdElecRng / 10.0
-        self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_HYBRID_ELECTRICAL_RANGE),
-                                     estimated_electrical_range)
+        if charge_mgmt_data.bmsEstdElecRng in range(0, 65535):
+            estimated_electrical_range = charge_mgmt_data.bmsEstdElecRng / 10.0
+            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_HYBRID_ELECTRICAL_RANGE),
+                                         estimated_electrical_range)
+
         charge_status = charge_info_resp.rvsChargeStatus
-        if (
-                charge_status.fuelRangeElec is not None
-                and charge_status.fuelRangeElec >= 0
-        ):
+        if charge_status.fuelRangeElec in range(0, 65535):
             electric_range = charge_status.fuelRangeElec / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_RANGE), electric_range)
             if (
@@ -569,16 +562,11 @@ class VehicleState:
             ):
                 self.publisher.publish_float(self.charging_station.range_topic, electric_range, True)
 
-        if (
-                charge_status.mileageOfDay is not None
-                and charge_status.mileageOfDay >= 0
-        ):
+        if charge_status.mileageOfDay in range(0, 65535):
             mileage_of_the_day = charge_status.mileageOfDay / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE_OF_DAY), mileage_of_the_day)
-        if (
-                charge_status.mileageSinceLastCharge is not None
-                and charge_status.mileageSinceLastCharge >= 0
-        ):
+
+        if charge_status.mileageSinceLastCharge in range(0, 65535):
             mileage_since_last_charge = charge_status.mileageSinceLastCharge / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE_SINCE_LAST_CHARGE),
                                          mileage_since_last_charge)
@@ -607,7 +595,7 @@ class VehicleState:
 
         # Only publish remaining charging time if the car is charging and we have current flowing
         remaining_charging_time = None
-        if charge_status.chargingGunState and charge_mgmt_data.decoded_current < 0:
+        if charge_status.chargingGunState and is_valid_current and charge_mgmt_data.decoded_current < 0:
             remaining_charging_time = charge_mgmt_data.chrgngRmnngTime * 60
             self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME),
                                        remaining_charging_time)
@@ -653,7 +641,7 @@ class VehicleState:
         self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC_KWH), round(soc_kwh, 2))
 
         last_charge_ending_power = charge_status.lastChargeEndingPower
-        if last_charge_ending_power is not None:
+        if last_charge_ending_power in range(0, 65535):
             last_charge_ending_power = (battery_capacity_correction_factor * last_charge_ending_power) / 10.0
             self.publisher.publish_float(
                 self.get_topic(mqtt_topics.DRIVETRAIN_LAST_CHARGE_ENDING_POWER),
@@ -661,7 +649,7 @@ class VehicleState:
             )
 
         power_usage_of_day = charge_status.powerUsageOfDay
-        if power_usage_of_day is not None:
+        if power_usage_of_day in range(0, 65535):
             power_usage_of_day = (battery_capacity_correction_factor * power_usage_of_day) / 10.0
             self.publisher.publish_float(
                 self.get_topic(mqtt_topics.DRIVETRAIN_POWER_USAGE_OF_DAY),
@@ -669,7 +657,7 @@ class VehicleState:
             )
 
         power_usage_since_last_charge = charge_status.powerUsageSinceLastCharge
-        if power_usage_since_last_charge is not None:
+        if power_usage_since_last_charge in range(0, 65535):
             power_usage_since_last_charge = (battery_capacity_correction_factor * power_usage_since_last_charge) / 10.0
             self.publisher.publish_float(
                 self.get_topic(mqtt_topics.DRIVETRAIN_POWER_USAGE_SINCE_LAST_CHARGE),
@@ -679,6 +667,7 @@ class VehicleState:
         # Only compute a dynamic refresh period if we have detected at least 1kW of power during charging
         if (
                 charge_status.chargingGunState
+                and is_valid_power
                 and charge_mgmt_data.decoded_power < -1
                 and remaining_charging_time > 0
         ):
