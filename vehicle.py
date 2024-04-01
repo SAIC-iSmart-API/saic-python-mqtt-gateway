@@ -602,6 +602,20 @@ class VehicleState:
         else:
             self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME), 0)
 
+        charge_status_start_time = charge_status.startTime
+        if charge_status_start_time in range(1, 2147483647):
+            self.publisher.publish_int(
+                self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_LAST_START),
+                charge_status_start_time
+            )
+
+        charge_status_end_time = charge_status.endTime
+        if charge_status_end_time in range(1, 2147483647):
+            self.publisher.publish_int(
+                self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_LAST_END),
+                charge_status_end_time
+            )
+
         self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_CHARGE_STATE),
                                    VehicleState.datetime_to_str(datetime.datetime.now()))
 

@@ -211,6 +211,30 @@ class HomeAssistantDiscovery:
                                       template="{{ 'online' if (value | int) > 0 else 'offline' }}"
                                   )
                               ]))
+        self.__publish_sensor(mqtt_topics.DRIVETRAIN_CHARGING_LAST_START, 'Last Charge Start Time',
+                              device_class='timestamp',
+                              value_template="{{ value | int | timestamp_utc }}",
+                              icon='mdi:clock-start',
+                              custom_availability=HaCustomAvailabilityConfig(rules=[
+                                  self.__system_availability,
+                                  self.__vehicle_availability,
+                                  HaCustomAvailabilityEntry(
+                                      topic=self.__get_vehicle_topic(mqtt_topics.DRIVETRAIN_CHARGING_LAST_START),
+                                      template="{{ 'online' if (value | int) > 0 else 'offline' }}"
+                                  )
+                              ]))
+        self.__publish_sensor(mqtt_topics.DRIVETRAIN_CHARGING_LAST_END, 'Last Charge End Time',
+                              device_class='timestamp',
+                              value_template="{{ value | int | timestamp_utc }}",
+                              icon='mdi:clock-end',
+                              custom_availability=HaCustomAvailabilityConfig(rules=[
+                                  self.__system_availability,
+                                  self.__vehicle_availability,
+                                  HaCustomAvailabilityEntry(
+                                      topic=self.__get_vehicle_topic(mqtt_topics.DRIVETRAIN_CHARGING_LAST_END),
+                                      template="{{ 'online' if (value | int) > 0 else 'offline' }}"
+                                  )
+                              ]))
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE, 'Mileage', device_class='distance',
                               state_class='total_increasing', unit_of_measurement='km')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE_OF_DAY, 'Mileage of the day', device_class='distance',
