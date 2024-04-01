@@ -88,33 +88,44 @@ class HomeAssistantDiscovery:
 
         # Gateway Control
         self.__publish_select(mqtt_topics.REFRESH_MODE, 'Gateway refresh mode', [m.value for m in RefreshMode],
+                              entity_category='config',
                               icon='mdi:refresh', custom_availability=self.__system_availability_config)
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_ACTIVE, 'Gateway active refresh period',
+                              entity_category='config',
                               unit_of_measurement='s', icon='mdi:timer', min_value=30, max_value=60 * 60, step=1,
                               custom_availability=self.__system_availability_config)
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_INACTIVE, 'Gateway inactive refresh period',
+                              entity_category='config',
                               unit_of_measurement='s', icon='mdi:timer', min_value=1 * 60 * 60,
                               max_value=5 * 24 * 60 * 60, step=1,
                               custom_availability=self.__system_availability_config)
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_AFTER_SHUTDOWN, 'Gateway refresh period after car shutdown',
+                              entity_category='config',
                               unit_of_measurement='s', icon='mdi:timer', min_value=30, max_value=12 * 60 * 60, step=1,
                               custom_availability=self.__system_availability_config)
         self.__publish_number(mqtt_topics.REFRESH_PERIOD_INACTIVE_GRACE, 'Gateway grace period after car shutdown',
+                              entity_category='config',
                               unit_of_measurement='s', icon='mdi:timer', min_value=30, max_value=12 * 60 * 60, step=1,
                               custom_availability=self.__system_availability_config)
         self.__publish_sensor(mqtt_topics.REFRESH_PERIOD_CHARGING, 'Gateway charging refresh period',
+                              entity_category='diagnostic',
                               unit_of_measurement='s', icon='mdi:timer',
                               custom_availability=self.__system_availability_config)
         self.__publish_sensor(mqtt_topics.REFRESH_PERIOD_ERROR, 'Gateway error refresh period',
+                              entity_category='diagnostic',
                               unit_of_measurement='s', icon='mdi:timer',
                               custom_availability=self.__system_availability_config)
         self.__publish_sensor(mqtt_topics.REFRESH_LAST_ACTIVITY, 'Last car activity', device_class='timestamp',
+                              entity_category='diagnostic',
                               custom_availability=self.__system_availability_config)
         self.__publish_sensor(mqtt_topics.REFRESH_LAST_CHARGE_STATE, 'Last charge state', device_class='timestamp',
+                              entity_category='diagnostic',
                               custom_availability=self.__system_availability_config)
         self.__publish_sensor(mqtt_topics.REFRESH_LAST_VEHICLE_STATE, 'Last vehicle state', device_class='timestamp',
+                              entity_category='diagnostic',
                               custom_availability=self.__system_availability_config)
         self.__publish_sensor(mqtt_topics.REFRESH_LAST_ERROR, 'Last poll error', device_class='timestamp',
+                              entity_category='diagnostic',
                               custom_availability=self.__system_availability_config)
 
         # Complex sensors
@@ -211,6 +222,32 @@ class HomeAssistantDiscovery:
                                       template="{{ 'online' if (value | int) > 0 else 'offline' }}"
                                   )
                               ]))
+        self.__publish_sensor(mqtt_topics.DRIVETRAIN_CHARGING_LAST_START, 'Last Charge Start Time',
+                              device_class='timestamp',
+                              value_template="{{ value | int | timestamp_utc }}",
+                              icon='mdi:clock-start',
+                              custom_availability=HaCustomAvailabilityConfig(rules=[
+                                  self.__system_availability,
+                                  self.__vehicle_availability,
+                                  HaCustomAvailabilityEntry(
+                                      topic=self.__get_vehicle_topic(mqtt_topics.DRIVETRAIN_CHARGING_LAST_START),
+                                      template="{{ 'online' if (value | int) > 0 else 'offline' }}"
+                                  )
+                              ]))
+        self.__publish_sensor(mqtt_topics.DRIVETRAIN_CHARGING_LAST_END, 'Last Charge End Time',
+                              device_class='timestamp',
+                              value_template="{{ value | int | timestamp_utc }}",
+                              icon='mdi:clock-end',
+                              custom_availability=HaCustomAvailabilityConfig(rules=[
+                                  self.__system_availability,
+                                  self.__vehicle_availability,
+                                  HaCustomAvailabilityEntry(
+                                      topic=self.__get_vehicle_topic(mqtt_topics.DRIVETRAIN_CHARGING_LAST_END),
+                                      template="{{ 'online' if (value | int) > 0 else 'offline' }}"
+                                  )
+                              ]))
+        self.__publish_sensor(mqtt_topics.DRIVETRAIN_CHARGING_TYPE, 'Charging Mode',
+                              entity_category='diagnostic')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE, 'Mileage', device_class='distance',
                               state_class='total_increasing', unit_of_measurement='km')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE_OF_DAY, 'Mileage of the day', device_class='distance',
@@ -382,6 +419,7 @@ class HomeAssistantDiscovery:
             topic: str,
             name: str,
             enabled=True,
+            entity_category: str | None = None,
             device_class: str | None = None,
             state_class: str | None = None,
             unit_of_measurement: str | None = None,
@@ -394,6 +432,8 @@ class HomeAssistantDiscovery:
             'value_template': value_template,
             'enabled_by_default': enabled,
         }
+        if entity_category is not None:
+            payload['entity_category'] = entity_category
         if device_class is not None:
             payload['device_class'] = device_class
         if state_class is not None:
@@ -410,6 +450,7 @@ class HomeAssistantDiscovery:
             topic: str,
             name: str,
             enabled=True,
+            entity_category: str | None = None,
             device_class: str | None = None,
             state_class: str | None = None,
             unit_of_measurement: str | None = None,
@@ -433,6 +474,8 @@ class HomeAssistantDiscovery:
             'step': step,
             'enabled_by_default': enabled,
         }
+        if entity_category is not None:
+            payload['entity_category'] = entity_category
         if device_class is not None:
             payload['device_class'] = device_class
         if state_class is not None:
@@ -508,6 +551,8 @@ class HomeAssistantDiscovery:
             topic: str,
             name: str,
             options: list[str],
+            *,
+            entity_category: str | None = None,
             enabled=True,
             value_template: str = '{{ value }}',
             command_template: str = '{{ value }}',
@@ -522,6 +567,8 @@ class HomeAssistantDiscovery:
             'options': options,
             'enabled_by_default': enabled,
         }
+        if entity_category is not None:
+            payload['entity_category'] = entity_category
         if icon is not None:
             payload['icon'] = icon
 
