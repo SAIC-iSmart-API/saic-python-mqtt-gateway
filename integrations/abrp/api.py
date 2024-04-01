@@ -10,6 +10,8 @@ from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.schema import BasicVehicleStatus
 from saic_ismart_client_ng.api.vehicle_charging import ChargeInfoResp
 
+from utils import value_in_range
+
 LOG = logging.getLogger(__name__)
 
 
@@ -103,14 +105,14 @@ class AbrpApi:
         data = {}
 
         exterior_temperature = basic_vehicle_status.exteriorTemperature
-        if exterior_temperature is not None and exterior_temperature in range(-127, 127):
+        if exterior_temperature is not None and value_in_range(exterior_temperature, -127, 127):
             data['ext_temp'] = exterior_temperature
         mileage = basic_vehicle_status.mileage
         # Skip invalid range readings
-        if mileage is not None and mileage in range(1, 2147483647):
+        if mileage is not None and value_in_range(mileage, 1, 2147483647):
             data['odometer'] = mileage / 10.0
         range_elec = basic_vehicle_status.fuelRangeElec
-        if range_elec is not None and range_elec in range(1, 65535):
+        if range_elec is not None and value_in_range(range_elec, 1, 65535):
             data['est_battery_range'] = float(range_elec) / 10.0
 
         return data
@@ -120,7 +122,7 @@ class AbrpApi:
         data = {}
 
         ts = gps_position.timeStamp
-        if ts in range(1, 2147483647):
+        if value_in_range(ts, 1, 2147483647):
             data['utc'] = ts
 
         way_point = gps_position.wayPoint
@@ -128,11 +130,11 @@ class AbrpApi:
             return data
 
         speed = way_point.speed
-        if speed in range(-999, 4500):
+        if value_in_range(speed, -999, 4500):
             data['speed'] = speed / 10
 
         heading = way_point.heading
-        if heading in range(0, 360):
+        if value_in_range(heading, 0, 360):
             data['heading'] = heading
 
         position = way_point.position
@@ -140,7 +142,7 @@ class AbrpApi:
             return data
 
         altitude = position.altitude
-        if altitude in range(-100, 8900):
+        if value_in_range(altitude, -100, 8900):
             data['elevation'] = altitude
 
         lat_degrees = position.latitude / 1000000.0
