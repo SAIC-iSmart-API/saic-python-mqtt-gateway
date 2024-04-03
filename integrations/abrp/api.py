@@ -8,7 +8,7 @@ import httpx
 from saic_ismart_client_ng.api.schema import GpsPosition
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.schema import BasicVehicleStatus
-from saic_ismart_client_ng.api.vehicle_charging import ChargeInfoResp
+from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp
 
 from utils import value_in_range
 
@@ -44,7 +44,7 @@ class AbrpApi:
             }
         )
 
-    async def update_abrp(self, vehicle_status: VehicleStatusResp, charge_info: ChargeInfoResp) \
+    async def update_abrp(self, vehicle_status: VehicleStatusResp, charge_info: ChrgMgmtDataResp) \
             -> Tuple[bool, Any | None]:
 
         charge_status = None if charge_info is None else charge_info.chrgMgmtData

@@ -13,7 +13,7 @@ from apscheduler.triggers.cron import CronTrigger
 from saic_ismart_client_ng.api.message.schema import MessageEntity
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.schema import VinInfo
-from saic_ismart_client_ng.api.vehicle_charging import ChargeInfoResp, TargetBatteryCode, ChargeCurrentLimitCode, \
+from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp, TargetBatteryCode, ChargeCurrentLimitCode, \
     ScheduledChargingMode, ScheduledBatteryHeatingResp
 from saic_ismart_client_ng.api.vehicle_charging.schema import ChrgMgmtData
 
@@ -506,7 +506,7 @@ class VehicleState:
             case _:
                 raise MqttGatewayException(f'Unsupported topic {topic}')
 
-    def handle_charge_status(self, charge_info_resp: ChargeInfoResp) -> None:
+    def handle_charge_status(self, charge_info_resp: ChrgMgmtDataResp) -> None:
         charge_mgmt_data = charge_info_resp.chrgMgmtData
         is_valid_current = value_in_range(charge_mgmt_data.bmsPackCrnt, 0, 65535)
         if is_valid_current:
