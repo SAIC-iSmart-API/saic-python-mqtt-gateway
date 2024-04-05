@@ -291,11 +291,11 @@ class VehicleState:
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE), mileage)
 
         if (
-                basic_vehicle_status.currentJourneyID is not None
+                basic_vehicle_status.currentJourneyId is not None
                 and basic_vehicle_status.currentJourneyDistance is not None
         ):
             self.publisher.publish_json(self.get_topic(mqtt_topics.DRIVETRAIN_CURRENT_JOURNEY), {
-                'id': basic_vehicle_status.currentJourneyID,
+                'id': basic_vehicle_status.currentJourneyId,
                 'distance': basic_vehicle_status.currentJourneyDistance
             })
 

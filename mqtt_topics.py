@@ -63,8 +63,8 @@ DRIVETRAIN_CHARGING_CABLE_LOCK = DRIVETRAIN + '/chargingCableLock'
 DRIVETRAIN_CURRENT_JOURNEY = DRIVETRAIN + '/currentJourney'
 
 OBC = 'obc'
-OBC_CURRENT = '/current'
-OBC_VOLTAGE = '/voltage'
+OBC_CURRENT = OBC + '/current'
+OBC_VOLTAGE = OBC + '/voltage'
 
 INFO = 'info'
 INFO_BRAND = INFO + '/brand'
