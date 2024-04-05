@@ -128,6 +128,7 @@ def mock_vehicle_status(mocked_vehicle_status):
 def mock_charge_status(mocked_charge_status):
     charge_mgmt_data_rsp_msg = ChrgMgmtDataResp(
         chrgMgmtData=ChrgMgmtData(
+            bmsPackCrntV=0,
             bmsPackCrnt=int((DRIVETRAIN_CURRENT + 1000.0) * 20),
             bmsPackVol=DRIVETRAIN_VOLTAGE * 4,
             bmsPackSOCDsp=int(DRIVETRAIN_SOC * 10.0),

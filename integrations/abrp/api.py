@@ -63,12 +63,17 @@ class AbrpApi:
                 # We assume the vehicle is stationary, we will update it later from GPS if available
                 'speed': 0.0,
                 'soc': (charge_status.bmsPackSOCDsp / 10.0),
-                'power': charge_status.decoded_power,
-                'voltage': charge_status.decoded_voltage,
-                'current': charge_status.decoded_current,
                 'is_charging': vehicle_status.is_charging,
                 'is_parked': vehicle_status.is_parked,
             }
+
+            # Skip invalid current values reported by the API
+            if charge_status.bmsPackCrntV == 0:
+                data.update({
+                    'power': charge_status.decoded_power,
+                    'voltage': charge_status.decoded_voltage,
+                    'current': charge_status.decoded_current
+                })
 
             basic_vehicle_status = vehicle_status.basicVehicleStatus
             if basic_vehicle_status is not None:

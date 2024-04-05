@@ -508,19 +508,28 @@ class VehicleState:
 
     def handle_charge_status(self, charge_info_resp: ChrgMgmtDataResp) -> None:
         charge_mgmt_data = charge_info_resp.chrgMgmtData
-        is_valid_current = value_in_range(charge_mgmt_data.bmsPackCrnt, 0, 65535)
+        is_valid_current = (
+                charge_mgmt_data.bmsPackCrntV == 0
+                and value_in_range(charge_mgmt_data.bmsPackCrnt, 0, 65535)
+        )
         if is_valid_current:
-            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_CURRENT),
-                                         round(charge_mgmt_data.decoded_current, 3))
+            self.publisher.publish_float(
+                self.get_topic(mqtt_topics.DRIVETRAIN_CURRENT),
+                round(charge_mgmt_data.decoded_current, 3)
+            )
 
-        is_valid_voltage = charge_mgmt_data.bmsPackVol
-        if value_in_range(is_valid_voltage, 0, 65535):
-            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_VOLTAGE),
-                                         round(charge_mgmt_data.decoded_voltage, 3))
+        is_valid_voltage = value_in_range(charge_mgmt_data.bmsPackVol, 0, 65535)
+        if is_valid_voltage:
+            self.publisher.publish_float(
+                self.get_topic(mqtt_topics.DRIVETRAIN_VOLTAGE),
+                round(charge_mgmt_data.decoded_voltage, 3)
+            )
         is_valid_power = is_valid_current and is_valid_voltage
         if is_valid_power:
-            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_POWER),
-                                         round(charge_mgmt_data.decoded_power, 3))
+            self.publisher.publish_float(
+                self.get_topic(mqtt_topics.DRIVETRAIN_POWER),
+                round(charge_mgmt_data.decoded_power, 3)
+            )
 
         raw_charge_current_limit = charge_mgmt_data.bmsAltngChrgCrntDspCmd
         if (
