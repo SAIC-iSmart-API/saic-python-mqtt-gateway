@@ -256,6 +256,9 @@ class HomeAssistantDiscovery:
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE_SINCE_LAST_CHARGE, 'Mileage since last charge',
                               device_class='distance', state_class='total_increasing', unit_of_measurement='km',
                               enabled=False)
+        self.__publish_sensor(mqtt_topics.DRIVETRAIN_CURRENT_JOURNEY, 'Mileage of journey',
+                              device_class='distance', state_class='total_increasing', unit_of_measurement='km',
+                              value_template='{{ value_json["distance"] | int(0) }}', enabled=False)
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE, 'Auxiliary battery voltage',
                               device_class='voltage', state_class='measurement', unit_of_measurement='V',
                               icon='mdi:car-battery')
@@ -266,6 +269,14 @@ class HomeAssistantDiscovery:
                               state_class='measurement', unit_of_measurement='V')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_POWER, 'Power', device_class='power', state_class='measurement',
                               unit_of_measurement='kW')
+
+        self.__publish_sensor(mqtt_topics.OBC_CURRENT, 'OBC Current', device_class='current',
+                              state_class='measurement', unit_of_measurement='A', entity_category='diagnostic',
+                              enabled=False)
+        self.__publish_sensor(mqtt_topics.OBC_VOLTAGE, 'OBC Voltage', device_class='voltage',
+                              state_class='measurement', unit_of_measurement='V', entity_category='diagnostic',
+                              enabled=False)
+
         self.__publish_sensor(mqtt_topics.CLIMATE_INTERIOR_TEMPERATURE, 'Interior temperature',
                               device_class='temperature', state_class='measurement', unit_of_measurement='°C')
         self.__publish_sensor(mqtt_topics.CLIMATE_EXTERIOR_TEMPERATURE, 'Exterior temperature',

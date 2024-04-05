@@ -290,6 +290,15 @@ class VehicleState:
             mileage = basic_vehicle_status.mileage / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE), mileage)
 
+        if (
+                basic_vehicle_status.currentJourneyID is not None
+                and basic_vehicle_status.currentJourneyDistance is not None
+        ):
+            self.publisher.publish_json(self.get_topic(mqtt_topics.DRIVETRAIN_CURRENT_JOURNEY), {
+                'id': basic_vehicle_status.currentJourneyID,
+                'distance': basic_vehicle_status.currentJourneyDistance
+            })
+
         self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_VEHICLE_STATE),
                                    VehicleState.datetime_to_str(datetime.datetime.now()))
 
@@ -529,6 +538,18 @@ class VehicleState:
             self.publisher.publish_float(
                 self.get_topic(mqtt_topics.DRIVETRAIN_POWER),
                 round(charge_mgmt_data.decoded_power, 3)
+            )
+
+        obc_voltage = charge_mgmt_data.onBdChrgrAltrCrntInptVol
+        if obc_voltage is not None and obc_voltage != 0:
+            obc_current = charge_mgmt_data.onBdChrgrAltrCrntInptCrnt
+            self.publisher.publish_float(
+                self.get_topic(mqtt_topics.OBC_CURRENT),
+                round(obc_current / 10.0, 1)
+            )
+            self.publisher.publish_int(
+                self.get_topic(mqtt_topics.OBC_VOLTAGE),
+                obc_voltage
             )
 
         raw_charge_current_limit = charge_mgmt_data.bmsAltngChrgCrntDspCmd
