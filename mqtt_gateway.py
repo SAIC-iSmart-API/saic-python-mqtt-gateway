@@ -16,7 +16,7 @@ from saic_ismart_client_ng import SaicApi
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.alarm import AlarmType
 from saic_ismart_client_ng.api.vehicle.schema import VinInfo
-from saic_ismart_client_ng.api.vehicle_charging import ChargeInfoResp, ChargeCurrentLimitCode, TargetBatteryCode, \
+from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp, ChargeCurrentLimitCode, TargetBatteryCode, \
     ScheduledChargingMode, ScheduledBatteryHeatingResp
 from saic_ismart_client_ng.exceptions import SaicApiException
 from saic_ismart_client_ng.model import SaicApiConfiguration
@@ -146,7 +146,7 @@ class VehicleHandler:
 
         return vehicle_status_response
 
-    async def update_charge_status(self) -> ChargeInfoResp:
+    async def update_charge_status(self) -> ChrgMgmtDataResp:
         LOG.info('Updating charging status')
         charge_mgmt_data = await self.saic_api.get_vehicle_charging_management_data(self.vin_info.vin)
         self.vehicle_state.handle_charge_status(charge_mgmt_data)

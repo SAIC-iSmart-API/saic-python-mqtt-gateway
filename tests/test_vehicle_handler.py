@@ -6,7 +6,7 @@ from saic_ismart_client_ng import SaicApi
 from saic_ismart_client_ng.api.schema import GpsPosition
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.schema import VinInfo, BasicVehicleStatus
-from saic_ismart_client_ng.api.vehicle_charging import ChargeInfoResp
+from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp
 from saic_ismart_client_ng.api.vehicle_charging.schema import RvsChargeStatus, ChrgMgmtData
 from saic_ismart_client_ng.model import SaicApiConfiguration
 
@@ -126,8 +126,9 @@ def mock_vehicle_status(mocked_vehicle_status):
 
 
 def mock_charge_status(mocked_charge_status):
-    charge_mgmt_data_rsp_msg = ChargeInfoResp(
+    charge_mgmt_data_rsp_msg = ChrgMgmtDataResp(
         chrgMgmtData=ChrgMgmtData(
+            bmsPackCrntV=0,
             bmsPackCrnt=int((DRIVETRAIN_CURRENT + 1000.0) * 20),
             bmsPackVol=DRIVETRAIN_VOLTAGE * 4,
             bmsPackSOCDsp=int(DRIVETRAIN_SOC * 10.0),
