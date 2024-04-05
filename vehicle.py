@@ -551,6 +551,9 @@ class VehicleState:
                 self.get_topic(mqtt_topics.OBC_VOLTAGE),
                 obc_voltage
             )
+        else:
+            self.publisher.publish_float(self.get_topic(mqtt_topics.OBC_CURRENT), 0.0)
+            self.publisher.publish_int(self.get_topic(mqtt_topics.OBC_VOLTAGE), 0)
 
         raw_charge_current_limit = charge_mgmt_data.bmsAltngChrgCrntDspCmd
         if (
