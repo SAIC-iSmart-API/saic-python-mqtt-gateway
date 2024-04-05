@@ -296,7 +296,7 @@ class VehicleState:
         ):
             self.publisher.publish_json(self.get_topic(mqtt_topics.DRIVETRAIN_CURRENT_JOURNEY), {
                 'id': basic_vehicle_status.currentJourneyId,
-                'distance': basic_vehicle_status.currentJourneyDistance
+                'distance': round(basic_vehicle_status.currentJourneyDistance / 10.0, 1)
             })
 
         self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_VEHICLE_STATE),
