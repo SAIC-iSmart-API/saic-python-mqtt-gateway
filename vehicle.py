@@ -557,14 +557,18 @@ class VehicleState:
             ):
                 self.publisher.publish_int(self.charging_station.soc_topic, int(soc), True)
 
-        if value_in_range(charge_mgmt_data.bmsEstdElecRng, 0, 65535):
-            estimated_electrical_range = charge_mgmt_data.bmsEstdElecRng / 10.0
-            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_HYBRID_ELECTRICAL_RANGE),
-                                         estimated_electrical_range)
+        estd_elec_rng = charge_mgmt_data.bmsEstdElecRng
+        if value_in_range(estd_elec_rng, 0, 65535) and estd_elec_rng != 2047:
+            estimated_electrical_range = estd_elec_rng
+            self.publisher.publish_int(
+                self.get_topic(mqtt_topics.DRIVETRAIN_HYBRID_ELECTRICAL_RANGE),
+                estimated_electrical_range
+            )
 
         charge_status = charge_info_resp.rvsChargeStatus
-        if value_in_range(charge_status.fuelRangeElec, 0, 65535):
-            electric_range = charge_status.fuelRangeElec / 10.0
+        fuel_range_elec = charge_status.fuelRangeElec
+        if value_in_range(fuel_range_elec, 0, 65535):
+            electric_range = fuel_range_elec / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_RANGE), electric_range)
             if (
                     self.charging_station
@@ -603,12 +607,14 @@ class VehicleState:
             except ValueError:
                 LOG.exception("Error parsing scheduled charging info")
 
-        # Only publish remaining charging time if the car is charging and we have current flowing
+        # Only publish remaining charging time if the car tells us the value is OK
         remaining_charging_time = None
-        if charge_status.chargingGunState and is_valid_current and charge_mgmt_data.decoded_current < 0:
+        if charge_mgmt_data.chrgngRmnngTimeV == 0:
             remaining_charging_time = charge_mgmt_data.chrgngRmnngTime * 60
-            self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME),
-                                       remaining_charging_time)
+            self.publisher.publish_int(
+                self.get_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME),
+                remaining_charging_time
+            )
         else:
             self.publisher.publish_int(self.get_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME), 0)
 
