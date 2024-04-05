@@ -283,7 +283,7 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
                                DRIVETRAIN_HYBRID_ELECTRICAL_RANGE)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK),
                                DRIVETRAIN_CHARGING_CABLE_LOCK)
-        self.assertEqual(17, len(self.vehicle_handler.publisher.map))
+        self.assertEqual(19, len(self.vehicle_handler.publisher.map))
 
     def assert_mqtt_topic(self, topic: str, value):
         mqtt_map = self.vehicle_handler.publisher.map
