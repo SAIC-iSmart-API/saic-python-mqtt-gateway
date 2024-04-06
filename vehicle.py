@@ -11,6 +11,7 @@ from apscheduler.job import Job
 from apscheduler.schedulers.base import BaseScheduler
 from apscheduler.triggers.cron import CronTrigger
 from saic_ismart_client_ng.api.message.schema import MessageEntity
+from saic_ismart_client_ng.api.schema import GpsStatus
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.schema import VinInfo
 from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp, TargetBatteryCode, ChargeCurrentLimitCode, \
@@ -218,8 +219,8 @@ class VehicleState:
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE),
                                          battery_voltage / 10.0)
 
-        speed = 0.0
-        if vehicle_status.gpsPosition and vehicle_status.gpsPosition.timeStamp > 0:
+        speed = None
+        if vehicle_status.gpsPosition and vehicle_status.gpsPosition.gps_status_decoded not in [GpsStatus.NO_SIGNAL, None]:
             way_point = vehicle_status.gpsPosition.wayPoint
             if way_point:
                 speed = way_point.speed / 10.0
@@ -236,7 +237,14 @@ class VehicleState:
                             'latitude': latitude,
                             'longitude': longitude,
                         })
-        self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_SPEED), speed)
+
+        # Assume speed is 0 if the vehicle is parked and we have no other info
+        if speed is None and vehicle_status.is_parked:
+            speed = 0.0
+
+        if speed is not None:
+            self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_SPEED), speed)
+
         if basic_vehicle_status.driverWindow is not None:
             self.publisher.publish_bool(self.get_topic(mqtt_topics.WINDOWS_DRIVER), basic_vehicle_status.driverWindow)
         if basic_vehicle_status.passengerWindow is not None:

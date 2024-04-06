@@ -5,7 +5,7 @@ from abc import ABC
 from typing import Any, Tuple, Optional
 
 import httpx
-from saic_ismart_client_ng.api.schema import GpsPosition
+from saic_ismart_client_ng.api.schema import GpsPosition, GpsStatus
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.schema import BasicVehicleStatus
 from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp
@@ -60,12 +60,16 @@ class AbrpApi:
             data = {
                 # We assume the timestamp is now, we will update it later from GPS if available
                 'utc': int(time.time()),
-                # We assume the vehicle is stationary, we will update it later from GPS if available
-                'speed': 0.0,
                 'soc': (charge_status.bmsPackSOCDsp / 10.0),
                 'is_charging': vehicle_status.is_charging,
                 'is_parked': vehicle_status.is_parked,
             }
+
+            if vehicle_status.is_parked:
+                data.update({
+                    # We assume the vehicle is stationary, we will update it later from GPS if available
+                    'speed': 0.0,
+                })
 
             # Skip invalid current values reported by the API
             if charge_status.bmsPackCrntV == 0:
@@ -125,6 +129,10 @@ class AbrpApi:
     @staticmethod
     def __extract_gps_position(gps_position: GpsPosition) -> dict:
         data = {}
+
+        # Do not use GPS data if it is not available
+        if gps_position.gps_status_decoded in [None, GpsStatus.NO_SIGNAL]:
+            return data
 
         ts = gps_position.timeStamp
         if value_in_range(ts, 1, 2147483647):
