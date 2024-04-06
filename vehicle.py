@@ -220,7 +220,8 @@ class VehicleState:
                                          battery_voltage / 10.0)
 
         speed = None
-        if vehicle_status.gpsPosition and vehicle_status.gpsPosition.gps_status_decoded not in [GpsStatus.NO_SIGNAL, None]:
+        if vehicle_status.gpsPosition and vehicle_status.gpsPosition.gps_status_decoded not in [GpsStatus.NO_SIGNAL,
+                                                                                                None]:
             way_point = vehicle_status.gpsPosition.wayPoint
             if way_point:
                 speed = way_point.speed / 10.0
@@ -726,12 +727,12 @@ class VehicleState:
                 round(power_usage_since_last_charge, 2)
             )
 
-        # Only compute a dynamic refresh period if we have detected at least 1kW of power during charging
         if (
                 charge_status.chargingGunState
                 and is_valid_power
                 and charge_mgmt_data.decoded_power < -1
         ):
+            # Only compute a dynamic refresh period if we have detected at least 1kW of power during charging
             time_for_1pct = 36.0 * self.get_actual_battery_capacity() / abs(charge_mgmt_data.decoded_power)
             time_for_min_pct = math.ceil(self.charge_polling_min_percent * time_for_1pct)
             # It doesn't make sense to refresh less often than the estimated time for completion
@@ -740,8 +741,14 @@ class VehicleState:
             else:
                 computed_refresh_period = time_for_1pct
             self.set_refresh_period_charging(computed_refresh_period)
-        else:
+        elif not self.is_charging:
+            # Reset the charging refresh period if we detected we are not longer charging
             self.set_refresh_period_charging(0)
+        else:
+            # Otherwise let's keep the last computed refresh period
+            # This avoids falling back to the active refresh period which, being too often, results in a ban from
+            # the SAIC API
+            pass
 
         self.publisher.publish_bool(
             self.get_topic(mqtt_topics.DRIVETRAIN_BATTERY_HEATING),
