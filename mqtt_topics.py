@@ -29,6 +29,7 @@ DOORS_REAR_RIGHT = DOORS + '/rearRight'
 LIGHTS = 'lights'
 LIGHTS_MAIN_BEAM = LIGHTS + '/mainBeam'
 LIGHTS_DIPPED_BEAM = LIGHTS + '/dippedBeam'
+LIGHTS_SIDE = LIGHTS + '/side'
 
 DRIVETRAIN = 'drivetrain'
 DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE = DRIVETRAIN + '/auxiliaryBatteryVoltage'
