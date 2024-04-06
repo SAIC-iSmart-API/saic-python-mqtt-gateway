@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from saic_ismart_client_ng import SaicApi
-from saic_ismart_client_ng.api.schema import GpsPosition
+from saic_ismart_client_ng.api.schema import GpsPosition, GpsStatus
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.schema import VinInfo, BasicVehicleStatus
 from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp
@@ -45,7 +45,7 @@ CLIMATE_EXTERIOR_TEMPERATURE = 18
 CLIMATE_REMOTE_CLIMATE_STATE = 2
 CLIMATE_BACK_WINDOW_HEAT = 1
 
-LOCATION_SPEED = 0.0
+LOCATION_SPEED = 2.0
 LOCATION_HEADING = 42
 LOCATION_LATITUDE = 48.8584
 LOCATION_LONGITUDE = 22.945
@@ -107,6 +107,7 @@ def mock_vehicle_status(mocked_vehicle_status):
             frontRightSeatHeatLevel=1
         ),
         gpsPosition=GpsPosition(
+            gpsStatus=GpsStatus.FIX_3d.value,
             timeStamp=42,
             wayPoint=GpsPosition.WayPoint(
                 position=GpsPosition.WayPoint.Position(
@@ -116,8 +117,8 @@ def mock_vehicle_status(mocked_vehicle_status):
                 ),
                 heading=LOCATION_HEADING,
                 hdop=0,
-                satellites=0,
-                speed=0
+                satellites=3,
+                speed=20,
             )
         )
     )

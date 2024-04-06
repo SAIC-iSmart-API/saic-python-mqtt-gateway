@@ -11,6 +11,7 @@ from apscheduler.job import Job
 from apscheduler.schedulers.base import BaseScheduler
 from apscheduler.triggers.cron import CronTrigger
 from saic_ismart_client_ng.api.message.schema import MessageEntity
+from saic_ismart_client_ng.api.schema import GpsStatus
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.schema import VinInfo
 from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp, TargetBatteryCode, ChargeCurrentLimitCode, \
@@ -218,25 +219,37 @@ class VehicleState:
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE),
                                          battery_voltage / 10.0)
 
-        speed = 0.0
-        if vehicle_status.gpsPosition and vehicle_status.gpsPosition.timeStamp > 0:
-            way_point = vehicle_status.gpsPosition.wayPoint
+        speed = None
+        gps_position = vehicle_status.gpsPosition
+        if (
+                gps_position
+                and gps_position.gps_status_decoded in [GpsStatus.FIX_2D, GpsStatus.FIX_3d]
+        ):
+            way_point = gps_position.wayPoint
             if way_point:
                 speed = way_point.speed / 10.0
                 self.publisher.publish_int(self.get_topic(mqtt_topics.LOCATION_HEADING), way_point.heading)
                 position = way_point.position
                 if position:
+                    if gps_position.gps_status_decoded == GpsStatus.FIX_3d:
+                        self.publisher.publish_int(self.get_topic(mqtt_topics.LOCATION_ELEVATION), position.altitude)
                     latitude = position.latitude / 1000000.0
                     longitude = position.longitude / 1000000.0
                     if abs(latitude) <= 90 and abs(longitude) <= 180:
                         self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_LATITUDE), latitude)
                         self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_LONGITUDE), longitude)
-                        self.publisher.publish_int(self.get_topic(mqtt_topics.LOCATION_ELEVATION), position.altitude)
                         self.publisher.publish_json(self.get_topic(mqtt_topics.LOCATION_POSITION), {
                             'latitude': latitude,
                             'longitude': longitude,
                         })
-        self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_SPEED), speed)
+
+        # Assume speed is 0 if the vehicle is parked and we have no other info
+        if speed is None and vehicle_status.is_parked:
+            speed = 0.0
+
+        if speed is not None:
+            self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_SPEED), speed)
+
         if basic_vehicle_status.driverWindow is not None:
             self.publisher.publish_bool(self.get_topic(mqtt_topics.WINDOWS_DRIVER), basic_vehicle_status.driverWindow)
         if basic_vehicle_status.passengerWindow is not None:
@@ -718,12 +731,12 @@ class VehicleState:
                 round(power_usage_since_last_charge, 2)
             )
 
-        # Only compute a dynamic refresh period if we have detected at least 1kW of power during charging
         if (
                 charge_status.chargingGunState
                 and is_valid_power
                 and charge_mgmt_data.decoded_power < -1
         ):
+            # Only compute a dynamic refresh period if we have detected at least 1kW of power during charging
             time_for_1pct = 36.0 * self.get_actual_battery_capacity() / abs(charge_mgmt_data.decoded_power)
             time_for_min_pct = math.ceil(self.charge_polling_min_percent * time_for_1pct)
             # It doesn't make sense to refresh less often than the estimated time for completion
@@ -732,8 +745,14 @@ class VehicleState:
             else:
                 computed_refresh_period = time_for_1pct
             self.set_refresh_period_charging(computed_refresh_period)
-        else:
+        elif not self.is_charging:
+            # Reset the charging refresh period if we detected we are not longer charging
             self.set_refresh_period_charging(0)
+        else:
+            # Otherwise let's keep the last computed refresh period
+            # This avoids falling back to the active refresh period which, being too often, results in a ban from
+            # the SAIC API
+            pass
 
         self.publisher.publish_bool(
             self.get_topic(mqtt_topics.DRIVETRAIN_BATTERY_HEATING),
