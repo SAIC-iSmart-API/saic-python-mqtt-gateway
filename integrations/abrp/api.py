@@ -131,7 +131,7 @@ class AbrpApi:
         data = {}
 
         # Do not use GPS data if it is not available
-        if gps_position.gps_status_decoded in [None, GpsStatus.NO_SIGNAL]:
+        if gps_position.gps_status_decoded not in [GpsStatus.FIX_2D, GpsStatus.FIX_3d]:
             return data
 
         ts = gps_position.timeStamp
@@ -155,7 +155,7 @@ class AbrpApi:
             return data
 
         altitude = position.altitude
-        if value_in_range(altitude, -100, 8900):
+        if gps_position.gps_status_decoded == GpsStatus.FIX_3d and value_in_range(altitude, -100, 8900):
             data['elevation'] = altitude
 
         lat_degrees = position.latitude / 1000000.0

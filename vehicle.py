@@ -220,20 +220,24 @@ class VehicleState:
                                          battery_voltage / 10.0)
 
         speed = None
-        if vehicle_status.gpsPosition and vehicle_status.gpsPosition.gps_status_decoded not in [GpsStatus.NO_SIGNAL,
-                                                                                                None]:
-            way_point = vehicle_status.gpsPosition.wayPoint
+        gps_position = vehicle_status.gpsPosition
+        if (
+                gps_position
+                and gps_position.gps_status_decoded in [GpsStatus.FIX_2D, GpsStatus.FIX_3d]
+        ):
+            way_point = gps_position.wayPoint
             if way_point:
                 speed = way_point.speed / 10.0
                 self.publisher.publish_int(self.get_topic(mqtt_topics.LOCATION_HEADING), way_point.heading)
                 position = way_point.position
                 if position:
+                    if gps_position.gps_status_decoded == GpsStatus.FIX_3d:
+                        self.publisher.publish_int(self.get_topic(mqtt_topics.LOCATION_ELEVATION), position.altitude)
                     latitude = position.latitude / 1000000.0
                     longitude = position.longitude / 1000000.0
                     if abs(latitude) <= 90 and abs(longitude) <= 180:
                         self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_LATITUDE), latitude)
                         self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_LONGITUDE), longitude)
-                        self.publisher.publish_int(self.get_topic(mqtt_topics.LOCATION_ELEVATION), position.altitude)
                         self.publisher.publish_json(self.get_topic(mqtt_topics.LOCATION_POSITION), {
                             'latitude': latitude,
                             'longitude': longitude,
