@@ -319,6 +319,8 @@ class HomeAssistantDiscovery:
                                      icon='mdi:car-light-high')
         self.__publish_binary_sensor(mqtt_topics.LIGHTS_DIPPED_BEAM, 'Lights Dipped Beam', device_class='light',
                                      icon='mdi:car-light-dimmed')
+        self.__publish_binary_sensor(mqtt_topics.LIGHTS_SIDE, 'Lights Side', device_class='light',
+                                     icon='mdi:car-light-dimmed')
 
         # Remove deprecated sensors
         self.__unpublish_ha_discovery_message('sensor', 'Front window defroster heating')

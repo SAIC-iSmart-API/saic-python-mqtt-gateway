@@ -22,7 +22,7 @@ import mqtt_topics
 from integrations.openwb.charging_station import ChargingStation
 from exceptions import MqttGatewayException
 from publisher.core import Publisher
-from utils import value_in_range
+from utils import value_in_range, is_valid_temperature
 
 DEFAULT_AC_TEMP = 22
 PRESSURE_TO_BAR_FACTOR = 0.04
@@ -209,10 +209,10 @@ class VehicleState:
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_RUNNING), is_engine_running)
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING), self.is_charging)
         interior_temperature = basic_vehicle_status.interiorTemperature
-        if value_in_range(interior_temperature, -127, 127):
+        if is_valid_temperature(interior_temperature):
             self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_INTERIOR_TEMPERATURE), interior_temperature)
         exterior_temperature = basic_vehicle_status.exteriorTemperature
-        if value_in_range(exterior_temperature, -127, 127):
+        if is_valid_temperature(exterior_temperature):
             self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_EXTERIOR_TEMPERATURE), exterior_temperature)
         battery_voltage = basic_vehicle_status.batteryVoltage
         if value_in_range(battery_voltage, 1, 65535):
@@ -279,8 +279,8 @@ class VehicleState:
         self.__publish_tyre(basic_vehicle_status.rearRightTyrePressure, mqtt_topics.TYRES_REAR_RIGHT_PRESSURE)
 
         self.publisher.publish_bool(self.get_topic(mqtt_topics.LIGHTS_MAIN_BEAM), basic_vehicle_status.mainBeamStatus)
-        self.publisher.publish_bool(self.get_topic(mqtt_topics.LIGHTS_DIPPED_BEAM),
-                                    basic_vehicle_status.dippedBeamStatus)
+        self.publisher.publish_bool(self.get_topic(mqtt_topics.LIGHTS_DIPPED_BEAM), basic_vehicle_status.dippedBeamStatus)
+        self.publisher.publish_bool(self.get_topic(mqtt_topics.LIGHTS_SIDE), basic_vehicle_status.sideLightStatus)
 
         self.publisher.publish_str(self.get_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE),
                                    VehicleState.to_remote_climate(remote_climate_status))

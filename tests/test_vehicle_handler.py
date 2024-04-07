@@ -72,6 +72,7 @@ TYRES_REAR_RIGHT_PRESSURE = 2.8
 
 LIGHTS_MAIN_BEAM = False
 LIGHTS_DIPPED_BEAM = False
+LIGHTS_SIDE = False
 
 
 def mock_vehicle_status(mocked_vehicle_status):
@@ -103,6 +104,7 @@ def mock_vehicle_status(mocked_vehicle_status):
             rearRightTyrePressure=int(TYRES_REAR_RIGHT_PRESSURE * 25),
             mainBeamStatus=LIGHTS_MAIN_BEAM,
             dippedBeamStatus=LIGHTS_DIPPED_BEAM,
+            sideLightStatus=LIGHTS_SIDE,
             frontLeftSeatHeatLevel=0,
             frontRightSeatHeatLevel=1
         ),
@@ -213,6 +215,7 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
                                TYRES_REAR_RIGHT_PRESSURE)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.LIGHTS_MAIN_BEAM), LIGHTS_MAIN_BEAM)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.LIGHTS_DIPPED_BEAM), LIGHTS_DIPPED_BEAM)
+        self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.LIGHTS_SIDE), LIGHTS_SIDE)
         expected_topics = {
             '/vehicles/vin10000000000000/drivetrain/hvBatteryActive',
             '/vehicles/vin10000000000000/refresh/lastActivity',
@@ -245,6 +248,7 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
             '/vehicles/vin10000000000000/tyres/rearRightPressure',
             '/vehicles/vin10000000000000/lights/mainBeam',
             '/vehicles/vin10000000000000/lights/dippedBeam',
+            '/vehicles/vin10000000000000/lights/side',
             '/vehicles/vin10000000000000/climate/remoteClimateState',
             '/vehicles/vin10000000000000/climate/rearWindowDefrosterHeating',
             '/vehicles/vin10000000000000/climate/heatedSeatsFrontLeftLevel',
