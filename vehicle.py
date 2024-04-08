@@ -106,6 +106,7 @@ class VehicleState:
 
     def set_refresh_period_charging(self, seconds: int):
         # Do not refresh more than the active period and less than the inactive one
+        seconds = round(seconds)
         seconds = min(max(seconds, self.refresh_period_active), self.refresh_period_inactive) if seconds > 0 else 0
         self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_CHARGING), seconds)
         human_readable_period = str(datetime.timedelta(seconds=seconds))
@@ -279,7 +280,8 @@ class VehicleState:
         self.__publish_tyre(basic_vehicle_status.rearRightTyrePressure, mqtt_topics.TYRES_REAR_RIGHT_PRESSURE)
 
         self.publisher.publish_bool(self.get_topic(mqtt_topics.LIGHTS_MAIN_BEAM), basic_vehicle_status.mainBeamStatus)
-        self.publisher.publish_bool(self.get_topic(mqtt_topics.LIGHTS_DIPPED_BEAM), basic_vehicle_status.dippedBeamStatus)
+        self.publisher.publish_bool(self.get_topic(mqtt_topics.LIGHTS_DIPPED_BEAM),
+                                    basic_vehicle_status.dippedBeamStatus)
         self.publisher.publish_bool(self.get_topic(mqtt_topics.LIGHTS_SIDE), basic_vehicle_status.sideLightStatus)
 
         self.publisher.publish_str(self.get_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE),
@@ -746,7 +748,7 @@ class VehicleState:
                 computed_refresh_period = time_for_1pct
             self.set_refresh_period_charging(computed_refresh_period)
         elif not self.is_charging:
-            # Reset the charging refresh period if we detected we are not longer charging
+            # Reset the charging refresh period if we detected we are no longer charging
             self.set_refresh_period_charging(0)
         else:
             # Otherwise let's keep the last computed refresh period
