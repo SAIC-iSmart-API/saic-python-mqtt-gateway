@@ -67,6 +67,9 @@ OBC = 'obc'
 OBC_CURRENT = OBC + '/current'
 OBC_VOLTAGE = OBC + '/voltage'
 
+BMS = 'bms'
+BMS_CHARGE_STATUS = BMS + '/chargeStatus'
+
 INFO = 'info'
 INFO_BRAND = INFO + '/brand'
 INFO_MODEL = INFO + '/model'

@@ -604,6 +604,10 @@ class VehicleState:
                 estimated_electrical_range
             )
 
+        bms_chrg_sts = charge_mgmt_data.bmsChrgSts
+        if bms_chrg_sts is not None:
+            self.publisher.publish_int(self.get_topic(mqtt_topics.BMS_CHARGE_STATUS), bms_chrg_sts)
+
         charge_status = charge_info_resp.rvsChargeStatus
         fuel_range_elec = charge_status.fuelRangeElec
         if value_in_range(fuel_range_elec, 0, 65535):

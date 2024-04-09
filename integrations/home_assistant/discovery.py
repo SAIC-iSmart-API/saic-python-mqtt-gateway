@@ -247,7 +247,11 @@ class HomeAssistantDiscovery:
                                   )
                               ]))
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_CHARGING_TYPE, 'Charging Mode',
-                              entity_category='diagnostic')
+                              entity_category='diagnostic',
+                              enabled=False)
+        self.__publish_sensor(mqtt_topics.BMS_CHARGE_STATUS, 'BMS Charge Status',
+                              entity_category='diagnostic',
+                              enabled=False)
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE, 'Mileage', device_class='distance',
                               state_class='total_increasing', unit_of_measurement='km')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_MILEAGE_OF_DAY, 'Mileage of the day', device_class='distance',
