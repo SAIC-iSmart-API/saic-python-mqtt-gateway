@@ -192,6 +192,14 @@ class VehicleState:
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING), self.is_charging)
 
     def handle_vehicle_status(self, vehicle_status: VehicleStatusResp) -> None:
+        vehicle_status_time = datetime.datetime.fromtimestamp(vehicle_status.statusTime or 0, tz=datetime.timezone.utc)
+        now_time = datetime.datetime.now(tz=datetime.timezone.utc)
+        vehicle_status_drift = abs(now_time - vehicle_status_time)
+        if vehicle_status_drift > datetime.timedelta(minutes=15):
+            raise MqttGatewayException(
+                f"Vehicle status time drifted too much from current time: {vehicle_status_drift}"
+            )
+
         is_engine_running = vehicle_status.is_engine_running
         self.is_charging = vehicle_status.is_charging
         basic_vehicle_status = vehicle_status.basicVehicleStatus
