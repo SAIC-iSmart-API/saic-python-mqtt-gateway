@@ -167,7 +167,7 @@ class VehicleState:
             else:
                 self.__scheduler.add_job(
                     func=self.set_refresh_mode,
-                    args=[RefreshMode.FORCE],
+                    args=[RefreshMode.FORCE, 'check for scheduled charging start'],
                     trigger=trigger,
                     kwargs={},
                     name=scheduled_charging_job_id,
@@ -369,7 +369,10 @@ class VehicleState:
             case RefreshMode.OFF:
                 return False
             case RefreshMode.FORCE:
-                self.set_refresh_mode(self.previous_refresh_mode)
+                self.set_refresh_mode(
+                    self.previous_refresh_mode,
+                    'restoring of previous refresh mode after a FORCE execution'
+                )
                 return True
             # RefreshMode.PERIODIC is treated like default
             case _:
@@ -492,7 +495,10 @@ class VehicleState:
             self.set_ac_temperature(DEFAULT_AC_TEMP)
         # Make sure the only refresh mode that is not supported at start is RefreshMode.PERIODIC
         if self.refresh_mode in [RefreshMode.OFF, RefreshMode.FORCE]:
-            self.set_refresh_mode(RefreshMode.PERIODIC)
+            self.set_refresh_mode(
+                RefreshMode.PERIODIC,
+                f"initial gateway startup from an invalid state {self.refresh_mode}"
+            )
 
     async def configure_by_message(self, *, topic: str, payload: str):
         payload = payload.lower()
@@ -500,7 +506,7 @@ class VehicleState:
             case mqtt_topics.REFRESH_MODE:
                 try:
                     refresh_mode = RefreshMode.get(payload)
-                    self.set_refresh_mode(refresh_mode)
+                    self.set_refresh_mode(refresh_mode, "MQTT direct set refresh mode command execution")
                 except KeyError:
                     raise MqttGatewayException(f'Unsupported payload {payload}')
             case mqtt_topics.REFRESH_PERIOD_ACTIVE:
@@ -825,7 +831,7 @@ class VehicleState:
     def datetime_to_str(dt: datetime.datetime) -> str:
         return datetime.datetime.astimezone(dt, tz=datetime.timezone.utc).isoformat()
 
-    def set_refresh_mode(self, mode: RefreshMode):
+    def set_refresh_mode(self, mode: RefreshMode, cause: str):
         if (
                 mode is not None and
                 (
@@ -834,13 +840,13 @@ class VehicleState:
                 )
         ):
             new_mode_value = mode.value
-            LOG.info(f"Setting refresh mode to {new_mode_value}")
+            LOG.info(f"Setting refresh mode to {new_mode_value} due to {cause}")
             self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_MODE), new_mode_value)
             # Make sure we never store FORCE as previous refresh mode
             if self.refresh_mode != RefreshMode.FORCE:
                 self.previous_refresh_mode = self.refresh_mode
             self.refresh_mode = mode
-            LOG.debug(f'Refresh mode set to {new_mode_value}')
+            LOG.debug(f'Refresh mode set to {new_mode_value} due to {cause}')
 
     @property
     def has_sunroof(self):
