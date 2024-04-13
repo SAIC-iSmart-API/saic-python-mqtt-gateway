@@ -196,9 +196,10 @@ class VehicleState:
         now_time = datetime.datetime.now(tz=datetime.timezone.utc)
         vehicle_status_drift = abs(now_time - vehicle_status_time)
         if vehicle_status_drift > datetime.timedelta(minutes=15):
-            raise MqttGatewayException(
-                f"Vehicle status time drifted too much from current time: {vehicle_status_drift}"
-            )
+            # raise MqttGatewayException(
+            #    f"Vehicle status time drifted too much from current time: {vehicle_status_drift}"
+            # )
+            return
 
         is_engine_running = vehicle_status.is_engine_running
         self.is_charging = vehicle_status.is_charging
@@ -456,9 +457,12 @@ class VehicleState:
         self.__last_failed_refresh = value
         if value is None:
             self.__failed_refresh_counter = 0
-            self.__refresh_period_error = 30
+            self.__refresh_period_error = self.refresh_period_active
         else:
-            self.__refresh_period_error = round(min(30 + 0.5 * ((2 ** self.__failed_refresh_counter) - 1), 3600))
+            self.__refresh_period_error = round(min(
+                self.refresh_period_active + 0.5 * ((2 ** self.__failed_refresh_counter) - 1),
+                self.refresh_period_inactive
+            ))
             self.__failed_refresh_counter = self.__failed_refresh_counter + 1
             self.publisher.publish_str(
                 self.get_topic(mqtt_topics.REFRESH_LAST_ERROR),
