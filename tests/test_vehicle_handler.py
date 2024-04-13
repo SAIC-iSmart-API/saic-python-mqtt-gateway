@@ -1,3 +1,4 @@
+import time
 import unittest
 from unittest.mock import patch
 
@@ -77,6 +78,7 @@ LIGHTS_SIDE = False
 
 def mock_vehicle_status(mocked_vehicle_status):
     vehicle_status_resp = VehicleStatusResp(
+        statusTime=int(time.time()),
         basicVehicleStatus=BasicVehicleStatus(
             engineStatus=0,
             extendedData2=2,
