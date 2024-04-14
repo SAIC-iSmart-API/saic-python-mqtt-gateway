@@ -453,9 +453,9 @@ class VehicleState:
         if value is None:
             self.__failed_refresh_counter = 0
             self.__refresh_period_error = self.refresh_period_active
-        else:
+        elif self.__refresh_period_error < self.refresh_period_inactive:
             self.__refresh_period_error = round(min(
-                self.refresh_period_active + 0.5 * ((2 ** self.__failed_refresh_counter) - 1),
+                self.refresh_period_active * (2 ** self.__failed_refresh_counter),
                 self.refresh_period_inactive
             ))
             self.__failed_refresh_counter = self.__failed_refresh_counter + 1
