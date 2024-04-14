@@ -384,10 +384,6 @@ class VehicleState:
                 return True
             # RefreshMode.PERIODIC is treated like default
             case _:
-                if self.last_successful_refresh is None:
-                    self.mark_successful_refresh()
-                    return True
-
                 last_actual_poll = self.last_successful_refresh
                 if self.last_failed_refresh is not None:
                     last_actual_poll = max(last_actual_poll, self.last_failed_refresh)
