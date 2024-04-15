@@ -58,8 +58,8 @@ class AbrpApi:
             # Request
             tlm_send_url = f'{self.__base_uri}tlm/send'
             data = {
-                # We assume the timestamp is now, we will update it later from GPS if available
-                'utc': int(time.time()),
+                # We assume the timestamp is the refresh time or now, we will update it later from GPS if available
+                'utc': int(vehicle_status.statusTime) or int(time.time()),
                 'soc': (charge_status.bmsPackSOCDsp / 10.0),
                 'is_charging': vehicle_status.is_charging,
                 'is_parked': vehicle_status.is_parked,

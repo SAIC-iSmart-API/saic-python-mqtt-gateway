@@ -106,6 +106,7 @@ class VehicleState:
 
     def set_refresh_period_charging(self, seconds: int):
         # Do not refresh more than the active period and less than the inactive one
+        seconds = round(seconds)
         seconds = min(max(seconds, self.refresh_period_active), self.refresh_period_inactive) if seconds > 0 else 0
         self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_CHARGING), seconds)
         human_readable_period = str(datetime.timedelta(seconds=seconds))
@@ -166,7 +167,7 @@ class VehicleState:
             else:
                 self.__scheduler.add_job(
                     func=self.set_refresh_mode,
-                    args=[RefreshMode.FORCE],
+                    args=[RefreshMode.FORCE, 'check for scheduled charging start'],
                     trigger=trigger,
                     kwargs={},
                     name=scheduled_charging_job_id,
@@ -191,6 +192,14 @@ class VehicleState:
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING), self.is_charging)
 
     def handle_vehicle_status(self, vehicle_status: VehicleStatusResp) -> None:
+        vehicle_status_time = datetime.datetime.fromtimestamp(vehicle_status.statusTime or 0, tz=datetime.timezone.utc)
+        now_time = datetime.datetime.now(tz=datetime.timezone.utc)
+        vehicle_status_drift = abs(now_time - vehicle_status_time)
+        if vehicle_status_drift > datetime.timedelta(minutes=15):
+            raise MqttGatewayException(
+                f"Vehicle status time drifted too much from current time: {vehicle_status_drift}"
+            )
+
         is_engine_running = vehicle_status.is_engine_running
         self.is_charging = vehicle_status.is_charging
         basic_vehicle_status = vehicle_status.basicVehicleStatus
@@ -279,7 +288,8 @@ class VehicleState:
         self.__publish_tyre(basic_vehicle_status.rearRightTyrePressure, mqtt_topics.TYRES_REAR_RIGHT_PRESSURE)
 
         self.publisher.publish_bool(self.get_topic(mqtt_topics.LIGHTS_MAIN_BEAM), basic_vehicle_status.mainBeamStatus)
-        self.publisher.publish_bool(self.get_topic(mqtt_topics.LIGHTS_DIPPED_BEAM), basic_vehicle_status.dippedBeamStatus)
+        self.publisher.publish_bool(self.get_topic(mqtt_topics.LIGHTS_DIPPED_BEAM),
+                                    basic_vehicle_status.dippedBeamStatus)
         self.publisher.publish_bool(self.get_topic(mqtt_topics.LIGHTS_SIDE), basic_vehicle_status.sideLightStatus)
 
         self.publisher.publish_str(self.get_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE),
@@ -367,14 +377,13 @@ class VehicleState:
             case RefreshMode.OFF:
                 return False
             case RefreshMode.FORCE:
-                self.set_refresh_mode(self.previous_refresh_mode)
+                self.set_refresh_mode(
+                    self.previous_refresh_mode,
+                    'restoring of previous refresh mode after a FORCE execution'
+                )
                 return True
             # RefreshMode.PERIODIC is treated like default
             case _:
-                if self.last_successful_refresh is None:
-                    self.mark_successful_refresh()
-                    return True
-
                 last_actual_poll = self.last_successful_refresh
                 if self.last_failed_refresh is not None:
                     last_actual_poll = max(last_actual_poll, self.last_failed_refresh)
@@ -443,9 +452,12 @@ class VehicleState:
         self.__last_failed_refresh = value
         if value is None:
             self.__failed_refresh_counter = 0
-            self.__refresh_period_error = 30
-        else:
-            self.__refresh_period_error = round(min(30 + 0.5 * ((2 ** self.__failed_refresh_counter) - 1), 3600))
+            self.__refresh_period_error = self.refresh_period_active
+        elif self.__refresh_period_error < self.refresh_period_inactive:
+            self.__refresh_period_error = round(min(
+                self.refresh_period_active * (2 ** self.__failed_refresh_counter),
+                self.refresh_period_inactive
+            ))
             self.__failed_refresh_counter = self.__failed_refresh_counter + 1
             self.publisher.publish_str(
                 self.get_topic(mqtt_topics.REFRESH_LAST_ERROR),
@@ -490,7 +502,10 @@ class VehicleState:
             self.set_ac_temperature(DEFAULT_AC_TEMP)
         # Make sure the only refresh mode that is not supported at start is RefreshMode.PERIODIC
         if self.refresh_mode in [RefreshMode.OFF, RefreshMode.FORCE]:
-            self.set_refresh_mode(RefreshMode.PERIODIC)
+            self.set_refresh_mode(
+                RefreshMode.PERIODIC,
+                f"initial gateway startup from an invalid state {self.refresh_mode}"
+            )
 
     async def configure_by_message(self, *, topic: str, payload: str):
         payload = payload.lower()
@@ -498,7 +513,7 @@ class VehicleState:
             case mqtt_topics.REFRESH_MODE:
                 try:
                     refresh_mode = RefreshMode.get(payload)
-                    self.set_refresh_mode(refresh_mode)
+                    self.set_refresh_mode(refresh_mode, "MQTT direct set refresh mode command execution")
                 except KeyError:
                     raise MqttGatewayException(f'Unsupported payload {payload}')
             case mqtt_topics.REFRESH_PERIOD_ACTIVE:
@@ -601,6 +616,10 @@ class VehicleState:
                 self.get_topic(mqtt_topics.DRIVETRAIN_HYBRID_ELECTRICAL_RANGE),
                 estimated_electrical_range
             )
+
+        bms_chrg_sts = charge_mgmt_data.bmsChrgSts
+        if bms_chrg_sts is not None:
+            self.publisher.publish_int(self.get_topic(mqtt_topics.BMS_CHARGE_STATUS), bms_chrg_sts)
 
         charge_status = charge_info_resp.rvsChargeStatus
         fuel_range_elec = charge_status.fuelRangeElec
@@ -746,7 +765,7 @@ class VehicleState:
                 computed_refresh_period = time_for_1pct
             self.set_refresh_period_charging(computed_refresh_period)
         elif not self.is_charging:
-            # Reset the charging refresh period if we detected we are not longer charging
+            # Reset the charging refresh period if we detected we are no longer charging
             self.set_refresh_period_charging(0)
         else:
             # Otherwise let's keep the last computed refresh period
@@ -819,7 +838,7 @@ class VehicleState:
     def datetime_to_str(dt: datetime.datetime) -> str:
         return datetime.datetime.astimezone(dt, tz=datetime.timezone.utc).isoformat()
 
-    def set_refresh_mode(self, mode: RefreshMode):
+    def set_refresh_mode(self, mode: RefreshMode, cause: str):
         if (
                 mode is not None and
                 (
@@ -828,13 +847,13 @@ class VehicleState:
                 )
         ):
             new_mode_value = mode.value
-            LOG.info(f"Setting refresh mode to {new_mode_value}")
+            LOG.info(f"Setting refresh mode to {new_mode_value} due to {cause}")
             self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_MODE), new_mode_value)
             # Make sure we never store FORCE as previous refresh mode
             if self.refresh_mode != RefreshMode.FORCE:
                 self.previous_refresh_mode = self.refresh_mode
             self.refresh_mode = mode
-            LOG.debug(f'Refresh mode set to {new_mode_value}')
+            LOG.debug(f'Refresh mode set to {new_mode_value} due to {cause}')
 
     @property
     def has_sunroof(self):
