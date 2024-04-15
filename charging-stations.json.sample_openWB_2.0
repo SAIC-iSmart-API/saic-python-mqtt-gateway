@@ -1,0 +1,20 @@
+[
+    {
+        "chargeStateTopic": "openWB/chargepoint/2/get/charge_state",
+        "chargingValue": "true",
+        "socTopic": "openWB/set/vehicle/2/get/soc",
+        "rangeTopic": "openWB/set/vehicle/2/get/range",
+        "chargerConnectedTopic": "openWB/chargepoint/2/get/plug_state",
+        "chargerConnectedValue": "true",
+        "vin": "vin1"
+    },
+    {
+        "chargeStateTopic": "openWB/chargepoint/3/get/charge_state",
+        "chargingValue": "true",
+        "socTopic": "openWB/set/vehicle/3/get/soc",
+        "rangeTopic": "openWB/set/vehicle/3/get/range",
+        "chargerConnectedTopic": "openWB/chargepoint/3/get/plug_state",
+        "chargerConnectedValue": "true",
+        "vin": "vin2"
+    }
+]

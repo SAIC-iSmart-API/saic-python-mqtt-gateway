@@ -1,5 +1,3 @@
-version: "3.1"
-
 services:
   saic-mqtt-gateway:
     image: "saicismartapi/saic-python-mqtt-gateway:latest"

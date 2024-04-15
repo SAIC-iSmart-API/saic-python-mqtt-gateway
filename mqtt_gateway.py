@@ -16,20 +16,20 @@ from saic_ismart_client_ng import SaicApi
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.alarm import AlarmType
 from saic_ismart_client_ng.api.vehicle.schema import VinInfo
-from saic_ismart_client_ng.api.vehicle_charging import ChargeInfoResp, ChargeCurrentLimitCode, TargetBatteryCode, \
+from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp, ChargeCurrentLimitCode, TargetBatteryCode, \
     ScheduledChargingMode, ScheduledBatteryHeatingResp
 from saic_ismart_client_ng.exceptions import SaicApiException
 from saic_ismart_client_ng.model import SaicApiConfiguration
 
 import mqtt_topics
-from abrp_api import AbrpApi, AbrpApiException
-from charging_station import ChargingStation
+from integrations.abrp.api import AbrpApi, AbrpApiException
+from integrations.openwb.charging_station import ChargingStation
 from configuration import Configuration, TransportProtocol
 from exceptions import MqttGatewayException
-from home_assistant_discovery import HomeAssistantDiscovery
-from mqtt_publisher import MqttClient, MqttCommandListener
-from publisher import Publisher
-from saic_api_listener import MqttGatewaySaicApiListener
+from integrations.home_assistant.discovery import HomeAssistantDiscovery
+from publisher.mqtt_publisher import MqttClient, MqttCommandListener
+from publisher.core import Publisher
+from saic_api_listener import MqttGatewaySaicApiListener, MqttGatewayAbrpListener
 from vehicle import RefreshMode, VehicleState
 
 MSG_CMD_SUCCESSFUL = 'Success'
@@ -70,7 +70,11 @@ class VehicleHandler:
             abrp_user_token = self.configuration.abrp_token_map[vin_info.vin]
         else:
             abrp_user_token = None
-        self.abrp_api = AbrpApi(self.configuration.abrp_api_key, abrp_user_token)
+        self.abrp_api = AbrpApi(
+            self.configuration.abrp_api_key,
+            abrp_user_token,
+            listener=MqttGatewayAbrpListener(self.publisher)
+        )
 
     async def handle_vehicle(self) -> None:
         self.vehicle_state.configure(self.vin_info)
@@ -89,36 +93,51 @@ class VehicleHandler:
             ):
                 try:
                     vehicle_status = await self.update_vehicle_status()
-                    charge_status = await self.update_charge_status()
+
+                    try:
+                        charge_status = await self.update_charge_status()
+                    except Exception as e:
+                        LOG.exception('Error updating charge status', exc_info=e)
+                        charge_status = None
+
                     try:
                         await self.update_scheduled_battery_heating_status()
                     except Exception as e:
                         LOG.exception('Error updating scheduled battery heating status', exc_info=e)
+
                     self.vehicle_state.mark_successful_refresh()
                     LOG.info('Refreshing vehicle status succeeded...')
-                    abrp_response = await self.abrp_api.update_abrp(vehicle_status, charge_status.chrgMgmtData)
-                    self.publisher.publish_str(f'{self.vehicle_prefix}/{mqtt_topics.INTERNAL_ABRP}', abrp_response)
-                    LOG.info('Refreshing ABRP status succeeded...')
+
+                    await self.__refresh_abrp(charge_status, vehicle_status)
+
                 except SaicApiException as e:
+                    self.vehicle_state.mark_failed_refresh()
                     LOG.exception(
-                        'handle_vehicle loop failed during SAIC API call. Waiting 30s before retrying',
+                        'handle_vehicle loop failed during SAIC API call',
                         exc_info=e
                     )
-                    await asyncio.sleep(float(30))
                 except AbrpApiException as ae:
                     LOG.exception('handle_vehicle loop failed during ABRP API call', exc_info=ae)
                 except Exception as e:
+                    self.vehicle_state.mark_failed_refresh()
                     LOG.exception(
-                        'handle_vehicle loop failed with an unexpected exception. Waiting 30s before retrying',
+                        'handle_vehicle loop failed with an unexpected exception',
                         exc_info=e
                     )
-                    await asyncio.sleep(float(30))
                 finally:
                     if self.configuration.ha_discovery_enabled:
                         self.ha_discovery.publish_ha_discovery_messages()
             else:
                 # car not active, wait a second
                 await asyncio.sleep(1.0)
+
+    async def __refresh_abrp(self, charge_status, vehicle_status):
+        abrp_refreshed, abrp_response = await self.abrp_api.update_abrp(vehicle_status, charge_status)
+        self.publisher.publish_str(f'{self.vehicle_prefix}/{mqtt_topics.INTERNAL_ABRP}', abrp_response)
+        if abrp_refreshed:
+            LOG.info('Refreshing ABRP status succeeded...')
+        else:
+            LOG.info(f'ABRP not refreshed, reason {abrp_response}')
 
     async def update_vehicle_status(self) -> VehicleStatusResp:
         LOG.info('Updating vehicle status')
@@ -127,7 +146,7 @@ class VehicleHandler:
 
         return vehicle_status_response
 
-    async def update_charge_status(self) -> ChargeInfoResp:
+    async def update_charge_status(self) -> ChrgMgmtDataResp:
         LOG.info('Updating charging status')
         charge_mgmt_data = await self.saic_api.get_vehicle_charging_management_data(self.vin_info.vin)
         self.vehicle_state.handle_charge_status(charge_mgmt_data)
@@ -294,7 +313,7 @@ class VehicleHandler:
                             raise MqttGatewayException(f'Error setting value for payload {payload}')
                     else:
                         logging.info(
-                            f'Unknown Target SOC: waiting for state update before changing charge current limit')
+                            'Unknown Target SOC: waiting for state update before changing charge current limit')
                         raise MqttGatewayException(
                             f'Error setting charge current limit - SOC {self.vehicle_state.target_soc}')
                 case mqtt_topics.DRIVETRAIN_SOC_TARGET:
@@ -340,18 +359,28 @@ class VehicleHandler:
                                     start_time=start_time
                                 )
                             else:
-                                LOG.info(f'Disabling battery heating schedule')
+                                LOG.info('Disabling battery heating schedule')
                                 await self.saic_api.disable_schedule_battery_heating(self.vin_info.vin)
                         else:
-                            LOG.info(f'Battery heating schedule not changed')
+                            LOG.info('Battery heating schedule not changed')
                     except Exception as e:
                         raise MqttGatewayException(f'Error setting battery heating schedule: {e}')
+                case mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK:
+                    match payload.strip().lower():
+                        case 'false':
+                            LOG.info(f'Vehicle {self.vin_info.vin} charging cable will be unlocked')
+                            await self.saic_api.control_charging_port_lock(self.vin_info.vin, unlock=True)
+                        case 'true':
+                            LOG.info(f'Vehicle {self.vin_info.vin} charging cable will be locked')
+                            await self.saic_api.control_charging_port_lock(self.vin_info.vin, unlock=False)
+                        case _:
+                            raise MqttGatewayException(f'Unsupported payload {payload}')
 
                 case _:
                     # set mode, period (in)-active,...
                     await self.vehicle_state.configure_by_message(topic=topic, payload=payload)
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', 'Success')
-            self.vehicle_state.set_refresh_mode(RefreshMode.FORCE)
+            self.vehicle_state.set_refresh_mode(RefreshMode.FORCE, f'after command execution on topic {topic}')
         except MqttGatewayException as e:
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed: {e.message}')
             LOG.exception(e.message, exc_info=e)
@@ -421,7 +450,14 @@ class MqttGateway(MqttCommandListener):
                     charging_station
                     and charging_station.soc_topic
             ):
-                LOG.debug(f'SoC for charging station will be published over MQTT topic: {charging_station.soc_topic}')
+                LOG.debug('SoC of %s for charging station will be published over MQTT topic: %s', vin_info.vin,
+                          charging_station.soc_topic)
+            if (
+                    charging_station
+                    and charging_station.range_topic
+            ):
+                LOG.debug('Range of %s for charging station will be published over MQTT topic: %s', vin_info.vin,
+                          charging_station.range_topic)
             total_battery_capacity = configuration.battery_capacity_map.get(vin_info.vin, None)
             vehicle_state = VehicleState(
                 self.publisher,
@@ -467,6 +503,16 @@ class MqttGateway(MqttCommandListener):
         else:
             LOG.debug(f'Command for unknown vin {vin} received')
 
+    async def on_charging_detected(self, vin: str) -> None:
+        vehicle_handler = self.get_vehicle_handler(vin)
+        if vehicle_handler:
+            # just make sure that we don't set the is_charging flag too early
+            # and that it is immediately overwritten by a running vehicle state request
+            await asyncio.sleep(delay=3.0)
+            vehicle_handler.vehicle_state.set_is_charging(True)
+        else:
+            LOG.debug(f'Charging detected for unknown vin {vin}')
+
     def __on_publish_raw_value(self, key: str, raw: str):
         self.publisher.publish_str(key, raw)
 
@@ -496,7 +542,7 @@ class MqttGateway(MqttCommandListener):
                 task_name = task.get_name()
                 if task.cancelled():
                     LOG.debug(f'{task_name !r} task was cancelled, this is only supposed if the application is '
-                              + f'shutting down')
+                              + 'shutting down')
                 else:
                     exception = task.exception()
                     if exception is not None:
@@ -605,18 +651,6 @@ class EnvDefault(argparse.Action):
         setattr(namespace, self.dest, values)
 
 
-def get_charging_stations(open_wb_lp_map: dict[str, str]) -> dict[str, ChargingStation]:
-    LOG.info(f'OPENWB_LP_MAP is deprecated! Please provide {CHARGING_STATIONS_FILE} file instead!')
-    charging_stations = {}
-    for loading_point_no in open_wb_lp_map.keys():
-        vin = open_wb_lp_map[loading_point_no]
-        charging_station = ChargingStation(vin, f'openWB/lp/{loading_point_no}/boolChargeStat', '1',
-                                           f'openWB/set/lp/{loading_point_no}/%Soc')
-        charging_stations[vin] = charging_station
-
-    return charging_stations
-
-
 def process_arguments() -> Configuration:
     config = Configuration()
     parser = argparse.ArgumentParser(prog='MQTT Gateway')
@@ -684,10 +718,6 @@ def process_arguments() -> Configuration:
                                                                + ' Environment Variable: BATTERY_CAPACITY_MAPPING',
                             dest='battery_capacity_mapping', required=False, action=EnvDefault,
                             envvar='BATTERY_CAPACITY_MAPPING')
-        parser.add_argument('--openwb-lp-map', help='The mapping of VIN to openWB charging point.'
-                                                    + ' Multiple mappings can be provided seperated by ,'
-                                                    + ' Example: LSJXXXX=1,LSJYYYY=2',
-                            dest='open_wp_lp_map', required=False, action=EnvDefault, envvar='OPENWB_LP_MAP')
         parser.add_argument('--charging-stations-json',
                             help='Custom charging stations configuration file name', dest='charging_stations_file',
                             required=False, action=EnvDefault, envvar='CHARGING_STATIONS_JSON')
@@ -736,10 +766,6 @@ def process_arguments() -> Configuration:
                 config.battery_capacity_map,
                 value_type=check_positive_float
             )
-        if args.open_wp_lp_map:
-            open_wb_lp_map = {}
-            cfg_value_to_dict(args.open_wp_lp_map, open_wb_lp_map)
-            config.charging_stations_by_vin = get_charging_stations(open_wb_lp_map)
         if args.charging_stations_file:
             process_charging_stations_file(config, args.charging_stations_file)
         else:
@@ -801,6 +827,8 @@ def process_charging_stations_file(config: Configuration, json_file: str):
                     charging_station = ChargingStation(vin, charge_state_topic, charging_value, item['socTopic'])
                 else:
                     charging_station = ChargingStation(vin, charge_state_topic, charging_value)
+                if 'rangeTopic' in item:
+                    charging_station.range_topic = item['rangeTopic']
                 if 'chargerConnectedTopic' in item:
                     charging_station.connected_topic = item['chargerConnectedTopic']
                 if 'chargerConnectedValue' in item:

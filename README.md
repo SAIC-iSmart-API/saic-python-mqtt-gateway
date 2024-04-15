@@ -34,7 +34,6 @@ do when you run the service from a docker container).
 | --abrp-api-key              | ABRP_API_KEY              | API key for the A Better Route Planner telemetry API. Default is the open source telemetry API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.                                            |
 | --abrp-user-token           | ABRP_USER_TOKEN           | Mapping of VIN to ABRP User Token. Multiple mappings can be provided separated by ',' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl                                            |
 | --battery-capacity-mapping  | BATTERY_CAPACITY_MAPPING  | Mapping of VIN to full battery capacity. Multiple mappings can be provided separated by ',' Example: LSJXXXX=54.0,LSJYYYY=64.0                                                      |
-| --openwb-lp-map             | OPENWB_LP_MAP             | Mapping of VIN to openWB charging point. Multiple mappings can be provided separated by ',' Example: 1=LSJXXXX,2=LSJYYYY - **deprecated**                                           |
 | --charging-stations-json    | CHARGING_STATIONS_JSON    | Custom charging stations configuration file name                                                                                                                                    |
 | --saic-relogin-delay        | SAIC_RELOGIN_DELAY        | The gateway detects logins from other devices (e.g. the iSMART app). It then pauses it's activity for 900 seconds (default value). The delay can be configured with this parameter. |
 | --ha-discovery              | HA_DISCOVERY_ENABLED      | Home Assistant auto-discovery is enabled (True) by default. It can be disabled (False) with this parameter.                                                                         |
@@ -62,6 +61,7 @@ The key-value pairs in the JSON express the following:
 | chargeStateTopic      | topic indicating the charge state - **required**                                                  |
 | chargingValue         | payload that indicates the charging - **required**                                                |
 | socTopic              | topic where the gateway publishes the SoC for the charging station - optional                     |
+| rangeTopic            | topic where the gateway publishes the range for the charging station - optional                   |
 | chargerConnectedTopic | topic indicating that the vehicle is connected to the charging station - optional                 |
 | chargerConnectedValue | payload that indicates that the charger is connected - optional                                   |
 | vin                   | vehicle identification number to map the charging station information to a vehicle - **required** |

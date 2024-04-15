@@ -1,6 +1,6 @@
 from enum import Enum
 
-from charging_station import ChargingStation
+from integrations.openwb.charging_station import ChargingStation
 
 
 class TransportProtocol(Enum):
