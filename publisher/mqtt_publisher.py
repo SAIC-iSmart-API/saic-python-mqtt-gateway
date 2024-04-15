@@ -145,7 +145,7 @@ class MqttClient(Publisher):
         return
 
     def publish(self, topic: str, payload) -> None:
-        self.client.publish(topic, payload, retain=True)
+        self.client.publish(self.remove_special_mqtt_characters(topic), payload, retain=True)
 
     def get_topic(self, key: str, no_prefix: bool) -> str:
         if no_prefix:
