@@ -1,15 +1,62 @@
 # Change Log
 
+## 0.6.0
+
+### Import upgrade notes
+
+Please note that 0.6.0 will more aggresively mark the vehicle as offline on Home Assitant in order to avoid providing false
+information to the user. When the vehicle is "offline" no commands can be sent to it, except for a force refresh.
+
+### Added
+
+* Support for openWB software version 2.0 by @tosate in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/172
+* Expose power usage stats by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/178
+* Added support for cable lock and unlock by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/188
+* Exponential backoff during polling failures by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/193
+* Expose last charge start and end times by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/201
+* Add sensors for current journey and OBC data by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/205
+* Side lights detection by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/210
+
+### Fixed
+
+* Battery capacity for MG ZS EV Standard 2021 by @tosate in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/160
+* Add battery capacity for MG5 Maximum Range Luxury by @sfudeus in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/166
+* Fix initial remote ac temp value by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/175
+* Apply battery_capacity_correction_factor to lastChargeEndingPower by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/176
+* Detect DRIVETRAIN_HV_BATTERY_ACTIVE when rear window heater is on by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/177
+* Read electric estimated range from BMS and Car State as it gets reset during parking by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/181
+* Compute charging refresh period based on charging power.  by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/183
+* Re-introduce tests and run them every push by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/189
+* Run CI on push and PR by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/190
+* Mark car not available if polling fails by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/191
+* Temporary fix: require just a vehicle state refresh to mark vehicle loop as completed by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/192
+* Assume speed is 0.0 if we have no GPS data by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/196
+* Fix Charging finished sensor by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/197
+* Do not send invalid data to ABRP and MQTT by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/199
+* Fix test data by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/200
+* Data validation by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/204
+* During charging, do not easily fall back on the active refresh period by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/206
+* Fix BMS and Journey sensors by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/207
+* Fix currentJourneyDistance scale factor by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/208
+* GPS and Charging detection fixes by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/209
+* Remove special characters from MQTT topics. by @tosate in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/214
+* Avoid processing vehicle status updates if the server clock has drifted too much by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/211
+
+### New Contributors
+* @tosate made their first contribution in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/160
+
+**Full Changelog**: https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/compare/0.5.15...0.6.0
+
 ## 0.5.15
 
-## Added
+### Added
 
 * Battery capacity for MG4 Trophy Extended Range
 * Battery capacity for MG5 SR Comfort
 
 ## 0.5.10
 
-## Added
+### Added
 
 * MQTT: Add support for scheduled battery heating. Payload is JSON with startTime and mode (on or off)
 * HA: Expose scheduled battery heating
@@ -17,14 +64,14 @@
 
 ## 0.5.9
 
-## Added
+### Added
 
 * MQTT: Add support for battery heating. True means ON, False means OFF
 * HA: Expose battery heating as an ON-OFF switch
 
 ## 0.5.8
 
-## Added
+### Added
 
 * MQTT: Add support for heated seats control on both front left and front right seats. Values range from 0-3 on some
   models, 0-1 on others. 0 means OFF
