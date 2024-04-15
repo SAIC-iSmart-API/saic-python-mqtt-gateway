@@ -145,14 +145,14 @@ class MqttClient(Publisher):
         return
 
     def publish(self, topic: str, payload) -> None:
-        self.client.publish(topic, payload, retain=True)
+        self.client.publish(self.remove_special_mqtt_characters(topic), payload, retain=True)
 
     def get_topic(self, key: str, no_prefix: bool) -> str:
         if no_prefix:
             topic = key
         else:
             topic = f'{self.topic_root}/{key}'
-        return topic
+        return self.remove_special_mqtt_characters(topic)
 
     def publish_json(self, key: str, data: dict, no_prefix: bool = False) -> None:
         payload = self.dict_to_anonymized_json(data)
