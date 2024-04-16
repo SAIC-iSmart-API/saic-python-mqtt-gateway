@@ -41,10 +41,16 @@ class HaCustomAvailabilityEntry:
             })
         return result
 
+    def __key(self):
+        return self.__topic, self.__template, self.__payload_available, self.__payload_not_available
+
+    def __hash__(self):
+        return hash(self.__key())
+
     def __eq__(self, other):
-        return (isinstance(other, self.__class__)
-                and hasattr(other, '__dict__')
-                and self.__dict__ == other.__dict__)
+        if isinstance(other, HaCustomAvailabilityEntry):
+            return self.__key() == other.__key()
+        return NotImplemented
 
 
 class HaCustomAvailabilityConfig:
