@@ -8,6 +8,7 @@ from saic_ismart_client_ng.api.vehicle.schema import VinInfo
 from saic_ismart_client_ng.api.vehicle_charging import ChargeCurrentLimitCode, ScheduledChargingMode
 
 import mqtt_topics
+from configuration import Configuration
 from publisher.mqtt_publisher import MqttClient
 from vehicle import VehicleState, RefreshMode
 
@@ -40,6 +41,11 @@ class HaCustomAvailabilityEntry:
             })
         return result
 
+    def __eq__(self, other):
+        return (isinstance(other, self.__class__)
+                and hasattr(other, '__dict__')
+                and self.__dict__ == other.__dict__)
+
 
 class HaCustomAvailabilityConfig:
     def __init__(
@@ -52,21 +58,25 @@ class HaCustomAvailabilityConfig:
 
     def to_dict(self):
         return {
-            'availability': [r.to_dict() for r in self.__rules],
+            'availability': [r.to_dict() for r in set(self.__rules)],
             'availability_mode': self.__mode
         }
 
 
 class HomeAssistantDiscovery:
-    def __init__(self, vehicle_state: VehicleState, vin_info: VinInfo):
+    def __init__(self, vehicle_state: VehicleState, vin_info: VinInfo, configuration: Configuration):
         self.__vehicle_state = vehicle_state
         self.__vin_info = vin_info
-        self.__vehicle_availability = HaCustomAvailabilityEntry(
-            topic=self.__get_vehicle_topic(mqtt_topics.AVAILABLE)
-        )
+        self.__discovery_prefix = configuration.ha_discovery_prefix
         self.__system_availability = HaCustomAvailabilityEntry(
             topic=self.__get_system_topic(mqtt_topics.INTERNAL_LWT)
         )
+        if configuration.ha_show_unavailable:
+            self.__vehicle_availability = HaCustomAvailabilityEntry(
+                topic=self.__get_vehicle_topic(mqtt_topics.AVAILABLE)
+            )
+        else:
+            self.__vehicle_availability = self.__system_availability
         self.__system_availability_config = HaCustomAvailabilityConfig(
             rules=[
                 self.__system_availability
@@ -654,8 +664,7 @@ class HomeAssistantDiscovery:
         vin = self.__get_vin()
         unique_id = f'{vin}_{snake_case(sensor_name)}'
         final_payload = self.__get_common_attributes(unique_id, sensor_name, custom_availability) | payload
-        discovery_prefix = self.__vehicle_state.publisher.configuration.ha_discovery_prefix
-        ha_topic = f'{discovery_prefix}/{sensor_type}/{vin}_mg/{unique_id}/config'
+        ha_topic = f'{self.__discovery_prefix}/{sensor_type}/{vin}_mg/{unique_id}/config'
         self.__vehicle_state.publisher.publish_json(ha_topic, final_payload, no_prefix=True)
         return f"{sensor_type}.{unique_id}"
 
@@ -663,8 +672,7 @@ class HomeAssistantDiscovery:
     def __unpublish_ha_discovery_message(self, sensor_type: str, sensor_name: str) -> None:
         vin = self.__get_vin()
         unique_id = f'{vin}_{snake_case(sensor_name)}'
-        discovery_prefix = self.__vehicle_state.publisher.configuration.ha_discovery_prefix
-        ha_topic = f'{discovery_prefix}/{sensor_type}/{vin}_mg/{unique_id}/config'
+        ha_topic = f'{self.__discovery_prefix}/{sensor_type}/{vin}_mg/{unique_id}/config'
         self.__vehicle_state.publisher.publish_str(ha_topic, '', no_prefix=True)
 
     def __publish_scheduled_charging(self):
