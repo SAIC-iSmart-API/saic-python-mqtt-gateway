@@ -65,7 +65,7 @@ class VehicleHandler:
         self.vin_info = vin_info
         self.vehicle_prefix = f'{self.configuration.saic_user}/vehicles/{self.vin_info.vin}'
         self.vehicle_state = vehicle_state
-        self.ha_discovery = HomeAssistantDiscovery(vehicle_state, vin_info)
+        self.ha_discovery = HomeAssistantDiscovery(vehicle_state, vin_info, config)
         if vin_info.vin in self.configuration.abrp_token_map:
             abrp_user_token = self.configuration.abrp_token_map[vin_info.vin]
         else:
@@ -725,14 +725,20 @@ def process_arguments() -> Configuration:
                             help='How long to wait before attempting another login to the SAIC API. Environment '
                                  'Variable: SAIC_RELOGIN_DELAY', dest='saic_relogin_delay', required=False,
                             action=EnvDefault, envvar='SAIC_RELOGIN_DELAY', type=check_positive)
-        parser.add_argument('--ha-discovery', help='Enable Home Assistant Discovery. Environment Variable: '
-                                                   'HA_DISCOVERY_ENABLED', dest='ha_discovery_enabled', required=False,
+        parser.add_argument('--ha-discovery',
+                            help='Enable Home Assistant Discovery. Environment Variable: HA_DISCOVERY_ENABLED',
+                            dest='ha_discovery_enabled', required=False,
                             action=EnvDefault,
                             envvar='HA_DISCOVERY_ENABLED', default=True, type=check_bool)
         parser.add_argument('--ha-discovery-prefix',
                             help='Home Assistant Discovery Prefix. Environment Variable: HA_DISCOVERY_PREFIX',
                             dest='ha_discovery_prefix', required=False, action=EnvDefault, envvar='HA_DISCOVERY_PREFIX',
                             default='homeassistant')
+        parser.add_argument('--ha-show-unavailable',
+                            help='Show entities as Unavailable in Home Assistant when car polling fails. '
+                                 'Environment Variable: HA_SHOW_UNAVAILABLE', dest='ha_show_unavailable',
+                            required=False, action=EnvDefault, envvar='HA_SHOW_UNAVAILABLE', default=True,
+                            type=check_bool)
         parser.add_argument('--messages-request-interval',
                             help='The interval for retrieving messages in seconds. Environment Variable: '
                                  'MESSAGES_REQUEST_INTERVAL', dest='messages_request_interval',
@@ -775,6 +781,9 @@ def process_arguments() -> Configuration:
 
         if args.ha_discovery_enabled is not None:
             config.ha_discovery_enabled = args.ha_discovery_enabled
+
+        if args.ha_show_unavailable is not None:
+            config.ha_show_unavailable = args.ha_show_unavailable
 
         if args.ha_discovery_prefix:
             config.ha_discovery_prefix = args.ha_discovery_prefix

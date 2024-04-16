@@ -38,4 +38,5 @@ class Configuration:
         self.messages_request_interval: int = 60  # in seconds
         self.ha_discovery_enabled: bool = True
         self.ha_discovery_prefix: str = 'homeassistant'
+        self.ha_show_unavailable: bool = True
         self.charge_dynamic_polling_min_percentage: float = 1.0
