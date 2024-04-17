@@ -40,3 +40,4 @@ class Configuration:
         self.ha_discovery_prefix: str = 'homeassistant'
         self.ha_show_unavailable: bool = True
         self.charge_dynamic_polling_min_percentage: float = 1.0
+        self.ignore_bms_current_validation: bool = False
