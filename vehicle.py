@@ -622,14 +622,19 @@ class VehicleState:
                 estimated_electrical_range
             )
 
-        bms_chrg_sts = charge_mgmt_data.bmsChrgSts
-        if bms_chrg_sts is not None:
-            decoded = charge_mgmt_data.bms_charging_status
-            if decoded is not None:
-                decoded = decoded.name
-            else:
-                decoded = f'UNKNOWN_{bms_chrg_sts}'
-            self.publisher.publish_str(self.get_topic(mqtt_topics.BMS_CHARGE_STATUS), decoded)
+        if charge_mgmt_data.bmsChrgSts is not None:
+            bms_chrg_sts = charge_mgmt_data.bms_charging_status
+            self.publisher.publish_str(
+                self.get_topic(mqtt_topics.BMS_CHARGE_STATUS),
+                f'UNKNOWN {charge_mgmt_data.bmsChrgSts}' if bms_chrg_sts is None else bms_chrg_sts.name
+            )
+
+        if charge_mgmt_data.bmsChrgSpRsn is not None:
+            charging_stop_reason = charge_mgmt_data.charging_stop_reason
+            self.publisher.publish_str(
+                self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_STOP_REASON),
+                f'UNKNOWN ({charge_mgmt_data.bmsChrgSpRsn})' if charging_stop_reason is None else charging_stop_reason.name
+            )
 
         charge_status = charge_info_resp.rvsChargeStatus
         fuel_range_elec = charge_status.fuelRangeElec
@@ -787,6 +792,12 @@ class VehicleState:
             self.get_topic(mqtt_topics.DRIVETRAIN_BATTERY_HEATING),
             charge_mgmt_data.is_battery_heating
         )
+        if charge_mgmt_data.bmsPTCHeatResp is not None:
+            ptc_heat_stop_reason = charge_mgmt_data.heating_stop_reason
+            self.publisher.publish_str(
+                self.get_topic(mqtt_topics.DRIVETRAIN_BATTERY_HEATING_STOP_REASON),
+                f'UNKNOWN ({charge_mgmt_data.bmsPTCHeatResp})' if ptc_heat_stop_reason is None else ptc_heat_stop_reason.name
+            )
 
         self.publisher.publish_bool(
             self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK),

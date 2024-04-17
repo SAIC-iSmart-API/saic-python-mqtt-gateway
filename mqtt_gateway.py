@@ -186,12 +186,19 @@ class VehicleHandler:
                     match payload.strip().lower():
                         case 'true':
                             LOG.info("Battery heater wil be will be switched on")
-                            await self.saic_api.control_battery_heating(self.vin_info.vin, enable=True)
+                            response = await self.saic_api.control_battery_heating(self.vin_info.vin, enable=True)
                         case 'false':
                             LOG.info("Battery heater wil be will be switched off")
-                            await self.saic_api.control_battery_heating(self.vin_info.vin, enable=False)
+                            response = await self.saic_api.control_battery_heating(self.vin_info.vin, enable=False)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {payload}')
+                    if response is not None and response.ptcHeatResp is not None:
+                        decoded = response.heating_stop_reason
+                        self.publisher.publish_str(
+                            self.vehicle_state.get_topic(mqtt_topics.DRIVETRAIN_BATTERY_HEATING_STOP_REASON),
+                            f'UNKNOWN ({response.ptcHeatResp})' if decoded is None else decoded.name
+                        )
+
                 case mqtt_topics.CLIMATE_REMOTE_TEMPERATURE:
                     payload = payload.strip()
                     try:
@@ -751,7 +758,8 @@ def process_arguments() -> Configuration:
                             action=EnvDefault, envvar='CHARGE_MIN_PERCENTAGE', default='1.0', type=check_positive_float)
         parser.add_argument('--ignore-bms-current-validation',
                             help='Ignore the BMS Battery Pack validation flag. Disabled (False) by default. '
-                                 'Environment Variable: IGNORE_BMS_CURRENT_VALIDATION', dest='ignore_bms_current_validation',
+                                 'Environment Variable: IGNORE_BMS_CURRENT_VALIDATION',
+                            dest='ignore_bms_current_validation',
                             required=False, action=EnvDefault, envvar='IGNORE_BMS_CURRENT_VALIDATION', default=False,
                             type=check_bool)
 
@@ -796,7 +804,6 @@ def process_arguments() -> Configuration:
 
         if args.ha_discovery_prefix:
             config.ha_discovery_prefix = args.ha_discovery_prefix
-
 
         try:
             config.messages_request_interval = int(args.messages_request_interval)
