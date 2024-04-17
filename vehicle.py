@@ -670,7 +670,7 @@ class VehicleState:
 
         # Only publish remaining charging time if the car tells us the value is OK
         remaining_charging_time = None
-        if charge_mgmt_data.chrgngRmnngTimeV != 1:
+        if charge_mgmt_data.chrgngRmnngTimeV != 1 and charge_mgmt_data.chrgngRmnngTime is not None:
             remaining_charging_time = charge_mgmt_data.chrgngRmnngTime * 60
             self.publisher.publish_int(
                 self.get_topic(mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME),
