@@ -33,15 +33,11 @@ do when you run the service from a docker container).
 | --saic-tenant-id            | SAIC_TENANT_ID            | SAIC API tenant ID. Default is 459771.                                                                                                                                              |
 | --abrp-api-key              | ABRP_API_KEY              | API key for the A Better Route Planner telemetry API. Default is the open source telemetry API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.                                            |
 | --abrp-user-token           | ABRP_USER_TOKEN           | Mapping of VIN to ABRP User Token. Multiple mappings can be provided separated by ',' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl                                            |
-| --battery-capacity-mapping  | BATTERY_CAPACITY_MAPPING  | Mapping of VIN to full battery capacity. Multiple mappings can be provided separated by ',' Example: LSJXXXX=54.0,LSJYYYY=64.0                                                      |
 | --charging-stations-json    | CHARGING_STATIONS_JSON    | Custom charging stations configuration file name                                                                                                                                    |
 | --saic-relogin-delay        | SAIC_RELOGIN_DELAY        | The gateway detects logins from other devices (e.g. the iSMART app). It then pauses it's activity for 900 seconds (default value). The delay can be configured with this parameter. |
 | --ha-discovery              | HA_DISCOVERY_ENABLED      | Home Assistant auto-discovery is enabled (True) by default. It can be disabled (False) with this parameter.                                                                         |
 | --ha-discovery-prefix       | HA_DISCOVERY_PREFIX       | The default MQTT prefix for Home Assistant auto-discovery is 'homeassistant'. Another prefix can be configured with this parameter                                                  |
-| --ha-show-unavailable       | HA_SHOW_UNAVAILABLE       | Show entities as Unavailable in Home Assistant when car polling fails. Enabled (True) by default. Can be disabled, to retain the pre 0.6.x behaviour, but do that at your own risk. | 
 | --messages-request-interval | MESSAGES_REQUEST_INTERVAL | The interval for retrieving messages in seconds. Default is 60 seconds.                                                                                                             |
-|                             | LOG_LEVEL                 | Log level: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)                            |
-|                             | MQTT_LOG_LEVEL            | Log level of the MQTT Client: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)         |
 
 ### Charging Station Configuration
 
@@ -66,6 +62,17 @@ The key-value pairs in the JSON express the following:
 | chargerConnectedTopic | topic indicating that the vehicle is connected to the charging station - optional                 |
 | chargerConnectedValue | payload that indicates that the charger is connected - optional                                   |
 | vin                   | vehicle identification number to map the charging station information to a vehicle - **required** |
+
+## Advanced settings
+
+| CMD param                       | ENV variable                  | Description                                                                                                                                                                                               |
+|---------------------------------|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| --battery-capacity-mapping      | BATTERY_CAPACITY_MAPPING      | Mapping of VIN to full battery capacity. Multiple mappings can be provided separated by ',' Example: LSJXXXX=54.0,LSJYYYY=64.0                                                                            |
+| --charge-min-percentage         | CHARGE_MIN_PERCENTAGE         | How many % points we should try to refresh the charge state. 1.0 by default                                                                                                                               |
+| --ha-show-unavailable           | HA_SHOW_UNAVAILABLE           | Show entities as Unavailable in Home Assistant when car polling fails. Enabled (True) by default. Can be disabled, to retain the pre 0.6.x behaviour, but do that at your own risk.                       |
+| --ignore-bms-current-validation | IGNORE_BMS_CURRENT_VALIDATION | Ignore the BMS Battery Pack validation flag. Disabled (False) by default. Useful if you see a 0kW power reported when driving. If this happens, plese open a ticket stating your car model, trim and year |
+|                                 | LOG_LEVEL                     | Log level: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)                                                  |
+|                                 | MQTT_LOG_LEVEL                | Log level of the MQTT Client: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)                               |
 
 ## Running the service
 

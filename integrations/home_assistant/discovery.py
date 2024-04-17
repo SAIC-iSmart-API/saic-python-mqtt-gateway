@@ -323,7 +323,17 @@ class HomeAssistantDiscovery:
                                      device_class='power', icon='mdi:battery-check')
         self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_CHARGING, 'Battery Charging',
                                      device_class='battery_charging', icon='mdi:battery-charging')
+        self.__publish_sensor(
+            mqtt_topics.DRIVETRAIN_CHARGING_STOP_REASON, 'Battery charging stop reason',
+            icon='mdi:battery-charging',
+            enabled=False
+        )
         self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_BATTERY_HEATING, 'Battery heating', icon='mdi:heat-wave')
+        self.__publish_sensor(
+            mqtt_topics.DRIVETRAIN_BATTERY_HEATING_STOP_REASON, 'Battery heating stop reason',
+            icon='mdi:heat-wave',
+            enabled=False
+        )
         self.__publish_binary_sensor(mqtt_topics.DRIVETRAIN_RUNNING, 'Vehicle Running', device_class='running',
                                      icon='mdi:car-side')
         self.__publish_binary_sensor(mqtt_topics.DOORS_DRIVER, 'Door driver', device_class='door', icon='mdi:car-door')

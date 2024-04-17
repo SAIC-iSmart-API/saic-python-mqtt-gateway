@@ -186,12 +186,19 @@ class VehicleHandler:
                     match payload.strip().lower():
                         case 'true':
                             LOG.info("Battery heater wil be will be switched on")
-                            await self.saic_api.control_battery_heating(self.vin_info.vin, enable=True)
+                            response = await self.saic_api.control_battery_heating(self.vin_info.vin, enable=True)
                         case 'false':
                             LOG.info("Battery heater wil be will be switched off")
-                            await self.saic_api.control_battery_heating(self.vin_info.vin, enable=False)
+                            response = await self.saic_api.control_battery_heating(self.vin_info.vin, enable=False)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {payload}')
+                    if response is not None and response.ptcHeatResp is not None:
+                        decoded = response.heating_stop_reason
+                        self.publisher.publish_str(
+                            self.vehicle_state.get_topic(mqtt_topics.DRIVETRAIN_BATTERY_HEATING_STOP_REASON),
+                            f'UNKNOWN ({response.ptcHeatResp})' if decoded is None else decoded.name
+                        )
+
                 case mqtt_topics.CLIMATE_REMOTE_TEMPERATURE:
                     payload = payload.strip()
                     try:
@@ -466,7 +473,8 @@ class MqttGateway(MqttCommandListener):
                 vin_info,
                 charging_station,
                 charge_polling_min_percent=self.configuration.charge_dynamic_polling_min_percentage,
-                total_battery_capacity=total_battery_capacity
+                total_battery_capacity=total_battery_capacity,
+                ignore_bms_current_validation=self.configuration.ignore_bms_current_validation
             )
             vehicle_state.configure(vin_info)
 
@@ -748,6 +756,12 @@ def process_arguments() -> Configuration:
                             help='How many % points we should try to refresh the charge state. Environment Variable: '
                                  'CHARGE_MIN_PERCENTAGE', dest='charge_dynamic_polling_min_percentage', required=False,
                             action=EnvDefault, envvar='CHARGE_MIN_PERCENTAGE', default='1.0', type=check_positive_float)
+        parser.add_argument('--ignore-bms-current-validation',
+                            help='Ignore the BMS Battery Pack validation flag. Disabled (False) by default. '
+                                 'Environment Variable: IGNORE_BMS_CURRENT_VALIDATION',
+                            dest='ignore_bms_current_validation',
+                            required=False, action=EnvDefault, envvar='IGNORE_BMS_CURRENT_VALIDATION', default=False,
+                            type=check_bool)
 
         args = parser.parse_args()
         config.mqtt_user = args.mqtt_user
@@ -778,6 +792,9 @@ def process_arguments() -> Configuration:
             process_charging_stations_file(config, f'./{CHARGING_STATIONS_FILE}')
 
         config.saic_password = args.saic_password
+
+        if args.ignore_bms_current_validation is not None:
+            config.ignore_bms_current_validation = args.ignore_bms_current_validation
 
         if args.ha_discovery_enabled is not None:
             config.ha_discovery_enabled = args.ha_discovery_enabled
