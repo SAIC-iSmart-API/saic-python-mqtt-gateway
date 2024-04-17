@@ -624,7 +624,12 @@ class VehicleState:
 
         bms_chrg_sts = charge_mgmt_data.bmsChrgSts
         if bms_chrg_sts is not None:
-            self.publisher.publish_int(self.get_topic(mqtt_topics.BMS_CHARGE_STATUS), bms_chrg_sts)
+            decoded = charge_mgmt_data.bms_charging_status
+            if decoded is not None:
+                decoded = decoded.name
+            else:
+                decoded = f'UNKNOWN_{bms_chrg_sts}'
+            self.publisher.publish_str(self.get_topic(mqtt_topics.BMS_CHARGE_STATUS), decoded)
 
         charge_status = charge_info_resp.rvsChargeStatus
         fuel_range_elec = charge_status.fuelRangeElec
