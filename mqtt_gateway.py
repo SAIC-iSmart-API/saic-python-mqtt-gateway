@@ -474,7 +474,6 @@ class MqttGateway(MqttCommandListener):
                 charging_station,
                 charge_polling_min_percent=self.configuration.charge_dynamic_polling_min_percentage,
                 total_battery_capacity=total_battery_capacity,
-                ignore_bms_current_validation=self.configuration.ignore_bms_current_validation
             )
             vehicle_state.configure(vin_info)
 
@@ -756,12 +755,6 @@ def process_arguments() -> Configuration:
                             help='How many % points we should try to refresh the charge state. Environment Variable: '
                                  'CHARGE_MIN_PERCENTAGE', dest='charge_dynamic_polling_min_percentage', required=False,
                             action=EnvDefault, envvar='CHARGE_MIN_PERCENTAGE', default='1.0', type=check_positive_float)
-        parser.add_argument('--ignore-bms-current-validation',
-                            help='Ignore the BMS Battery Pack validation flag. Disabled (False) by default. '
-                                 'Environment Variable: IGNORE_BMS_CURRENT_VALIDATION',
-                            dest='ignore_bms_current_validation',
-                            required=False, action=EnvDefault, envvar='IGNORE_BMS_CURRENT_VALIDATION', default=False,
-                            type=check_bool)
 
         args = parser.parse_args()
         config.mqtt_user = args.mqtt_user
@@ -792,9 +785,6 @@ def process_arguments() -> Configuration:
             process_charging_stations_file(config, f'./{CHARGING_STATIONS_FILE}')
 
         config.saic_password = args.saic_password
-
-        if args.ignore_bms_current_validation is not None:
-            config.ignore_bms_current_validation = args.ignore_bms_current_validation
 
         if args.ha_discovery_enabled is not None:
             config.ha_discovery_enabled = args.ha_discovery_enabled

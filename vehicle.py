@@ -51,7 +51,6 @@ class VehicleState:
             charging_station: Optional[ChargingStation] = None,
             charge_polling_min_percent: float = 1.0,
             total_battery_capacity: Optional[float] = None,
-            ignore_bms_current_validation: bool = False,
     ):
         self.publisher = publisher
         self.vin = vin.vin
@@ -88,7 +87,6 @@ class VehicleState:
         self.__total_battery_capacity = total_battery_capacity
         self.__scheduled_battery_heating_enabled = False
         self.__scheduled_battery_heating_start = None
-        self.__ignore_bms_current_validation = ignore_bms_current_validation
 
     def set_refresh_period_active(self, seconds: int):
         self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_ACTIVE), seconds)
@@ -548,10 +546,7 @@ class VehicleState:
     def handle_charge_status(self, charge_info_resp: ChrgMgmtDataResp) -> None:
         charge_mgmt_data = charge_info_resp.chrgMgmtData
         is_valid_current = (
-                (
-                        self.__ignore_bms_current_validation
-                        or charge_mgmt_data.bmsPackCrntV != 1
-                )
+                charge_mgmt_data.bmsPackCrntV != 1
                 and value_in_range(charge_mgmt_data.bmsPackCrnt, 0, 65535)
         )
         if is_valid_current:
