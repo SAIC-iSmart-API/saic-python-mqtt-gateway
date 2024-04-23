@@ -1,5 +1,20 @@
 # Change Log
 
+## 0.6.1
+
+### Fixed
+
+* Charging power and current showing 0 on models different from MG4
+* HA: Heading sensor is now recorded with a unit of measure
+
+### What's Changed
+
+* HA: Allow overriding the default "Unavailable" behaviour via HA_SHOW_UNAVAILABLE by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/220
+* mplement missing hash function for HaCustomAvailabilityEntry by @nanomad in #222
+* Add IGNORE_BMS_CURRENT_VALIDATION and decode API responses by @nanomad in #225
+* Drop IGNORE_BMS_CURRENT_VALIDATION experiment, just mark current as invalid if bmsPackCrntV is 1 (None or 0 means valid) by @nanomad in #226
+* Add Unit of measure to heading sensor. by @nanomad in #228
+
 ## 0.6.0
 
 ### Import upgrade notes
