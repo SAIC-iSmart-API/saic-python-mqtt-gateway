@@ -65,7 +65,7 @@ class VehicleHandler:
         self.vin_info = vin_info
         self.vehicle_prefix = f'{self.configuration.saic_user}/vehicles/{self.vin_info.vin}'
         self.vehicle_state = vehicle_state
-        self.ha_discovery = HomeAssistantDiscovery(vehicle_state, vin_info)
+        self.ha_discovery = HomeAssistantDiscovery(vehicle_state, vin_info, config)
         if vin_info.vin in self.configuration.abrp_token_map:
             abrp_user_token = self.configuration.abrp_token_map[vin_info.vin]
         else:
@@ -186,12 +186,19 @@ class VehicleHandler:
                     match payload.strip().lower():
                         case 'true':
                             LOG.info("Battery heater wil be will be switched on")
-                            await self.saic_api.control_battery_heating(self.vin_info.vin, enable=True)
+                            response = await self.saic_api.control_battery_heating(self.vin_info.vin, enable=True)
                         case 'false':
                             LOG.info("Battery heater wil be will be switched off")
-                            await self.saic_api.control_battery_heating(self.vin_info.vin, enable=False)
+                            response = await self.saic_api.control_battery_heating(self.vin_info.vin, enable=False)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {payload}')
+                    if response is not None and response.ptcHeatResp is not None:
+                        decoded = response.heating_stop_reason
+                        self.publisher.publish_str(
+                            self.vehicle_state.get_topic(mqtt_topics.DRIVETRAIN_BATTERY_HEATING_STOP_REASON),
+                            f'UNKNOWN ({response.ptcHeatResp})' if decoded is None else decoded.name
+                        )
+
                 case mqtt_topics.CLIMATE_REMOTE_TEMPERATURE:
                     payload = payload.strip()
                     try:
@@ -466,7 +473,7 @@ class MqttGateway(MqttCommandListener):
                 vin_info,
                 charging_station,
                 charge_polling_min_percent=self.configuration.charge_dynamic_polling_min_percentage,
-                total_battery_capacity=total_battery_capacity
+                total_battery_capacity=total_battery_capacity,
             )
             vehicle_state.configure(vin_info)
 
@@ -725,14 +732,20 @@ def process_arguments() -> Configuration:
                             help='How long to wait before attempting another login to the SAIC API. Environment '
                                  'Variable: SAIC_RELOGIN_DELAY', dest='saic_relogin_delay', required=False,
                             action=EnvDefault, envvar='SAIC_RELOGIN_DELAY', type=check_positive)
-        parser.add_argument('--ha-discovery', help='Enable Home Assistant Discovery. Environment Variable: '
-                                                   'HA_DISCOVERY_ENABLED', dest='ha_discovery_enabled', required=False,
+        parser.add_argument('--ha-discovery',
+                            help='Enable Home Assistant Discovery. Environment Variable: HA_DISCOVERY_ENABLED',
+                            dest='ha_discovery_enabled', required=False,
                             action=EnvDefault,
                             envvar='HA_DISCOVERY_ENABLED', default=True, type=check_bool)
         parser.add_argument('--ha-discovery-prefix',
                             help='Home Assistant Discovery Prefix. Environment Variable: HA_DISCOVERY_PREFIX',
                             dest='ha_discovery_prefix', required=False, action=EnvDefault, envvar='HA_DISCOVERY_PREFIX',
                             default='homeassistant')
+        parser.add_argument('--ha-show-unavailable',
+                            help='Show entities as Unavailable in Home Assistant when car polling fails. '
+                                 'Environment Variable: HA_SHOW_UNAVAILABLE', dest='ha_show_unavailable',
+                            required=False, action=EnvDefault, envvar='HA_SHOW_UNAVAILABLE', default=True,
+                            type=check_bool)
         parser.add_argument('--messages-request-interval',
                             help='The interval for retrieving messages in seconds. Environment Variable: '
                                  'MESSAGES_REQUEST_INTERVAL', dest='messages_request_interval',
@@ -775,6 +788,9 @@ def process_arguments() -> Configuration:
 
         if args.ha_discovery_enabled is not None:
             config.ha_discovery_enabled = args.ha_discovery_enabled
+
+        if args.ha_show_unavailable is not None:
+            config.ha_show_unavailable = args.ha_show_unavailable
 
         if args.ha_discovery_prefix:
             config.ha_discovery_prefix = args.ha_discovery_prefix
