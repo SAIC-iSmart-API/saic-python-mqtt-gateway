@@ -1,9 +1,9 @@
-name: 'build stable images'
+name: 'build dev images'
 
 on:
   push:
     tags:
-      - "[0-9]+.[0-9]+.[0-9]+"
+      - "[0-9]+.[0-9]+.[0-9]+-rc[0-9]+"
 
 # TODO: only request needed permissions
 permissions: write-all
@@ -55,7 +55,7 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
           tags: |
-            ghcr.io/${{ steps.lowercase-repository.outputs.lowercase }}/saic-mqtt-gateway:latest
+            ghcr.io/${{ steps.lowercase-repository.outputs.lowercase }}/saic-mqtt-gateway:dev
             ghcr.io/${{ steps.lowercase-repository.outputs.lowercase }}/saic-mqtt-gateway:${{ env.RELEASE_VERSION }}
 
       - name: Build and push (GHCR + DockerHub)
@@ -66,7 +66,7 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
           tags: |
-            ghcr.io/${{ steps.lowercase-repository.outputs.lowercase }}/saic-mqtt-gateway:latest
+            ghcr.io/${{ steps.lowercase-repository.outputs.lowercase }}/saic-mqtt-gateway:dev
             ghcr.io/${{ steps.lowercase-repository.outputs.lowercase }}/saic-mqtt-gateway:${{ env.RELEASE_VERSION }}
-            ${{ secrets.DOCKERHUB_ORGANIZATION != null && format('{0}/saic-python-mqtt-gateway:latest', secrets.DOCKERHUB_ORGANIZATION)}}
+            ${{ secrets.DOCKERHUB_ORGANIZATION != null && format('{0}/saic-python-mqtt-gateway:dev', secrets.DOCKERHUB_ORGANIZATION)}}
             ${{ secrets.DOCKERHUB_ORGANIZATION != null && format('{0}/saic-python-mqtt-gateway:{1}', secrets.DOCKERHUB_ORGANIZATION, env.RELEASE_VERSION)}}
