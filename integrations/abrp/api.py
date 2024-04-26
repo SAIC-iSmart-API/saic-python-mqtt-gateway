@@ -72,7 +72,11 @@ class AbrpApi:
                 })
 
             # Skip invalid current values reported by the API
-            if charge_status.bmsPackCrntV == 0:
+            is_valid_current = (
+                    charge_status.bmsPackCrntV != 1
+                    and value_in_range(charge_status.bmsPackCrnt, 0, 65535)
+            )
+            if is_valid_current:
                 data.update({
                     'power': charge_status.decoded_power,
                     'voltage': charge_status.decoded_voltage,
