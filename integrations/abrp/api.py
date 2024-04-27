@@ -159,7 +159,7 @@ class AbrpApi:
             return data
 
         altitude = position.altitude
-        if gps_position.gps_status_decoded == GpsStatus.FIX_3d and value_in_range(altitude, -100, 8900):
+        if value_in_range(altitude, -500, 8900):
             data['elevation'] = altitude
 
         lat_degrees = position.latitude / 1000000.0

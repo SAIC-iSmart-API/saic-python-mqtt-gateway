@@ -240,17 +240,21 @@ class VehicleState:
                 self.publisher.publish_int(self.get_topic(mqtt_topics.LOCATION_HEADING), way_point.heading)
                 position = way_point.position
                 if position:
-                    if gps_position.gps_status_decoded == GpsStatus.FIX_3d:
-                        self.publisher.publish_int(self.get_topic(mqtt_topics.LOCATION_ELEVATION), position.altitude)
                     latitude = position.latitude / 1000000.0
                     longitude = position.longitude / 1000000.0
+                    altitude = position.altitude
+                    valid_altitude = value_in_range(altitude, -500, 8900)
                     if abs(latitude) <= 90 and abs(longitude) <= 180:
                         self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_LATITUDE), latitude)
                         self.publisher.publish_float(self.get_topic(mqtt_topics.LOCATION_LONGITUDE), longitude)
-                        self.publisher.publish_json(self.get_topic(mqtt_topics.LOCATION_POSITION), {
+                        position_json = {
                             'latitude': latitude,
                             'longitude': longitude,
-                        })
+                        }
+                        if valid_altitude:
+                            position_json['altitude'] = altitude
+                            self.publisher.publish_int(self.get_topic(mqtt_topics.LOCATION_ELEVATION), altitude)
+                        self.publisher.publish_json(self.get_topic(mqtt_topics.LOCATION_POSITION), position_json)
 
         # Assume speed is 0 if the vehicle is parked and we have no other info
         if speed is None and vehicle_status.is_parked:
