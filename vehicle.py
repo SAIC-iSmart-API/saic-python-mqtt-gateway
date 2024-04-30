@@ -773,7 +773,7 @@ class VehicleState:
             time_for_1pct = 36.0 * self.get_actual_battery_capacity() / abs(charge_mgmt_data.decoded_power)
             time_for_min_pct = math.ceil(self.charge_polling_min_percent * time_for_1pct)
             # It doesn't make sense to refresh less often than the estimated time for completion
-            if remaining_charging_time > 0:
+            if remaining_charging_time is not None and remaining_charging_time > 0:
                 computed_refresh_period = min(remaining_charging_time, time_for_min_pct)
             else:
                 computed_refresh_period = time_for_1pct
