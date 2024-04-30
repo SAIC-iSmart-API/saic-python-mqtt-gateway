@@ -297,6 +297,12 @@ class HomeAssistantDiscovery:
                               state_class='measurement', unit_of_measurement='V', entity_category='diagnostic',
                               enabled=False)
 
+        self.__publish_sensor(mqtt_topics.CCU_ONBOARD_PLUG_STATUS, 'CCU Onboard Plug Status', state_class='measurement', 
+                              entity_category='diagnostic', enabled=False)
+
+        self.__publish_sensor(mqtt_topics.CCU_OFFBOARD_PLUG_STATUS, 'CCU Offboard Plug Status', state_class='measurement', 
+                              entity_category='diagnostic', enabled=False)
+        
         self.__publish_sensor(mqtt_topics.CLIMATE_INTERIOR_TEMPERATURE, 'Interior temperature',
                               device_class='temperature', state_class='measurement', unit_of_measurement='°C')
         self.__publish_sensor(mqtt_topics.CLIMATE_EXTERIOR_TEMPERATURE, 'Exterior temperature',

@@ -69,6 +69,10 @@ OBC = 'obc'
 OBC_CURRENT = OBC + '/current'
 OBC_VOLTAGE = OBC + '/voltage'
 
+CCU = 'ccu'
+CCU_ONBOARD_PLUG_STATUS = CCU + '/onboardChargerPlugStatus'
+CCU_OFFBOARD_PLUG_STATUS = CCU + '/offboardChargerPlugStatus'
+
 BMS = 'bms'
 BMS_CHARGE_STATUS = BMS + '/chargeStatus'
 

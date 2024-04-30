@@ -631,6 +631,18 @@ class VehicleState:
                 f'UNKNOWN ({charge_mgmt_data.bmsChrgSpRsn})' if charging_stop_reason is None else charging_stop_reason.name
             )
 
+        if charge_mgmt_data.ccuOnbdChrgrPlugOn is not None:
+            self.publisher.publish_int(
+                self.get_topic(mqtt_topics.CCU_ONBOARD_PLUG_STATUS),
+                charge_mgmt_data.ccuOnbdChrgrPlugOn
+            )
+
+        if charge_mgmt_data.ccuOffBdChrgrPlugOn is not None:
+            self.publisher.publish_int(
+                self.get_topic(mqtt_topics.CCU_OFFBOARD_PLUG_STATUS),
+                charge_mgmt_data.ccuOffBdChrgrPlugOn
+            )
+
         charge_status = charge_info_resp.rvsChargeStatus
         fuel_range_elec = charge_status.fuelRangeElec
         if value_in_range(fuel_range_elec, 0, 65535):
