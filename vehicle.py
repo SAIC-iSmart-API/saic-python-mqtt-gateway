@@ -569,15 +569,23 @@ class VehicleState:
             )
 
         obc_voltage = charge_mgmt_data.onBdChrgrAltrCrntInptVol
-        if obc_voltage is not None and obc_voltage != 0:
-            obc_current = charge_mgmt_data.onBdChrgrAltrCrntInptCrnt
+        obc_current = charge_mgmt_data.onBdChrgrAltrCrntInptCrnt
+        if obc_voltage is not None and obc_current is not None:
             self.publisher.publish_float(
                 self.get_topic(mqtt_topics.OBC_CURRENT),
-                round(obc_current / 10.0, 1)
+                round(obc_current / 5.0, 1)
             )
             self.publisher.publish_int(
                 self.get_topic(mqtt_topics.OBC_VOLTAGE),
-                obc_voltage
+                2 * obc_voltage
+            )
+            self.publisher.publish_float(
+                self.get_topic(mqtt_topics.OBC_POWER_SINGLE_PHASE),
+                round(2 * obc_voltage * obc_current / 5.0, 1)
+            )
+            self.publisher.publish_float(
+                self.get_topic(mqtt_topics.OBC_POWER_THREE_PHASE),
+                round(math.sqrt(3) * 2 * obc_voltage * obc_current / 15.0, 1)
             )
         else:
             self.publisher.publish_float(self.get_topic(mqtt_topics.OBC_CURRENT), 0.0)

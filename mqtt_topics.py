@@ -68,6 +68,8 @@ DRIVETRAIN_CURRENT_JOURNEY = DRIVETRAIN + '/currentJourney'
 OBC = 'obc'
 OBC_CURRENT = OBC + '/current'
 OBC_VOLTAGE = OBC + '/voltage'
+OBC_POWER_SINGLE_PHASE = OBC + '/powerSinglePhase'
+OBC_POWER_THREE_PHASE = OBC + '/powerThreePhase'
 
 CCU = 'ccu'
 CCU_ONBOARD_PLUG_STATUS = CCU + '/onboardChargerPlugStatus'
