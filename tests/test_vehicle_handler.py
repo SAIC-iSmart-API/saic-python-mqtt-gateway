@@ -148,7 +148,8 @@ def mock_charge_status(mocked_charge_status):
             chargingGunState=DRIVETRAIN_CHARGER_CONNECTED,
             lastChargeEndingPower=int(
                 (DRIVETRAIN_LAST_CHARGE_ENDING_POWER / BATTERY_CAPACITY_CORRECTION_FACTOR) * 10.0),
-            totalBatteryCapacity=int(RAW_TOTAL_BATTERY_CAPACITY * 10.0)
+            totalBatteryCapacity=int(RAW_TOTAL_BATTERY_CAPACITY * 10.0),
+            fuelRangeElec=int(DRIVETRAIN_RANGE * 10.0)
         ),
 
     )
@@ -178,6 +179,8 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
         await self.vehicle_handler.update_vehicle_status()
 
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_RUNNING), DRIVETRAIN_RUNNING)
+        self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_RANGE),
+                               DRIVETRAIN_RANGE)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_CHARGING), DRIVETRAIN_CHARGING)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE),
                                DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE)
@@ -223,6 +226,7 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
             '/vehicles/vin10000000000000/refresh/lastActivity',
             '/vehicles/vin10000000000000/drivetrain/running',
             '/vehicles/vin10000000000000/drivetrain/charging',
+            '/vehicles/vin10000000000000/drivetrain/range',
             '/vehicles/vin10000000000000/climate/interiorTemperature',
             '/vehicles/vin10000000000000/climate/exteriorTemperature',
             '/vehicles/vin10000000000000/drivetrain/auxiliaryBatteryVoltage',
@@ -290,7 +294,31 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
                                DRIVETRAIN_HYBRID_ELECTRICAL_RANGE)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK),
                                DRIVETRAIN_CHARGING_CABLE_LOCK)
-        self.assertEqual(19, len(self.vehicle_handler.publisher.map))
+        self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_RANGE),
+                               DRIVETRAIN_RANGE)
+        expected_topics = {
+            '/vehicles/vin10000000000000/drivetrain/current',
+            '/vehicles/vin10000000000000/drivetrain/voltage',
+            '/vehicles/vin10000000000000/drivetrain/power',
+            '/vehicles/vin10000000000000/obc/current',
+            '/vehicles/vin10000000000000/obc/voltage',
+            '/vehicles/vin10000000000000/drivetrain/soc',
+            '/vehicles/vin10000000000000/drivetrain/hybrid_electrical_range',
+            '/vehicles/vin10000000000000/drivetrain/range',
+            '/vehicles/vin10000000000000/drivetrain/mileageOfTheDay',
+            '/vehicles/vin10000000000000/drivetrain/mileageSinceLastCharge',
+            '/vehicles/vin10000000000000/drivetrain/chargingType',
+            '/vehicles/vin10000000000000/drivetrain/chargerConnected',
+            '/vehicles/vin10000000000000/drivetrain/remainingChargingTime',
+            '/vehicles/vin10000000000000/refresh/lastChargeState',
+            '/vehicles/vin10000000000000/drivetrain/totalBatteryCapacity',
+            '/vehicles/vin10000000000000/drivetrain/soc_kwh',
+            '/vehicles/vin10000000000000/drivetrain/lastChargeEndingPower',
+            '/vehicles/vin10000000000000/refresh/period/charging',
+            '/vehicles/vin10000000000000/drivetrain/batteryHeating',
+            '/vehicles/vin10000000000000/drivetrain/chargingCableLock'
+        }
+        self.assertSetEqual(expected_topics, set(self.vehicle_handler.publisher.map.keys()))
 
     def assert_mqtt_topic(self, topic: str, value):
         mqtt_map = self.vehicle_handler.publisher.map
