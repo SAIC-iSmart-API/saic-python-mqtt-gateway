@@ -199,10 +199,10 @@ class AbrpApi:
         return data
 
     @staticmethod
-    def __parse_electric_range(raw_value) -> float | None:
+    def __parse_electric_range(raw_value) -> float:
         if value_in_range(raw_value, 1, 65535):
             return float(raw_value) / 10.0
-        return None
+        return 0.0
 
     async def invoke_request_listener(self, request: httpx.Request):
         if not self.__listener:
