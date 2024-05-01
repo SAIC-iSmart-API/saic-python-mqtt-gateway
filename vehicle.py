@@ -317,6 +317,9 @@ class VehicleState:
             mileage = basic_vehicle_status.mileage / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE), mileage)
 
+        # We can read this from either the BMS or the Vehicle Info
+        self.__publish_electric_range(basic_vehicle_status.fuelRangeElec)
+
         if (
                 basic_vehicle_status.currentJourneyId is not None
                 and basic_vehicle_status.currentJourneyDistance is not None
@@ -333,6 +336,16 @@ class VehicleState:
         if value_in_range(raw_value, 1, 255):
             bar_value = raw_value * PRESSURE_TO_BAR_FACTOR
             self.publisher.publish_float(self.get_topic(topic), round(bar_value, 2))
+
+    def __publish_electric_range(self, raw_value):
+        if value_in_range(raw_value, 1, 65535):
+            electric_range = raw_value / 10.0
+            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_RANGE), electric_range)
+            if (
+                    self.charging_station
+                    and self.charging_station.range_topic
+            ):
+                self.publisher.publish_float(self.charging_station.range_topic, electric_range, True)
 
     def set_hv_battery_active(self, hv_battery_active: bool):
         if (
@@ -656,15 +669,9 @@ class VehicleState:
             )
 
         charge_status = charge_info_resp.rvsChargeStatus
-        fuel_range_elec = charge_status.fuelRangeElec
-        if value_in_range(fuel_range_elec, 0, 65535):
-            electric_range = fuel_range_elec / 10.0
-            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_RANGE), electric_range)
-            if (
-                    self.charging_station
-                    and self.charging_station.range_topic
-            ):
-                self.publisher.publish_float(self.charging_station.range_topic, electric_range, True)
+
+        # We can read this from either the BMS or the Vehicle Info
+        self.__publish_electric_range(charge_status.fuelRangeElec)
 
         if value_in_range(charge_status.mileageOfDay, 0, 65535):
             mileage_of_the_day = charge_status.mileageOfDay / 10.0

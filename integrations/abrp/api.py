@@ -9,6 +9,7 @@ from saic_ismart_client_ng.api.schema import GpsPosition, GpsStatus
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.schema import BasicVehicleStatus
 from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp
+from saic_ismart_client_ng.api.vehicle_charging.schema import ChrgMgmtData, RvsChargeStatus
 
 from utils import value_in_range
 
@@ -87,6 +88,8 @@ class AbrpApi:
             if basic_vehicle_status is not None:
                 data.update(self.__extract_basic_vehicle_status(basic_vehicle_status))
 
+            data.update(self.__extract_electric_range(basic_vehicle_status, charge_info.rvsChargeStatus))
+
             gps_position = vehicle_status.gpsPosition
             if gps_position is not None:
                 data.update(self.__extract_gps_position(gps_position))
@@ -124,9 +127,6 @@ class AbrpApi:
         # Skip invalid range readings
         if mileage is not None and value_in_range(mileage, 1, 2147483647):
             data['odometer'] = mileage / 10.0
-        range_elec = basic_vehicle_status.fuelRangeElec
-        if range_elec is not None and value_in_range(range_elec, 1, 65535):
-            data['est_battery_range'] = float(range_elec) / 10.0
 
         return data
 
@@ -175,6 +175,34 @@ class AbrpApi:
             })
 
         return data
+
+    def __extract_electric_range(
+            self,
+            basic_vehicle_status: BasicVehicleStatus | None,
+            charge_status: RvsChargeStatus | None
+    ) -> dict:
+
+        data = {}
+
+        range_elec_vehicle = 0.0
+        if basic_vehicle_status is not None:
+            range_elec_vehicle = self.__parse_electric_range(raw_value=basic_vehicle_status.fuelRangeElec)
+
+        range_elec_bms = 0.0
+        if charge_status is not None:
+            range_elec_bms = self.__parse_electric_range(raw_value=charge_status.fuelRangeElec)
+
+        range_elec = max(range_elec_vehicle, range_elec_bms)
+        if range_elec > 0:
+            data['est_battery_range'] = range_elec
+
+        return data
+
+    @staticmethod
+    def __parse_electric_range(raw_value) -> float | None:
+        if value_in_range(raw_value, 1, 65535):
+            return float(raw_value) / 10.0
+        return None
 
     async def invoke_request_listener(self, request: httpx.Request):
         if not self.__listener:
