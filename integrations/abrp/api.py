@@ -9,7 +9,7 @@ from saic_ismart_client_ng.api.schema import GpsPosition, GpsStatus
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.schema import BasicVehicleStatus
 from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp
-from saic_ismart_client_ng.api.vehicle_charging.schema import ChrgMgmtData, RvsChargeStatus
+from saic_ismart_client_ng.api.vehicle_charging.schema import RvsChargeStatus
 
 from utils import value_in_range
 

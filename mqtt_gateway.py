@@ -399,7 +399,7 @@ class VehicleHandler:
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed: {se.message}')
             LOG.exception(se.message, exc_info=se)
         except Exception as se:
-            self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed unexpectedly')
+            self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', 'Failed unexpectedly')
             LOG.exception("handle_mqtt_command failed with an unexpected exception", exc_info=se)
 
     def get_topic_without_vehicle_prefix(self, topic: str) -> str:
