@@ -314,7 +314,6 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
             '/vehicles/vin10000000000000/drivetrain/totalBatteryCapacity',
             '/vehicles/vin10000000000000/drivetrain/soc_kwh',
             '/vehicles/vin10000000000000/drivetrain/lastChargeEndingPower',
-            '/vehicles/vin10000000000000/refresh/period/charging',
             '/vehicles/vin10000000000000/drivetrain/batteryHeating',
             '/vehicles/vin10000000000000/drivetrain/chargingCableLock'
         }
