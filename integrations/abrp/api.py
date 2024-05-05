@@ -222,7 +222,7 @@ class AbrpApi:
                 headers=dict(request.headers),
             )
         except Exception as e:
-            LOG.warning(f"Error invoking request listener: {e}")
+            LOG.warning(f"Error invoking request listener: {e}", exc_info=e)
 
     async def invoke_response_listener(self, response: httpx.Response):
         if not self.__listener:
@@ -241,4 +241,4 @@ class AbrpApi:
                 headers=dict(response.headers),
             )
         except Exception as e:
-            LOG.warning(f"Error invoking request listener: {e}")
+            LOG.warning(f"Error invoking request listener: {e}", exc_info=e)

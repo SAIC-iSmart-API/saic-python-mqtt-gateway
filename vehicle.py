@@ -47,15 +47,13 @@ class VehicleState:
             publisher: Publisher,
             scheduler: BaseScheduler,
             account_prefix: str,
-            vin: VinInfo,
+            vin_info: VinInfo,
             charging_station: Optional[ChargingStation] = None,
             charge_polling_min_percent: float = 1.0,
             total_battery_capacity: Optional[float] = None,
     ):
         self.publisher = publisher
-        self.vin = vin.vin
-        self.series = str(vin.series).strip().upper()
-        self.model = str(vin.modelName).strip().upper()
+        self.__vin_info = vin_info
         self.mqtt_vin_prefix = f'{account_prefix}'
         self.charging_station = charging_station
         self.last_car_activity = datetime.datetime.min
@@ -78,7 +76,6 @@ class VehicleState:
         self.charge_polling_min_percent = charge_polling_min_percent
         self.refresh_mode = RefreshMode.OFF
         self.previous_refresh_mode = RefreshMode.OFF
-        self.properties = {}
         self.__remote_ac_temp: Optional[int] = None
         self.__remote_ac_running: bool = False
         self.__remote_heated_seats_front_left_level: int = 0
@@ -87,39 +84,52 @@ class VehicleState:
         self.__total_battery_capacity = total_battery_capacity
         self.__scheduled_battery_heating_enabled = False
         self.__scheduled_battery_heating_start = None
+        self.properties = {}
+        for c in vin_info.vehicleModelConfiguration:
+            property_name = c.itemName
+            property_code = c.itemCode
+            property_value = c.itemValue
+            self.properties[property_name] = {'code': property_code, 'value': property_value}
+            self.properties[property_code] = {'name': property_name, 'value': property_value}
 
     def set_refresh_period_active(self, seconds: int):
-        self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_ACTIVE), seconds)
-        human_readable_period = str(datetime.timedelta(seconds=seconds))
-        LOG.info(f'Setting active query interval in vehicle handler for VIN {self.vin} to {human_readable_period}')
-        self.refresh_period_active = seconds
-        # Recompute charging refresh period, if active refresh period is changed
-        self.set_refresh_period_charging(self.refresh_period_charging)
+        if seconds != self.refresh_period_active:
+            self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_ACTIVE), seconds)
+            human_readable_period = str(datetime.timedelta(seconds=seconds))
+            LOG.info(f'Setting active query interval in vehicle handler for VIN {self.vin} to {human_readable_period}')
+            self.refresh_period_active = seconds
+            # Recompute charging refresh period, if active refresh period is changed
+            self.set_refresh_period_charging(self.refresh_period_charging)
 
     def set_refresh_period_inactive(self, seconds: int):
-        self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_INACTIVE), seconds)
-        human_readable_period = str(datetime.timedelta(seconds=seconds))
-        LOG.info(f'Setting inactive query interval in vehicle handler for VIN {self.vin} to {human_readable_period}')
-        self.refresh_period_inactive = seconds
-        # Recompute charging refresh period, if inactive refresh period is changed
-        self.set_refresh_period_charging(self.refresh_period_charging)
+        if seconds != self.refresh_period_inactive:
+            self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_INACTIVE), seconds)
+            human_readable_period = str(datetime.timedelta(seconds=seconds))
+            LOG.info(
+                f'Setting inactive query interval in vehicle handler for VIN {self.vin} to {human_readable_period}')
+            self.refresh_period_inactive = seconds
+            # Recompute charging refresh period, if inactive refresh period is changed
+            self.set_refresh_period_charging(self.refresh_period_charging)
 
     def set_refresh_period_charging(self, seconds: int):
         # Do not refresh more than the active period and less than the inactive one
         seconds = round(seconds)
         seconds = min(max(seconds, self.refresh_period_active), self.refresh_period_inactive) if seconds > 0 else 0
-        self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_CHARGING), seconds)
-        human_readable_period = str(datetime.timedelta(seconds=seconds))
-        LOG.info(f'Setting charging query interval in vehicle handler for VIN {self.vin} to {human_readable_period}')
-        self.refresh_period_charging = seconds
+        if seconds != self.refresh_period_charging:
+            self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_CHARGING), seconds)
+            human_readable_period = str(datetime.timedelta(seconds=seconds))
+            LOG.info(
+                f'Setting charging query interval in vehicle handler for VIN {self.vin} to {human_readable_period}')
+            self.refresh_period_charging = seconds
 
     def set_refresh_period_after_shutdown(self, seconds: int):
-        self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_AFTER_SHUTDOWN), seconds)
-        human_readable_period = str(datetime.timedelta(seconds=seconds))
-        LOG.info(
-            f'Setting after shutdown query interval in vehicle handler for VIN {self.vin} to {human_readable_period}'
-        )
-        self.refresh_period_after_shutdown = seconds
+        if seconds != self.refresh_period_after_shutdown:
+            self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_AFTER_SHUTDOWN), seconds)
+            human_readable_period = str(datetime.timedelta(seconds=seconds))
+            LOG.info(
+                f'Setting after shutdown query interval in vehicle handler for VIN {self.vin} to {human_readable_period}'
+            )
+            self.refresh_period_after_shutdown = seconds
 
     def set_refresh_period_inactive_grace(self, refresh_period_inactive_grace: int):
         if (
@@ -482,26 +492,24 @@ class VehicleState:
             )
         self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_ERROR), self.__refresh_period_error)
 
-    def configure(self, vin_info: VinInfo):
+    def publish_vehicle_info(self):
+        LOG.info("Publishing vehicle info to MQTT")
         self.publisher.publish_str(
             self.get_topic(mqtt_topics.INTERNAL_CONFIGURATION_RAW),
-            json.dumps([asdict(x) for x in vin_info.vehicleModelConfiguration])
+            json.dumps([asdict(x) for x in self.__vin_info.vehicleModelConfiguration])
         )
-        self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_BRAND), vin_info.brandName)
-        self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_MODEL), vin_info.modelName)
-        self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_YEAR), vin_info.modelYear)
-        self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_SERIES), vin_info.series)
-        if vin_info.colorName:
-            self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_COLOR), vin_info.colorName)
-        self.properties = {}
-        for c in vin_info.vehicleModelConfiguration:
+        self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_BRAND), self.__vin_info.brandName)
+        self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_MODEL), self.__vin_info.modelName)
+        self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_YEAR), self.__vin_info.modelYear)
+        self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_SERIES), self.__vin_info.series)
+        if self.__vin_info.colorName:
+            self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_COLOR), self.__vin_info.colorName)
+        for c in self.__vin_info.vehicleModelConfiguration:
             property_name = c.itemName
             property_code = c.itemCode
             property_value = c.itemValue
             property_code_topic = f'{mqtt_topics.INFO_CONFIGURATION}/{property_code}'
             property_name_topic = f'{mqtt_topics.INFO_CONFIGURATION}/{property_name}'
-            self.properties[property_name] = {'code': property_code, 'value': property_value}
-            self.properties[property_code] = {'name': property_name, 'value': property_value}
             self.publisher.publish_str(self.get_topic(property_code_topic), property_value)
             self.publisher.publish_str(self.get_topic(property_name_topic), property_value)
 
@@ -956,6 +964,18 @@ class VehicleState:
     @property
     def supports_target_soc(self):
         return self.__get_property_value('Battery') == '1'
+
+    @property
+    def vin(self):
+        return self.__vin_info.vin
+
+    @property
+    def series(self):
+        return str(self.__vin_info.series).strip().upper()
+
+    @property
+    def model(self):
+        return str(self.__vin_info.modelName).strip().upper()
 
     def get_actual_battery_capacity(self) -> float | None:
         if self.__total_battery_capacity is not None and self.__total_battery_capacity > 0:

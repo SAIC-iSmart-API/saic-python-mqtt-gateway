@@ -34,7 +34,7 @@ class MqttGatewayListenerApiListener(ABC):
             "headers": headers
         }
         topic = parsed_url.path.strip("/")
-        self.__publisher.publish_json(
+        self.__internal_publish(
             key=self.__topic_prefix + "/" + topic + "/request",
             data=json_message
         )
@@ -54,10 +54,19 @@ class MqttGatewayListenerApiListener(ABC):
             "headers": headers
         }
         topic = parsed_url.path.strip("/")
-        self.__publisher.publish_json(
+        self.__internal_publish(
             key=self.__topic_prefix + "/" + topic + "/response",
             data=json_message
         )
+
+    def __internal_publish(self, *, key: str, data: dict):
+        if self.__publisher and self.__publisher.is_connected():
+            self.__publisher.publish_json(
+                key=key,
+                data=data
+            )
+        else:
+            LOG.info(f"Not publishing API response to MQTT since publisher is not connected. {data}")
 
 
 class MqttGatewayAbrpListener(AbrpApiListener, MqttGatewayListenerApiListener):
