@@ -9,7 +9,7 @@ import signal
 import sys
 import time
 import urllib.parse
-from typing import Callable
+from typing import Callable, override
 
 import apscheduler.schedulers.asyncio
 from saic_ismart_client_ng import SaicApi
@@ -78,8 +78,8 @@ class VehicleHandler:
         )
 
     async def handle_vehicle(self) -> None:
-        self.vehicle_state.configure(self.vin_info)
         start_time = datetime.datetime.now()
+        self.vehicle_state.publish_vehicle_info()
         self.vehicle_state.notify_car_activity_time(start_time, True)
 
         while True:
@@ -162,6 +162,7 @@ class VehicleHandler:
     async def handle_mqtt_command(self, *, topic: str, payload: str):
         topic = self.get_topic_without_vehicle_prefix(topic)
         try:
+            should_force_refresh = True
             match topic:
                 case mqtt_topics.DRIVETRAIN_HV_BATTERY_ACTIVE:
                     match payload.strip().lower():
@@ -386,9 +387,11 @@ class VehicleHandler:
 
                 case _:
                     # set mode, period (in)-active,...
+                    should_force_refresh = False
                     await self.vehicle_state.configure_by_message(topic=topic, payload=payload)
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', 'Success')
-            self.vehicle_state.set_refresh_mode(RefreshMode.FORCE, f'after command execution on topic {topic}')
+            if should_force_refresh:
+                self.vehicle_state.set_refresh_mode(RefreshMode.FORCE, f'after command execution on topic {topic}')
         except MqttGatewayException as e:
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed: {e.message}')
             LOG.exception(e.message, exc_info=e)
@@ -432,9 +435,7 @@ class MqttGateway(MqttCommandListener):
         self.saic_api.on_publish_raw_value = self.__on_publish_raw_value
 
     async def run(self):
-        await self.publisher.connect()
         scheduler = apscheduler.schedulers.asyncio.AsyncIOScheduler()
-        scheduler.start()
         try:
             LOG.info("Logging in to SAIC API")
             login_response_message = await self.saic_api.login()
@@ -484,7 +485,6 @@ class MqttGateway(MqttCommandListener):
                 charge_polling_min_percent=self.configuration.charge_dynamic_polling_min_percentage,
                 total_battery_capacity=total_battery_capacity,
             )
-            vehicle_state.configure(vin_info)
 
             vehicle_handler = VehicleHandler(
                 self.configuration,
@@ -503,6 +503,8 @@ class MqttGateway(MqttCommandListener):
             name='Check for new messages',
             max_instances=1
         )
+        await self.publisher.connect()
+        scheduler.start()
         await self.__main_loop()
 
     def get_vehicle_handler(self, vin: str) -> VehicleHandler | None:
@@ -512,6 +514,7 @@ class MqttGateway(MqttCommandListener):
             LOG.error(f'No vehicle handler found for VIN {vin}')
             return None
 
+    @override
     async def on_mqtt_command_received(self, *, vin: str, topic: str, payload: str) -> None:
         vehicle_handler = self.get_vehicle_handler(vin)
         if vehicle_handler:
@@ -519,6 +522,7 @@ class MqttGateway(MqttCommandListener):
         else:
             LOG.debug(f'Command for unknown vin {vin} received')
 
+    @override
     async def on_charging_detected(self, vin: str) -> None:
         vehicle_handler = self.get_vehicle_handler(vin)
         if vehicle_handler:

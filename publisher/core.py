@@ -1,13 +1,17 @@
 import json
 import re
+from abc import ABC
 
 import mqtt_topics
 from configuration import Configuration
 
 
-class Publisher:
+class Publisher(ABC):
     def __init__(self, config: Configuration):
         self.configuration = config
+
+    def is_connected(self) -> bool:
+        raise NotImplementedError()
 
     def publish_json(self, key: str, data: dict, no_prefix: bool = False) -> None:
         raise NotImplementedError()

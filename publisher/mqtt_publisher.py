@@ -2,13 +2,13 @@ import logging
 import os
 import ssl
 from abc import ABC
-from typing import Optional
+from typing import Optional, override
 
 import gmqtt
 
 import mqtt_topics
-from integrations.openwb.charging_station import ChargingStation
 from configuration import Configuration
+from integrations.openwb.charging_station import ChargingStation
 from publisher.core import Publisher
 
 LOG = logging.getLogger(__name__)
@@ -154,16 +154,24 @@ class MqttClient(Publisher):
             topic = f'{self.topic_root}/{key}'
         return self.remove_special_mqtt_characters(topic)
 
+    @override
+    def is_connected(self) -> bool:
+        return self.client and self.client.is_connected
+
+    @override
     def publish_json(self, key: str, data: dict, no_prefix: bool = False) -> None:
         payload = self.dict_to_anonymized_json(data)
         self.publish(topic=self.get_topic(key, no_prefix), payload=payload)
 
+    @override
     def publish_str(self, key: str, value: str, no_prefix: bool = False) -> None:
         self.publish(topic=self.get_topic(key, no_prefix), payload=value)
 
+    @override
     def publish_int(self, key: str, value: int, no_prefix: bool = False) -> None:
         self.publish(topic=self.get_topic(key, no_prefix), payload=value)
 
+    @override
     def publish_bool(self, key: str, value: bool | int | None, no_prefix: bool = False) -> None:
         if value is None:
             value = False
@@ -171,6 +179,7 @@ class MqttClient(Publisher):
             value = value == 1
         self.publish(topic=self.get_topic(key, no_prefix), payload=value)
 
+    @override
     def publish_float(self, key: str, value: float, no_prefix: bool = False) -> None:
         self.publish(topic=self.get_topic(key, no_prefix), payload=value)
 
