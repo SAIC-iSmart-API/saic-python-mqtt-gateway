@@ -1,6 +1,5 @@
 import json
 import logging
-import time
 from abc import ABC
 from typing import Any, Tuple, Optional
 
@@ -11,7 +10,7 @@ from saic_ismart_client_ng.api.vehicle.schema import BasicVehicleStatus
 from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp
 from saic_ismart_client_ng.api.vehicle_charging.schema import RvsChargeStatus
 
-from utils import value_in_range
+from utils import value_in_range, get_update_timestamp
 
 LOG = logging.getLogger(__name__)
 
@@ -59,8 +58,8 @@ class AbrpApi:
             # Request
             tlm_send_url = f'{self.__base_uri}tlm/send'
             data = {
-                # We assume the timestamp is the refresh time or now, we will update it later from GPS if available
-                'utc': int(vehicle_status.statusTime) or int(time.time()),
+                # Guess the timestamp from either the API, GPS info or current machine time
+                'utc': int(get_update_timestamp(vehicle_status).timestamp()),
                 'soc': (charge_status.bmsPackSOCDsp / 10.0),
                 'is_charging': vehicle_status.is_charging,
                 'is_parked': vehicle_status.is_parked,
@@ -137,10 +136,6 @@ class AbrpApi:
         # Do not use GPS data if it is not available
         if gps_position.gps_status_decoded not in [GpsStatus.FIX_2D, GpsStatus.FIX_3d]:
             return data
-
-        ts = gps_position.timeStamp
-        if value_in_range(ts, 1, 2147483647):
-            data['utc'] = ts
 
         way_point = gps_position.wayPoint
         if way_point is None:
