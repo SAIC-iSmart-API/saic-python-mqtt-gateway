@@ -71,10 +71,14 @@ class VehicleHandler:
             abrp_user_token = self.configuration.abrp_token_map[vin_info.vin]
         else:
             abrp_user_token = None
+        if config.publish_raw_abrp_data:
+            listener = MqttGatewayAbrpListener(self.publisher)
+        else:
+            listener = None
         self.abrp_api = AbrpApi(
             self.configuration.abrp_api_key,
             abrp_user_token,
-            listener=MqttGatewayAbrpListener(self.publisher)
+            listener=listener
         )
 
     async def handle_vehicle(self) -> None:
@@ -419,6 +423,10 @@ class MqttGateway(MqttCommandListener):
         self.publisher = MqttClient(self.configuration)
         self.publisher.command_listener = self
         username_is_email = "@" in self.configuration.saic_user
+        if config.publish_raw_api_data:
+            listener = MqttGatewaySaicApiListener(self.publisher)
+        else:
+            listener = None
         self.saic_api = SaicApi(
             configuration=SaicApiConfiguration(
                 username=self.configuration.saic_user,
@@ -430,7 +438,7 @@ class MqttGateway(MqttCommandListener):
                 region=self.configuration.saic_region,
                 tenant_id=self.configuration.saic_tenant_id
             ),
-            listener=MqttGatewaySaicApiListener(self.publisher)
+            listener=listener
         )
 
     async def run(self):
@@ -796,6 +804,17 @@ def process_arguments() -> Configuration:
                             help='How many % points we should try to refresh the charge state. Environment Variable: '
                                  'CHARGE_MIN_PERCENTAGE', dest='charge_dynamic_polling_min_percentage', required=False,
                             action=EnvDefault, envvar='CHARGE_MIN_PERCENTAGE', default='1.0', type=check_positive_float)
+        parser.add_argument('--publish-raw-api-data',
+                            help='Publish raw SAIC API request/response to MQTT. Environment Variable: '
+                                 'PUBLISH_RAW_API_DATA_ENABLED',
+                            dest='publish_raw_api_data', required=False,
+                            action=EnvDefault,
+                            envvar='PUBLISH_RAW_API_DATA_ENABLED', default=False, type=check_bool)
+        parser.add_argument('--publish-raw-abrp-data',
+                            help='Publish raw ABRP API request/response to MQTT. Environment Variable: '
+                                 'PUBLISH_RAW_ABRP_DATA_ENABLED',
+                            dest='publish_raw_abrp_data', required=False, action=EnvDefault,
+                            envvar='PUBLISH_RAW_ABRP_DATA_ENABLED', default=False, type=check_bool)
 
         args = parser.parse_args()
         config.mqtt_user = args.mqtt_user
@@ -829,6 +848,12 @@ def process_arguments() -> Configuration:
 
         if args.ha_discovery_enabled is not None:
             config.ha_discovery_enabled = args.ha_discovery_enabled
+
+        if args.publish_raw_api_data is not None:
+            config.publish_raw_api_data = args.publish_raw_api_data
+
+        if args.publish_raw_abrp_data is not None:
+            config.publish_raw_abrp_data = args.publish_raw_abrp_data
 
         if args.ha_show_unavailable is not None:
             config.ha_show_unavailable = args.ha_show_unavailable

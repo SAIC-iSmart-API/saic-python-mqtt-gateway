@@ -65,13 +65,15 @@ The key-value pairs in the JSON express the following:
 
 ## Advanced settings
 
-| CMD param                       | ENV variable                  | Description                                                                                                                                                                                               |
-|---------------------------------|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| --battery-capacity-mapping      | BATTERY_CAPACITY_MAPPING      | Mapping of VIN to full battery capacity. Multiple mappings can be provided separated by ',' Example: LSJXXXX=54.0,LSJYYYY=64.0                                                                            |
-| --charge-min-percentage         | CHARGE_MIN_PERCENTAGE         | How many % points we should try to refresh the charge state. 1.0 by default                                                                                                                               |
-| --ha-show-unavailable           | HA_SHOW_UNAVAILABLE           | Show entities as Unavailable in Home Assistant when car polling fails. Enabled (True) by default. Can be disabled, to retain the pre 0.6.x behaviour, but do that at your own risk.                       |
-|                                 | LOG_LEVEL                     | Log level: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)                                                  |
-|                                 | MQTT_LOG_LEVEL                | Log level of the MQTT Client: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)                               |
+| CMD param                  | ENV variable                  | Description                                                                                                                                                                         |
+|----------------------------|-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| --battery-capacity-mapping | BATTERY_CAPACITY_MAPPING      | Mapping of VIN to full battery capacity. Multiple mappings can be provided separated by ',' Example: LSJXXXX=54.0,LSJYYYY=64.0                                                      |
+| --charge-min-percentage    | CHARGE_MIN_PERCENTAGE         | How many % points we should try to refresh the charge state. 1.0 by default                                                                                                         |
+| --ha-show-unavailable      | HA_SHOW_UNAVAILABLE           | Show entities as Unavailable in Home Assistant when car polling fails. Enabled (True) by default. Can be disabled, to retain the pre 0.6.x behaviour, but do that at your own risk. |
+| --publish-raw-api-data     | PUBLISH_RAW_API_DATA_ENABLED  | Publish raw SAIC API request/response to MQTT. Disabled (False) by default.                                                                                                         |
+| --publish-raw-abrp-data    | PUBLISH_RAW_ABRP_DATA_ENABLED | Publish raw ABRP API request/response to MQTT. Disabled (False) by default.                                                                                                         |
+|                            | LOG_LEVEL                     | Log level: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)                            |
+|                            | MQTT_LOG_LEVEL                | Log level of the MQTT Client: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)         |
 
 ## Running the service
 

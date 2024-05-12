@@ -40,3 +40,5 @@ class Configuration:
         self.ha_discovery_prefix: str = 'homeassistant'
         self.ha_show_unavailable: bool = True
         self.charge_dynamic_polling_min_percentage: float = 1.0
+        self.publish_raw_api_data: bool = False
+        self.publish_raw_abrp_data: bool = False
