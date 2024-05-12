@@ -322,7 +322,8 @@ class VehicleHandler:
                             raise MqttGatewayException(f'Error setting value for payload {payload}')
                     else:
                         logging.info(
-                            'Unknown Target SOC: waiting for state update before changing charge current limit')
+                            'Unknown Target SOC: waiting for state update before changing charge current limit'
+                        )
                         raise MqttGatewayException(
                             f'Error setting charge current limit - SOC {self.vehicle_state.target_soc}')
                 case mqtt_topics.DRIVETRAIN_SOC_TARGET:
@@ -431,8 +432,6 @@ class MqttGateway(MqttCommandListener):
             ),
             listener=MqttGatewaySaicApiListener(self.publisher)
         )
-        self.saic_api.on_publish_json_value = self.__on_publish_json_value
-        self.saic_api.on_publish_raw_value = self.__on_publish_raw_value
 
     async def run(self):
         scheduler = apscheduler.schedulers.asyncio.AsyncIOScheduler()
