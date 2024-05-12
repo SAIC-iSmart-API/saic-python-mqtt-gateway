@@ -1,11 +1,9 @@
 import asyncio
-import datetime
 import faulthandler
 import logging
 import os
 import signal
 import sys
-import time
 from typing import override, Optional
 
 import apscheduler.schedulers.asyncio
@@ -24,15 +22,6 @@ from saic_api_listener import MqttGatewaySaicApiListener
 from vehicle import VehicleState
 
 MSG_CMD_SUCCESSFUL = 'Success'
-
-
-def epoch_value_to_str(time_value: int) -> str:
-    return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time_value))
-
-
-def datetime_to_str(dt: datetime.datetime) -> str:
-    return dt.strftime('%Y-%m-%d %H:%M:%S')
-
 
 logging.root.handlers = []
 logging.basicConfig(format='{asctime:s} [{levelname:^8s}] {message:s} - {name:s}', style='{')

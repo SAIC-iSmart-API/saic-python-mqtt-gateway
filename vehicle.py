@@ -22,7 +22,7 @@ import mqtt_topics
 from integrations.openwb.charging_station import ChargingStation
 from exceptions import MqttGatewayException
 from publisher.core import Publisher
-from utils import value_in_range, is_valid_temperature
+from utils import value_in_range, is_valid_temperature, datetime_to_str
 
 DEFAULT_AC_TEMP = 22
 PRESSURE_TO_BAR_FACTOR = 0.04
@@ -341,7 +341,7 @@ class VehicleState:
             })
 
         self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_VEHICLE_STATE),
-                                   VehicleState.datetime_to_str(datetime.datetime.now()))
+                                   datetime_to_str(datetime.datetime.now()))
 
     def __publish_tyre(self, raw_value: int, topic: str):
         if value_in_range(raw_value, 1, 255):
@@ -388,7 +388,7 @@ class VehicleState:
         ):
             self.last_car_activity = datetime.datetime.now()
             self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_ACTIVITY),
-                                       VehicleState.datetime_to_str(self.last_car_activity))
+                                       datetime_to_str(self.last_car_activity))
 
     def notify_message(self, message: MessageEntity):
         if (
@@ -400,7 +400,7 @@ class VehicleState:
             self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_TYPE), message.messageType)
             self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_TITLE), message.title)
             self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_TIME),
-                                       VehicleState.datetime_to_str(self.last_car_vehicle_message))
+                                       datetime_to_str(self.last_car_vehicle_message))
             self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_SENDER), message.sender)
             if message.content:
                 self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_CONTENT), message.content)
@@ -498,7 +498,7 @@ class VehicleState:
             self.__failed_refresh_counter = self.__failed_refresh_counter + 1
             self.publisher.publish_str(
                 self.get_topic(mqtt_topics.REFRESH_LAST_ERROR),
-                VehicleState.datetime_to_str(value)
+                datetime_to_str(value)
             )
         self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_ERROR), self.__refresh_period_error)
 
@@ -742,7 +742,7 @@ class VehicleState:
             )
 
         self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_CHARGE_STATE),
-                                   VehicleState.datetime_to_str(datetime.datetime.now()))
+                                   datetime_to_str(datetime.datetime.now()))
 
         real_total_battery_capacity = self.get_actual_battery_capacity()
         raw_total_battery_capacity = None
@@ -892,10 +892,6 @@ class VehicleState:
                 return 'front'
 
         return f'unknown ({rmt_htd_rr_wnd_st})'
-
-    @staticmethod
-    def datetime_to_str(dt: datetime.datetime) -> str:
-        return datetime.datetime.astimezone(dt, tz=datetime.timezone.utc).isoformat()
 
     def set_refresh_mode(self, mode: RefreshMode, cause: str):
         if (
