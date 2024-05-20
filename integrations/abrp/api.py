@@ -1,6 +1,5 @@
 import json
 import logging
-import time
 from abc import ABC
 from typing import Any, Tuple, Optional
 
@@ -9,8 +8,9 @@ from saic_ismart_client_ng.api.schema import GpsPosition, GpsStatus
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.schema import BasicVehicleStatus
 from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp
+from saic_ismart_client_ng.api.vehicle_charging.schema import RvsChargeStatus
 
-from utils import value_in_range
+from utils import value_in_range, get_update_timestamp
 
 LOG = logging.getLogger(__name__)
 
@@ -58,8 +58,8 @@ class AbrpApi:
             # Request
             tlm_send_url = f'{self.__base_uri}tlm/send'
             data = {
-                # We assume the timestamp is the refresh time or now, we will update it later from GPS if available
-                'utc': int(vehicle_status.statusTime) or int(time.time()),
+                # Guess the timestamp from either the API, GPS info or current machine time
+                'utc': int(get_update_timestamp(vehicle_status).timestamp()),
                 'soc': (charge_status.bmsPackSOCDsp / 10.0),
                 'is_charging': vehicle_status.is_charging,
                 'is_parked': vehicle_status.is_parked,
@@ -72,7 +72,11 @@ class AbrpApi:
                 })
 
             # Skip invalid current values reported by the API
-            if charge_status.bmsPackCrntV == 0:
+            is_valid_current = (
+                    charge_status.bmsPackCrntV != 1
+                    and value_in_range(charge_status.bmsPackCrnt, 0, 65535)
+            )
+            if is_valid_current:
                 data.update({
                     'power': charge_status.decoded_power,
                     'voltage': charge_status.decoded_voltage,
@@ -82,6 +86,8 @@ class AbrpApi:
             basic_vehicle_status = vehicle_status.basicVehicleStatus
             if basic_vehicle_status is not None:
                 data.update(self.__extract_basic_vehicle_status(basic_vehicle_status))
+
+            data.update(self.__extract_electric_range(basic_vehicle_status, charge_info.rvsChargeStatus))
 
             gps_position = vehicle_status.gpsPosition
             if gps_position is not None:
@@ -120,9 +126,6 @@ class AbrpApi:
         # Skip invalid range readings
         if mileage is not None and value_in_range(mileage, 1, 2147483647):
             data['odometer'] = mileage / 10.0
-        range_elec = basic_vehicle_status.fuelRangeElec
-        if range_elec is not None and value_in_range(range_elec, 1, 65535):
-            data['est_battery_range'] = float(range_elec) / 10.0
 
         return data
 
@@ -133,10 +136,6 @@ class AbrpApi:
         # Do not use GPS data if it is not available
         if gps_position.gps_status_decoded not in [GpsStatus.FIX_2D, GpsStatus.FIX_3d]:
             return data
-
-        ts = gps_position.timeStamp
-        if value_in_range(ts, 1, 2147483647):
-            data['utc'] = ts
 
         way_point = gps_position.wayPoint
         if way_point is None:
@@ -155,7 +154,7 @@ class AbrpApi:
             return data
 
         altitude = position.altitude
-        if gps_position.gps_status_decoded == GpsStatus.FIX_3d and value_in_range(altitude, -100, 8900):
+        if value_in_range(altitude, -500, 8900):
             data['elevation'] = altitude
 
         lat_degrees = position.latitude / 1000000.0
@@ -171,6 +170,34 @@ class AbrpApi:
             })
 
         return data
+
+    def __extract_electric_range(
+            self,
+            basic_vehicle_status: BasicVehicleStatus | None,
+            charge_status: RvsChargeStatus | None
+    ) -> dict:
+
+        data = {}
+
+        range_elec_vehicle = 0.0
+        if basic_vehicle_status is not None:
+            range_elec_vehicle = self.__parse_electric_range(raw_value=basic_vehicle_status.fuelRangeElec)
+
+        range_elec_bms = 0.0
+        if charge_status is not None:
+            range_elec_bms = self.__parse_electric_range(raw_value=charge_status.fuelRangeElec)
+
+        range_elec = max(range_elec_vehicle, range_elec_bms)
+        if range_elec > 0:
+            data['est_battery_range'] = range_elec
+
+        return data
+
+    @staticmethod
+    def __parse_electric_range(raw_value) -> float:
+        if value_in_range(raw_value, 1, 65535):
+            return float(raw_value) / 10.0
+        return 0.0
 
     async def invoke_request_listener(self, request: httpx.Request):
         if not self.__listener:
@@ -190,7 +217,7 @@ class AbrpApi:
                 headers=dict(request.headers),
             )
         except Exception as e:
-            LOG.warning(f"Error invoking request listener: {e}")
+            LOG.warning(f"Error invoking request listener: {e}", exc_info=e)
 
     async def invoke_response_listener(self, response: httpx.Response):
         if not self.__listener:
@@ -209,4 +236,4 @@ class AbrpApi:
                 headers=dict(response.headers),
             )
         except Exception as e:
-            LOG.warning(f"Error invoking request listener: {e}")
+            LOG.warning(f"Error invoking request listener: {e}", exc_info=e)

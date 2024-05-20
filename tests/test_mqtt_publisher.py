@@ -1,4 +1,5 @@
 import unittest
+from typing import override
 
 from configuration import Configuration, TransportProtocol
 from publisher.mqtt_publisher import MqttClient, MqttCommandListener
@@ -12,10 +13,12 @@ REAR_WINDOW_HEAT_STATE = 'on'
 
 
 class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
+    @override
     async def on_mqtt_command_received(self, *, vin: str, topic: str, payload: str) -> None:
         self.received_vin = vin
         self.received_payload = payload.strip().lower()
 
+    @override
     def setUp(self) -> None:
         config = Configuration()
         config.mqtt_topic = 'saic'
