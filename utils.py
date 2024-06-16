@@ -4,8 +4,12 @@ from saic_ismart_client_ng.api.schema import GpsStatus
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 
 
-def value_in_range(value, min_incl, max_excl) -> bool:
-    return value is not None and min_incl <= value < max_excl
+def value_in_range(value, min_value, max_value, is_max_excl: bool = True) -> bool:
+    return (
+        value is not None
+        and
+        min_value <= value < max_value if is_max_excl else min_value <= value <= max_value
+    )
 
 
 def is_valid_temperature(value) -> bool:
