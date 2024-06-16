@@ -81,7 +81,7 @@ def mock_vehicle_status(mocked_vehicle_status):
         statusTime=int(time.time()),
         basicVehicleStatus=BasicVehicleStatus(
             engineStatus=0,
-            extendedData2=2,
+            extendedData2=DRIVETRAIN_SOC,
             batteryVoltage=DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE * 10,
             mileage=DRIVETRAIN_MILEAGE * 10,
             fuelRangeElec=DRIVETRAIN_RANGE * 10,
@@ -221,6 +221,7 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.LIGHTS_MAIN_BEAM), LIGHTS_MAIN_BEAM)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.LIGHTS_DIPPED_BEAM), LIGHTS_DIPPED_BEAM)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.LIGHTS_SIDE), LIGHTS_SIDE)
+        self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_SOC), DRIVETRAIN_SOC)
         expected_topics = {
             '/vehicles/vin10000000000000/drivetrain/hvBatteryActive',
             '/vehicles/vin10000000000000/refresh/lastActivity',
@@ -260,7 +261,8 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
             '/vehicles/vin10000000000000/climate/heatedSeatsFrontLeftLevel',
             '/vehicles/vin10000000000000/climate/heatedSeatsFrontRightLevel',
             '/vehicles/vin10000000000000/drivetrain/mileage',
-            '/vehicles/vin10000000000000/refresh/lastVehicleState'
+            '/vehicles/vin10000000000000/refresh/lastVehicleState',
+            '/vehicles/vin10000000000000/drivetrain/soc'
         }
         self.assertSetEqual(expected_topics, set(self.vehicle_handler.publisher.map.keys()))
 
