@@ -81,7 +81,8 @@ def mock_vehicle_status(mocked_vehicle_status):
         statusTime=int(time.time()),
         basicVehicleStatus=BasicVehicleStatus(
             engineStatus=0,
-            extendedData2=DRIVETRAIN_SOC,
+            extendedData1=DRIVETRAIN_SOC,
+            extendedData2=1 if DRIVETRAIN_CHARGING else 0,
             batteryVoltage=DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE * 10,
             mileage=DRIVETRAIN_MILEAGE * 10,
             fuelRangeElec=DRIVETRAIN_RANGE * 10,

@@ -329,7 +329,7 @@ class VehicleState:
 
         # We can read this from either the BMS or the Vehicle Info
         self.__publish_electric_range(basic_vehicle_status.fuelRangeElec)
-        self.__publish_soc(basic_vehicle_status.extendedData2)
+        self.__publish_soc(basic_vehicle_status.extendedData1)
 
         if (
                 basic_vehicle_status.currentJourneyId is not None
