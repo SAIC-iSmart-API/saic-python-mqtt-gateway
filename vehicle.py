@@ -378,17 +378,14 @@ class VehicleState:
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_HV_BATTERY_ACTIVE), hv_battery_active)
 
         if hv_battery_active:
-            self.notify_car_activity_time(datetime.datetime.now(), True)
+            self.notify_car_activity()
 
-    def notify_car_activity_time(self, now: datetime.datetime, force: bool):
-        if (
-                self.last_car_activity == datetime.datetime.min
-                or force
-                or self.last_car_activity < now
-        ):
-            self.last_car_activity = datetime.datetime.now()
-            self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_ACTIVITY),
-                                       datetime_to_str(self.last_car_activity))
+    def notify_car_activity(self):
+        self.last_car_activity = datetime.datetime.now()
+        self.publisher.publish_str(
+            self.get_topic(mqtt_topics.REFRESH_LAST_ACTIVITY),
+            datetime_to_str(self.last_car_activity)
+        )
 
     def notify_message(self, message: MessageEntity):
         if (
@@ -407,7 +404,7 @@ class VehicleState:
             self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_STATUS), message.read_status)
             if message.vin:
                 self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_VIN), message.vin)
-                self.notify_car_activity_time(message.message_time, True)
+                self.notify_car_activity()
 
     def should_refresh(self) -> bool:
         match self.refresh_mode:

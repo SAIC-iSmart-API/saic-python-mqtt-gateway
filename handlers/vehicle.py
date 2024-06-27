@@ -50,7 +50,7 @@ class VehicleHandler:
     async def handle_vehicle(self) -> None:
         start_time = datetime.datetime.now()
         self.vehicle_state.publish_vehicle_info()
-        self.vehicle_state.notify_car_activity_time(start_time, True)
+        self.vehicle_state.notify_car_activity()
 
         while True:
             if self.__should_complete_configuration(start_time):
