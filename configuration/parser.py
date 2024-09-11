@@ -158,6 +158,7 @@ def process_arguments() -> Configuration:
         parser.add_argument('--osmand-device-id', help='The mapping of VIN to OsmAnd Device ID.'
                                                        + ' Multiple mappings can be provided seperated by ,'
                                                        + ' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl,'
+                                                         ' Default is to use the car VIN as Device ID, '
                                                        + ' Environment Variable: OSMAND_DEVICE_ID',
                             dest='osmand_device_id', required=False, action=EnvDefault, envvar='OSMAND_DEVICE_ID')
         parser.add_argument('--publish-raw-osmand-data',
