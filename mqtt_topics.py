@@ -99,6 +99,7 @@ INTERNAL = '_internal'
 INTERNAL_API = INTERNAL + '/api'
 INTERNAL_LWT = INTERNAL + '/lwt'
 INTERNAL_ABRP = INTERNAL + '/abrp'
+INTERNAL_OSMAND = INTERNAL + '/osmand'
 INTERNAL_CONFIGURATION_RAW = INTERNAL + '/configuration/raw'
 
 LOCATION = 'location'

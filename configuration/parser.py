@@ -87,18 +87,6 @@ def process_arguments() -> Configuration:
                             help='The SAIC API tenant id. Environment Variable: SAIC_TENANT_ID', default='459771',
                             dest='saic_tenant_id', required=False, action=EnvDefault,
                             envvar='SAIC_TENANT_ID')
-        parser.add_argument('--abrp-api-key',
-                            help='The API key for the A Better Route Planer telemetry API.'
-                                 + ' Default is the open source telemetry'
-                                 + ' API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.'
-                                 + ' Environment Variable: ABRP_API_KEY',
-                            default='8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d', dest='abrp_api_key', required=False,
-                            action=EnvDefault, envvar='ABRP_API_KEY')
-        parser.add_argument('--abrp-user-token', help='The mapping of VIN to ABRP User Token.'
-                                                      + ' Multiple mappings can be provided seperated by ,'
-                                                      + ' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl,'
-                                                      + ' Environment Variable: ABRP_USER_TOKEN',
-                            dest='abrp_user_token', required=False, action=EnvDefault, envvar='ABRP_USER_TOKEN')
         parser.add_argument('--battery-capacity-mapping', help='The mapping of VIN to full batteryc'
                                                                + ' apacity. Multiple mappings can be provided separated'
                                                                + ' by , Example: LSJXXXX=54.0,LSJYYYY=64.0,'
@@ -141,11 +129,42 @@ def process_arguments() -> Configuration:
                             dest='publish_raw_api_data', required=False,
                             action=EnvDefault,
                             envvar='PUBLISH_RAW_API_DATA_ENABLED', default=False, type=check_bool)
+
+        # ABRP Integration
+        parser.add_argument('--abrp-api-key',
+                            help='The API key for the A Better Route Planer telemetry API.'
+                                 + ' Default is the open source telemetry'
+                                 + ' API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.'
+                                 + ' Environment Variable: ABRP_API_KEY',
+                            default='8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d', dest='abrp_api_key', required=False,
+                            action=EnvDefault, envvar='ABRP_API_KEY')
+        parser.add_argument('--abrp-user-token', help='The mapping of VIN to ABRP User Token.'
+                                                      + ' Multiple mappings can be provided seperated by ,'
+                                                      + ' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl,'
+                                                      + ' Environment Variable: ABRP_USER_TOKEN',
+                            dest='abrp_user_token', required=False, action=EnvDefault, envvar='ABRP_USER_TOKEN')
         parser.add_argument('--publish-raw-abrp-data',
                             help='Publish raw ABRP API request/response to MQTT. Environment Variable: '
                                  'PUBLISH_RAW_ABRP_DATA_ENABLED',
                             dest='publish_raw_abrp_data', required=False, action=EnvDefault,
                             envvar='PUBLISH_RAW_ABRP_DATA_ENABLED', default=False, type=check_bool)
+        # OsmAnd Integration
+        parser.add_argument('--osmand--server-uri',
+                            help='The URL of your OsmAnd Server.'
+                                 + ' Default unset'
+                                 + ' Environment Variable: OSMAND_SERVER_URI',
+                            default=None, dest='osmand_server_uri', required=False,
+                            action=EnvDefault, envvar='OSMAND_SERVER_URI')
+        parser.add_argument('--osmand-device-id', help='The mapping of VIN to OsmAnd Device ID.'
+                                                       + ' Multiple mappings can be provided seperated by ,'
+                                                       + ' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl,'
+                                                       + ' Environment Variable: OSMAND_DEVICE_ID',
+                            dest='osmand_device_id', required=False, action=EnvDefault, envvar='OSMAND_DEVICE_ID')
+        parser.add_argument('--publish-raw-osmand-data',
+                            help='Publish raw ABRP OsmAnd request/response to MQTT. Environment Variable: '
+                                 'PUBLISH_RAW_OSMAND_DATA_ENABLED',
+                            dest='publish_raw_osmand_data', required=False, action=EnvDefault,
+                            envvar='PUBLISH_RAW_OSMAND_DATA_ENABLED', default=False, type=check_bool)
 
         args = parser.parse_args()
         config.mqtt_user = args.mqtt_user
@@ -161,9 +180,6 @@ def process_arguments() -> Configuration:
         config.saic_user = args.saic_user
         config.saic_password = args.saic_password
         config.saic_phone_country_code = args.saic_phone_country_code
-        config.abrp_api_key = args.abrp_api_key
-        if args.abrp_user_token:
-            cfg_value_to_dict(args.abrp_user_token, config.abrp_token_map)
         if args.battery_capacity_mapping:
             cfg_value_to_dict(
                 args.battery_capacity_mapping,
@@ -182,9 +198,6 @@ def process_arguments() -> Configuration:
 
         if args.publish_raw_api_data is not None:
             config.publish_raw_api_data = args.publish_raw_api_data
-
-        if args.publish_raw_abrp_data is not None:
-            config.publish_raw_abrp_data = args.publish_raw_abrp_data
 
         if args.ha_show_unavailable is not None:
             config.ha_show_unavailable = args.ha_show_unavailable
@@ -220,6 +233,20 @@ def process_arguments() -> Configuration:
             config.mqtt_port = parse_result.port
 
         config.mqtt_host = str(parse_result.hostname)
+
+        # ABRP Integration
+        config.abrp_api_key = args.abrp_api_key
+        if args.abrp_user_token:
+            cfg_value_to_dict(args.abrp_user_token, config.abrp_token_map)
+        if args.publish_raw_abrp_data is not None:
+            config.publish_raw_abrp_data = args.publish_raw_abrp_data
+
+        # OsmAnd Integration
+        config.osmand_server_uri = args.osmand_server_uri
+        if args.osmand_device_id:
+            cfg_value_to_dict(args.osmand_device_id, config.osmand_device_id_map)
+        if args.publish_raw_osmand_data is not None:
+            config.publish_raw_osmand_data = args.publish_raw_osmand_data
 
         return config
     except argparse.ArgumentError as err:

@@ -16,8 +16,9 @@ from configuration import Configuration
 from exceptions import MqttGatewayException
 from integrations.abrp.api import AbrpApi, AbrpApiException
 from integrations.home_assistant.discovery import HomeAssistantDiscovery
+from integrations.osmand.api import OsmAndApi
 from publisher.core import Publisher
-from saic_api_listener import MqttGatewayAbrpListener
+from saic_api_listener import MqttGatewayAbrpListener, OsmAndApiListener, MqttGatewayOsmAndListener
 from vehicle import VehicleState, RefreshMode
 
 LOG = logging.getLogger(__name__)
@@ -33,18 +34,38 @@ class VehicleHandler:
         self.vehicle_prefix = f'{self.configuration.saic_user}/vehicles/{self.vin_info.vin}'
         self.vehicle_state = vehicle_state
         self.ha_discovery = HomeAssistantDiscovery(vehicle_state, vin_info, config)
+
+        self.__setup_abrp(config, vin_info)
+        self.__setup_osmand(config, vin_info)
+
+    def __setup_abrp(self, config, vin_info):
         if vin_info.vin in self.configuration.abrp_token_map:
             abrp_user_token = self.configuration.abrp_token_map[vin_info.vin]
         else:
             abrp_user_token = None
         if config.publish_raw_abrp_data:
-            listener = MqttGatewayAbrpListener(self.publisher)
+            abrp_api_listener = MqttGatewayAbrpListener(self.publisher)
         else:
-            listener = None
+            abrp_api_listener = None
         self.abrp_api = AbrpApi(
             self.configuration.abrp_api_key,
             abrp_user_token,
-            listener=listener
+            listener=abrp_api_listener
+        )
+
+    def __setup_osmand(self, config, vin_info):
+        if vin_info.vin in self.configuration.osmand_device_id_map:
+            osmand_device_id = self.configuration.osmand_device_id_map[vin_info.vin]
+        else:
+            osmand_device_id = vin_info.vin
+        if config.publish_raw_osmand_data:
+            api_listener = MqttGatewayOsmAndListener(self.publisher)
+        else:
+            api_listener = None
+        self.osmand_api = OsmAndApi(
+            server_uri=self.configuration.osmand_server_uri,
+            device_id=osmand_device_id,
+            listener=api_listener
         )
 
     async def handle_vehicle(self) -> None:
@@ -99,6 +120,7 @@ class VehicleHandler:
         LOG.info('Refreshing vehicle status succeeded...')
 
         await self.__refresh_abrp(charge_status, vehicle_status)
+        await self.__refresh_osmand(charge_status, vehicle_status)
 
     def __should_poll(self) -> bool:
         return (
@@ -111,6 +133,14 @@ class VehicleHandler:
                 not self.vehicle_state.is_complete()
                 and datetime.datetime.now() > start_time + datetime.timedelta(seconds=10)
         )
+
+    async def __refresh_osmand(self, charge_status, vehicle_status):
+        refreshed, response = await self.osmand_api.update_osmand(vehicle_status, charge_status)
+        self.publisher.publish_str(f'{self.vehicle_prefix}/{mqtt_topics.INTERNAL_OSMAND}', response)
+        if refreshed:
+            LOG.info('Refreshing OsmAnd status succeeded...')
+        else:
+            LOG.info(f'OsmAnd not refreshed, reason {response}')
 
     async def __refresh_abrp(self, charge_status, vehicle_status):
         abrp_refreshed, abrp_response = await self.abrp_api.update_abrp(vehicle_status, charge_status)
