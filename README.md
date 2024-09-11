@@ -31,13 +31,31 @@ do when you run the service from a docker container).
 | --saic-rest-uri             | SAIC_REST_URI             | SAIC API URI. Default is the European Production endpoint: https://gateway-mg-eu.soimt.com/api.app/v1/                                                                              |
 | --saic-region               | SAIC_REGION               | SAIC API region. Default is eu.                                                                                                                                                     |
 | --saic-tenant-id            | SAIC_TENANT_ID            | SAIC API tenant ID. Default is 459771.                                                                                                                                              |
-| --abrp-api-key              | ABRP_API_KEY              | API key for the A Better Route Planner telemetry API. Default is the open source telemetry API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.                                            |
-| --abrp-user-token           | ABRP_USER_TOKEN           | Mapping of VIN to ABRP User Token. Multiple mappings can be provided separated by ',' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl                                            |
 | --charging-stations-json    | CHARGING_STATIONS_JSON    | Custom charging stations configuration file name                                                                                                                                    |
 | --saic-relogin-delay        | SAIC_RELOGIN_DELAY        | The gateway detects logins from other devices (e.g. the iSMART app). It then pauses it's activity for 900 seconds (default value). The delay can be configured with this parameter. |
 | --ha-discovery              | HA_DISCOVERY_ENABLED      | Home Assistant auto-discovery is enabled (True) by default. It can be disabled (False) with this parameter.                                                                         |
 | --ha-discovery-prefix       | HA_DISCOVERY_PREFIX       | The default MQTT prefix for Home Assistant auto-discovery is 'homeassistant'. Another prefix can be configured with this parameter                                                  |
 | --messages-request-interval | MESSAGES_REQUEST_INTERVAL | The interval for retrieving messages in seconds. Default is 60 seconds.                                                                                                             |
+
+### ABRP Integration Configuration
+
+Those parameters can be used to allow the MQTT Gateway to send data to ABRP API
+
+| CMD param               | ENV variable                  | Description                                                                                                                              |
+|-------------------------|-------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| --abrp-api-key          | ABRP_API_KEY                  | API key for the A Better Route Planner telemetry API. Default is the open source telemetry API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d. |
+| --abrp-user-token       | ABRP_USER_TOKEN               | Mapping of VIN to ABRP User Token. Multiple mappings can be provided separated by ',' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl |
+| --publish-raw-abrp-data | PUBLISH_RAW_ABRP_DATA_ENABLED | Publish raw ABRP API request/response to MQTT. Disabled (False) by default.                                                              |
+
+### OsmAnd Integration Configuration
+
+Those parameters can be used to allow the MQTT Gateway to send data to an OsmAnd-compatibile server like Traccar
+
+| CMD param                 | ENV variable                    | Description                                                                                                                                                                                  |
+|---------------------------|---------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| --osmand-server-uri       | OSMAND_SERVER_URI               | The URL of your OsmAnd Server                                                                                                                                                                |
+| --osmand-device-id        | OSMAND_DEVICE_ID                | Mapping of VIN to OsmAnd Device Id. Multiple mappings can be provided separated by ',' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl. Defaults to use the car VIN as Device Id if unset |
+| --publish-raw-osmand-data | PUBLISH_RAW_OSMAND_DATA_ENABLED | Publish raw ABRP OSMAND request/response to MQTT. Disabled (False) by default.                                                                                                               |
 
 ### Charging Station Configuration
 
@@ -65,15 +83,14 @@ The key-value pairs in the JSON express the following:
 
 ## Advanced settings
 
-| CMD param                  | ENV variable                  | Description                                                                                                                                                                         |
-|----------------------------|-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| --battery-capacity-mapping | BATTERY_CAPACITY_MAPPING      | Mapping of VIN to full battery capacity. Multiple mappings can be provided separated by ',' Example: LSJXXXX=54.0,LSJYYYY=64.0                                                      |
-| --charge-min-percentage    | CHARGE_MIN_PERCENTAGE         | How many % points we should try to refresh the charge state. 1.0 by default                                                                                                         |
-| --ha-show-unavailable      | HA_SHOW_UNAVAILABLE           | Show entities as Unavailable in Home Assistant when car polling fails. Enabled (True) by default. Can be disabled, to retain the pre 0.6.x behaviour, but do that at your own risk. |
-| --publish-raw-api-data     | PUBLISH_RAW_API_DATA_ENABLED  | Publish raw SAIC API request/response to MQTT. Disabled (False) by default.                                                                                                         |
-| --publish-raw-abrp-data    | PUBLISH_RAW_ABRP_DATA_ENABLED | Publish raw ABRP API request/response to MQTT. Disabled (False) by default.                                                                                                         |
-|                            | LOG_LEVEL                     | Log level: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)                            |
-|                            | MQTT_LOG_LEVEL                | Log level of the MQTT Client: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)         |
+| CMD param                  | ENV variable                 | Description                                                                                                                                                                         |
+|----------------------------|------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| --battery-capacity-mapping | BATTERY_CAPACITY_MAPPING     | Mapping of VIN to full battery capacity. Multiple mappings can be provided separated by ',' Example: LSJXXXX=54.0,LSJYYYY=64.0                                                      |
+| --charge-min-percentage    | CHARGE_MIN_PERCENTAGE        | How many % points we should try to refresh the charge state. 1.0 by default                                                                                                         |
+| --ha-show-unavailable      | HA_SHOW_UNAVAILABLE          | Show entities as Unavailable in Home Assistant when car polling fails. Enabled (True) by default. Can be disabled, to retain the pre 0.6.x behaviour, but do that at your own risk. |
+| --publish-raw-api-data     | PUBLISH_RAW_API_DATA_ENABLED | Publish raw SAIC API request/response to MQTT. Disabled (False) by default.                                                                                                         |
+|                            | LOG_LEVEL                    | Log level: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)                            |
+|                            | MQTT_LOG_LEVEL               | Log level of the MQTT Client: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)         |
 
 ## Running the service
 

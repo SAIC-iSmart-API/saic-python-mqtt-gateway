@@ -149,7 +149,7 @@ def process_arguments() -> Configuration:
                             dest='publish_raw_abrp_data', required=False, action=EnvDefault,
                             envvar='PUBLISH_RAW_ABRP_DATA_ENABLED', default=False, type=check_bool)
         # OsmAnd Integration
-        parser.add_argument('--osmand--server-uri',
+        parser.add_argument('--osmand-server-uri',
                             help='The URL of your OsmAnd Server.'
                                  + ' Default unset'
                                  + ' Environment Variable: OSMAND_SERVER_URI',
