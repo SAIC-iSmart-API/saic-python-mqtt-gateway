@@ -33,3 +33,7 @@ def get_update_timestamp(vehicle_status: VehicleStatusResp) -> datetime:
         return reference_time
     else:
         return now_time
+
+
+def datetime_to_str(dt: datetime) -> str:
+    return datetime.astimezone(dt, tz=timezone.utc).isoformat()

@@ -22,9 +22,7 @@ class Configuration:
         self.saic_region: str = 'eu'
         self.saic_tenant_id: str = '459771'
         self.saic_relogin_delay: int = 15 * 60  # in seconds
-        self.abrp_token_map: dict[str, str] = {}
         self.battery_capacity_map: dict[str, float] = {}
-        self.abrp_api_key: str | None = None
         self.mqtt_host: str | None = None
         self.mqtt_port: int | None = None
         self.mqtt_transport_protocol: TransportProtocol | None = None
@@ -40,3 +38,14 @@ class Configuration:
         self.ha_discovery_prefix: str = 'homeassistant'
         self.ha_show_unavailable: bool = True
         self.charge_dynamic_polling_min_percentage: float = 1.0
+        self.publish_raw_api_data: bool = False
+
+        # ABRP Integration
+        self.abrp_token_map: dict[str, str] = {}
+        self.abrp_api_key: str | None = None
+        self.publish_raw_abrp_data: bool = False
+
+        # OsmAnd Integration
+        self.osmand_device_id_map: dict[str, str] = {}
+        self.osmand_server_uri: str | None = None
+        self.publish_raw_osmand_data: bool = False
