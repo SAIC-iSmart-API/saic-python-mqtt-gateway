@@ -2,7 +2,8 @@
 
 ## 0.6.3
 
-### What's Changed
+### What's changed
+
 * Feat: try to recover SoC% from vehicle state if BMS is not responding by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/247
 * Fix tests for drivetrain soc from vehicle state by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/248
 
