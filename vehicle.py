@@ -329,6 +329,7 @@ class VehicleState:
 
         # We can read this from either the BMS or the Vehicle Info
         self.__publish_electric_range(basic_vehicle_status.fuelRangeElec)
+        self.__publish_soc(basic_vehicle_status.extendedData1)
 
         if (
                 basic_vehicle_status.currentJourneyId is not None
@@ -356,6 +357,15 @@ class VehicleState:
                     and self.charging_station.range_topic
             ):
                 self.publisher.publish_float(self.charging_station.range_topic, electric_range, True)
+
+    def __publish_soc(self, soc):
+        if value_in_range(soc, 0, 100.0, is_max_excl=False):
+            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC), soc)
+            if (
+                    self.charging_station
+                    and self.charging_station.soc_topic
+            ):
+                self.publisher.publish_float(self.charging_station.soc_topic, soc, True)
 
     def set_hv_battery_active(self, hv_battery_active: bool):
         if (
@@ -634,13 +644,7 @@ class VehicleState:
                 LOG.warning(f'Invalid target SOC received: {raw_target_soc}')
 
         soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
-        if soc <= 100.0:
-            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC), soc)
-            if (
-                    self.charging_station
-                    and self.charging_station.soc_topic
-            ):
-                self.publisher.publish_int(self.charging_station.soc_topic, int(soc), True)
+        self.__publish_soc(soc)
 
         estd_elec_rng = charge_mgmt_data.bmsEstdElecRng
         if value_in_range(estd_elec_rng, 0, 65535) and estd_elec_rng != 2047:
@@ -989,6 +993,7 @@ class VehicleState:
                 # MG4 Lux/Trophy 2022
                 return 64.0
         # MG4 Standard 2022
+        # MG4 Standard 2023 (EH32 X7)
         elif self.series.startswith('EH32 L'):
             return 51.0
         # Model: MG5 Electric, variant MG5 SR Comfort
