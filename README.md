@@ -39,6 +39,16 @@ do when you run the service from a docker container).
 | --ha-discovery-prefix       | HA_DISCOVERY_PREFIX       | The default MQTT prefix for Home Assistant auto-discovery is 'homeassistant'. Another prefix can be configured with this parameter                                                  |
 | --messages-request-interval | MESSAGES_REQUEST_INTERVAL | The interval for retrieving messages in seconds. Default is 60 seconds.                                                                                                             |
 
+### SAIC API Endpoints
+
+The following are the known available endpoints:
+
+| SAIC_REST_URI                               | SAIC_REGION | Notes                                                                                                                               |
+|---------------------------------------------|-------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| https://gateway-mg-au.soimt.com/api.app/v1/ | au          | This endpoint is not used by the iSmart app for Australia and New Zealand but has been tested and proven to work in these countries. |
+| https://gateway-mg-eu.soimt.com/api.app/v1/ | eu          |                                                                                                                                      |
+
+
 ### Charging Station Configuration
 
 If your charging station also provides information over MQTT or if you somehow manage to publish information from your
