@@ -331,6 +331,15 @@ class VehicleState:
         self.__publish_electric_range(basic_vehicle_status.fuelRangeElec)
         self.__publish_soc(basic_vehicle_status.extendedData1)
 
+        # Standard fossil fuels vehicles
+        if value_in_range(basic_vehicle_status.fuelRange, 1, 65535):
+            fuel_range = basic_vehicle_status.fuelRange / 10.0
+            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_FOSSIL_FUEL_RANGE), fuel_range)
+
+        if value_in_range(basic_vehicle_status.fuelLevelPrc, 0, 100, is_max_excl=False):
+            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_FOSSIL_FUEL_PERCENTAGE),
+                                         basic_vehicle_status.fuelLevelPrc)
+
         if (
                 basic_vehicle_status.currentJourneyId is not None
                 and basic_vehicle_status.currentJourneyDistance is not None
@@ -882,6 +891,17 @@ class VehicleState:
                 self.previous_refresh_mode = self.refresh_mode
             self.refresh_mode = mode
             LOG.debug(f'Refresh mode set to {new_mode_value} due to {cause}')
+
+    @property
+    def is_ev(self):
+        if self.series.startswith('ZP22'):
+            return False
+        else:
+            return True
+
+    @property
+    def has_fossil_fuel(self):
+        return not self.is_ev
 
     @property
     def has_sunroof(self):

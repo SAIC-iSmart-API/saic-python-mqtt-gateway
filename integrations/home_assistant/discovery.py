@@ -289,6 +289,19 @@ class HomeAssistantDiscovery:
                               device_class='voltage', state_class='measurement', unit_of_measurement='V',
                               icon='mdi:car-battery')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_RANGE, 'Range', device_class='distance', unit_of_measurement='km')
+        self.__publish_sensor(
+            mqtt_topics.DRIVETRAIN_FOSSIL_FUEL_RANGE, 'Fossil fuel range',
+            device_class='distance',
+            unit_of_measurement='km',
+            enabled=self.__vehicle_state.has_fossil_fuel
+        )
+        self.__publish_sensor(
+            mqtt_topics.DRIVETRAIN_FOSSIL_FUEL_PERCENTAGE, 'Fossil fuel percentage',
+            state_class='measurement',
+            unit_of_measurement='%',
+            icon='mdi:fuel',
+            enabled=self.__vehicle_state.has_fossil_fuel
+        )
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_CURRENT, 'Current', device_class='current',
                               state_class='measurement', unit_of_measurement='A')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_VOLTAGE, 'Voltage', device_class='voltage',

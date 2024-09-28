@@ -43,23 +43,22 @@ class OsmAndApi:
             }
         )
 
-    async def update_osmand(self, vehicle_status: VehicleStatusResp, charge_info: ChrgMgmtDataResp) \
+    async def update_osmand(self, vehicle_status: VehicleStatusResp, charge_info: ChrgMgmtDataResp | None) \
             -> Tuple[bool, Any | None]:
 
-        charge_status = None if charge_info is None else charge_info.chrgMgmtData
+        charge_mgmt_data = None if charge_info is None else charge_info.chrgMgmtData
+        charge_status = None if charge_info is None else charge_info.rvsChargeStatus
 
         if (
                 self.__device_id is not None
                 and self.__server_uri is not None
                 and vehicle_status is not None
-                and charge_status is not None
         ):
             # Request
             data = {
                 'id': self.__device_id,
                 # Guess the timestamp from either the API, GPS info or current machine time
                 'timestamp': int(get_update_timestamp(vehicle_status).timestamp()),
-                'soc': (charge_status.bmsPackSOCDsp / 10.0),
                 'is_charging': vehicle_status.is_charging,
                 'is_parked': vehicle_status.is_parked,
             }
@@ -70,27 +69,33 @@ class OsmAndApi:
                     'speed': 0.0,
                 })
 
-            # Skip invalid current values reported by the API
-            is_valid_current = (
-                    charge_status.bmsPackCrntV != 1
-                    and value_in_range(charge_status.bmsPackCrnt, 0, 65535)
-            )
-            if is_valid_current:
-                data.update({
-                    'power': charge_status.decoded_power,
-                    'voltage': charge_status.decoded_voltage,
-                    'current': charge_status.decoded_current
-                })
-
             basic_vehicle_status = vehicle_status.basicVehicleStatus
             if basic_vehicle_status is not None:
                 data.update(self.__extract_basic_vehicle_status(basic_vehicle_status))
 
-            data.update(self.__extract_electric_range(basic_vehicle_status, charge_info.rvsChargeStatus))
-
             gps_position = vehicle_status.gpsPosition
             if gps_position is not None:
                 data.update(self.__extract_gps_position(gps_position))
+
+            if charge_mgmt_data is not None:
+                data.update({
+                    'soc': (charge_mgmt_data.bmsPackSOCDsp / 10.0)
+                })
+
+                # Skip invalid current values reported by the API
+                is_valid_current = (
+                        charge_mgmt_data.bmsPackCrntV != 1
+                        and value_in_range(charge_mgmt_data.bmsPackCrnt, 0, 65535)
+                )
+                if is_valid_current:
+                    data.update({
+                        'power': charge_mgmt_data.decoded_power,
+                        'voltage': charge_mgmt_data.decoded_voltage,
+                        'current': charge_mgmt_data.decoded_current
+                    })
+
+            # Extract electric range if available
+            data.update(self.__extract_electric_range(basic_vehicle_status, charge_status))
 
             try:
                 response = await self.client.post(url=self.__server_uri, params=data)

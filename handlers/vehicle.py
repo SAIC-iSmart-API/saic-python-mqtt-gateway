@@ -105,16 +105,20 @@ class VehicleHandler:
     async def __polling(self):
         vehicle_status = await self.update_vehicle_status()
 
-        try:
-            charge_status = await self.update_charge_status()
-        except Exception as e:
-            LOG.exception('Error updating charge status', exc_info=e)
-            charge_status = None
+        if self.vehicle_state.is_ev:
+            try:
+                charge_status = await self.update_charge_status()
+            except Exception as e:
+                LOG.exception('Error updating charge status', exc_info=e)
+                charge_status = None
 
-        try:
-            await self.update_scheduled_battery_heating_status()
-        except Exception as e:
-            LOG.exception('Error updating scheduled battery heating status', exc_info=e)
+            try:
+                await self.update_scheduled_battery_heating_status()
+            except Exception as e:
+                LOG.exception('Error updating scheduled battery heating status', exc_info=e)
+        else:
+            LOG.debug("Skipping EV-related updates as the vehicle is not an EV")
+            charge_status = None
 
         self.vehicle_state.mark_successful_refresh()
         LOG.info('Refreshing vehicle status succeeded...')
