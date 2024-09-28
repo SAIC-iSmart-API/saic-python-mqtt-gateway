@@ -741,34 +741,10 @@ class VehicleState:
         self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_CHARGE_STATE),
                                    datetime_to_str(datetime.datetime.now()))
 
-        real_total_battery_capacity = self.get_actual_battery_capacity()
-        raw_total_battery_capacity = None
+        real_total_battery_capacity, battery_capacity_correction_factor = self.get_actual_battery_capacity(
+            charge_status)
 
-        if (
-                charge_status.totalBatteryCapacity is not None
-                and charge_status.totalBatteryCapacity > 0
-        ):
-            raw_total_battery_capacity = charge_status.totalBatteryCapacity / 10.0
-
-        battery_capacity_correction_factor = 1.0
-        if real_total_battery_capacity is None and raw_total_battery_capacity is not None:
-            LOG.debug(f"Setting real battery capacity to raw battery capacity {raw_total_battery_capacity}")
-            real_total_battery_capacity = raw_total_battery_capacity
-            battery_capacity_correction_factor = 1.0
-        elif real_total_battery_capacity is not None and raw_total_battery_capacity is None:
-            LOG.debug(f"Setting raw battery capacity to real battery capacity {real_total_battery_capacity}")
-            battery_capacity_correction_factor = 1.0
-        elif real_total_battery_capacity is not None and raw_total_battery_capacity is not None:
-            LOG.debug(
-                f"Calculating full battery capacity correction factor based on "
-                f"real={real_total_battery_capacity} and raw={raw_total_battery_capacity}"
-            )
-            battery_capacity_correction_factor = real_total_battery_capacity / raw_total_battery_capacity
-        elif real_total_battery_capacity is None and raw_total_battery_capacity is None:
-            LOG.warning("No battery capacity information available")
-            battery_capacity_correction_factor = 1.0
-
-        if real_total_battery_capacity is not None and real_total_battery_capacity > 0:
+        if real_total_battery_capacity > 0:
             self.publisher.publish_float(
                 self.get_topic(mqtt_topics.DRIVETRAIN_TOTAL_BATTERY_CAPACITY),
                 real_total_battery_capacity
@@ -806,7 +782,7 @@ class VehicleState:
                 and charge_mgmt_data.decoded_power < -1
         ):
             # Only compute a dynamic refresh period if we have detected at least 1kW of power during charging
-            time_for_1pct = 36.0 * self.get_actual_battery_capacity() / abs(charge_mgmt_data.decoded_power)
+            time_for_1pct = 36.0 * real_total_battery_capacity / abs(charge_mgmt_data.decoded_power)
             time_for_min_pct = math.ceil(self.charge_polling_min_percent * time_for_1pct)
             # It doesn't make sense to refresh less often than the estimated time for completion
             if remaining_charging_time is not None and remaining_charging_time > 0:
@@ -974,7 +950,42 @@ class VehicleState:
     def model(self):
         return str(self.__vin_info.modelName).strip().upper()
 
-    def get_actual_battery_capacity(self) -> float | None:
+    def get_actual_battery_capacity(self, charge_status) -> tuple[float, float]:
+
+        real_total_battery_capacity = self.__get_actual_battery_capacity()
+        if (
+                real_total_battery_capacity is not None
+                and real_total_battery_capacity <= 0
+        ):
+            # Negative or 0 value for real capacity means we don't know that info
+            real_total_battery_capacity = None
+
+        raw_total_battery_capacity = None
+        if (
+                charge_status.totalBatteryCapacity is not None
+                and charge_status.totalBatteryCapacity > 0
+        ):
+            raw_total_battery_capacity = charge_status.totalBatteryCapacity / 10.0
+
+        if raw_total_battery_capacity is not None:
+            if real_total_battery_capacity is not None:
+                LOG.debug(
+                    f"Calculating full battery capacity correction factor based on "
+                    f"real={real_total_battery_capacity} and raw={raw_total_battery_capacity}"
+                )
+                return real_total_battery_capacity, real_total_battery_capacity / raw_total_battery_capacity
+            else:
+                LOG.debug(f"Setting real battery capacity to raw battery capacity {raw_total_battery_capacity}")
+                return raw_total_battery_capacity, 1.0
+        else:
+            if real_total_battery_capacity is not None:
+                LOG.debug(f"Setting raw battery capacity to real battery capacity {real_total_battery_capacity}")
+                return real_total_battery_capacity, 1.0
+            else:
+                LOG.warning("No battery capacity information available")
+                return 0, 1.0
+
+    def __get_actual_battery_capacity(self) -> float | None:
         if self.__total_battery_capacity is not None and self.__total_battery_capacity > 0:
             return float(self.__total_battery_capacity)
         # MG4 "Lux/Trophy"
