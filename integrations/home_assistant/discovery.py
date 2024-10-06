@@ -174,6 +174,8 @@ class HomeAssistantDiscovery:
 
         self.__publish_switch(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT, 'Rear window defroster heating',
                               icon='mdi:car-defrost-rear', payload_on='on', payload_off='off')
+        self.__publish_switch(mqtt_topics.LOCATION_FIND_MY_CAR, 'Find my car',
+                              icon='mdi:car-search', payload_on='activate', payload_off='stop')
 
         # Locks
         self.__publish_lock(mqtt_topics.DOORS_LOCKED, 'Doors Lock', icon='mdi:car-door-lock')
