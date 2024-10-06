@@ -413,7 +413,23 @@ class VehicleHandler:
                             await self.saic_api.control_charging_port_lock(self.vin_info.vin, unlock=False)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {payload}')
-
+                case mqtt_topics.LOCATION_FIND_MY_CAR:
+                    vin = self.vin_info.vin
+                    match payload.strip().lower():
+                        case 'activate':
+                            LOG.info(f'Activating \'find my car\' with horn and lights for vehicle {vin}')
+                            await self.saic_api.control_find_my_car(vin)
+                        case 'lights_only':
+                            LOG.info(f'Activating \'find my car\' with lights only for vehicle {vin}')
+                            await self.saic_api.control_find_my_car(vin, with_horn=False, with_lights=True)
+                        case 'horn_only':
+                            LOG.info(f'Activating \'find my car\' with horn only for vehicle {vin}')
+                            await self.saic_api.control_find_my_car(vin, with_horn=True, with_lights=False)
+                        case 'stop':
+                            LOG.info(f'Stopping \'find my car\' for vehicle {vin}')
+                            await self.saic_api.control_find_my_car(vin, should_stop=True)
+                        case _:
+                            raise MqttGatewayException(f'Unsupported payload {payload}')
                 case _:
                     # set mode, period (in)-active,...
                     should_force_refresh = False
@@ -426,7 +442,7 @@ class VehicleHandler:
             LOG.exception(e.message, exc_info=e)
         except SaicLogoutException as se:
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed: {se.message}')
-            LOG.error("API Client was logged out, waiting for a new login", exc_info=e)
+            LOG.error("API Client was logged out, waiting for a new login", exc_info=se)
             self.relogin_handler.relogin()
         except SaicApiException as se:
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed: {se.message}')
