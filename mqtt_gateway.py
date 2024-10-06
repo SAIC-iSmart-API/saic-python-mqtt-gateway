@@ -15,6 +15,7 @@ import mqtt_topics
 from configuration import Configuration
 from configuration.parser import process_arguments
 from handlers.message import MessageHandler
+from handlers.relogin import ReloginHandler
 from handlers.vehicle import VehicleHandler, VehicleHandlerLocator
 from integrations.openwb.charging_station import ChargingStation
 from publisher.mqtt_publisher import MqttClient, MqttCommandListener
@@ -52,20 +53,22 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
                 password=self.configuration.saic_password,
                 username_is_email=username_is_email,
                 phone_country_code=None if username_is_email else self.configuration.saic_phone_country_code,
-                relogin_delay=self.configuration.saic_relogin_delay,
                 base_uri=self.configuration.saic_rest_uri,
                 region=self.configuration.saic_region,
                 tenant_id=self.configuration.saic_tenant_id
             ),
             listener=listener
         )
+        self.__scheduler = apscheduler.schedulers.asyncio.AsyncIOScheduler()
+        self.__relogin_handler = ReloginHandler(
+            relogin_relay=self.configuration.saic_relogin_delay,
+            api=self.saic_api,
+            scheduler=self.__scheduler
+        )
 
     async def run(self):
-        scheduler = apscheduler.schedulers.asyncio.AsyncIOScheduler()
         try:
-            LOG.info("Logging in to SAIC API")
-            login_response_message = await self.saic_api.login()
-            LOG.info("Logged in as %s", login_response_message.account)
+            await self.__relogin_handler.login()
         except Exception as e:
             LOG.exception('MqttGateway crashed due to an Exception during startup', exc_info=e)
             raise SystemExit(e)
@@ -104,7 +107,7 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
             total_battery_capacity = configuration.battery_capacity_map.get(vin_info.vin, None)
             vehicle_state = VehicleState(
                 self.publisher,
-                scheduler,
+                self.__scheduler,
                 account_prefix,
                 vin_info,
                 charging_station,
@@ -114,14 +117,19 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
 
             vehicle_handler = VehicleHandler(
                 self.configuration,
+                self.__relogin_handler,
                 self.saic_api,
                 self.publisher,  # Gateway pointer
                 vin_info,
                 vehicle_state
             )
             self.vehicle_handlers[vin_info.vin] = vehicle_handler
-        message_handler = MessageHandler(self, self.saic_api)
-        scheduler.add_job(
+        message_handler = MessageHandler(
+            gateway=self,
+            relogin_handler=self.__relogin_handler,
+            saicapi=self.saic_api
+        )
+        self.__scheduler.add_job(
             func=message_handler.check_for_new_messages,
             trigger='interval',
             seconds=self.configuration.messages_request_interval,
@@ -130,7 +138,7 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
             max_instances=1
         )
         await self.publisher.connect()
-        scheduler.start()
+        self.__scheduler.start()
         await self.__main_loop()
 
     @override
