@@ -9,25 +9,34 @@ from saic_ismart_client_ng import SaicApi
 from saic_ismart_client_ng.api.vehicle.schema import VinInfo, VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp, ScheduledBatteryHeatingResp, \
     ChargeCurrentLimitCode, TargetBatteryCode, ScheduledChargingMode
-from saic_ismart_client_ng.exceptions import SaicApiException
+from saic_ismart_client_ng.exceptions import SaicApiException, SaicLogoutException
 
 import mqtt_topics
 from configuration import Configuration
 from exceptions import MqttGatewayException
+from handlers.relogin import ReloginHandler
 from integrations.abrp.api import AbrpApi, AbrpApiException
 from integrations.home_assistant.discovery import HomeAssistantDiscovery
 from integrations.osmand.api import OsmAndApi
 from publisher.core import Publisher
-from saic_api_listener import MqttGatewayAbrpListener, OsmAndApiListener, MqttGatewayOsmAndListener
+from saic_api_listener import MqttGatewayAbrpListener, MqttGatewayOsmAndListener
 from vehicle import VehicleState, RefreshMode
 
 LOG = logging.getLogger(__name__)
 
 
 class VehicleHandler:
-    def __init__(self, config: Configuration, saicapi: SaicApi, publisher: Publisher, vin_info: VinInfo,
-                 vehicle_state: VehicleState):
+    def __init__(
+            self,
+            config: Configuration,
+            relogin_handler: ReloginHandler,
+            saicapi: SaicApi,
+            publisher: Publisher,
+            vin_info: VinInfo,
+            vehicle_state: VehicleState
+    ):
         self.configuration = config
+        self.relogin_handler = relogin_handler
         self.saic_api = saicapi
         self.publisher = publisher
         self.vin_info = vin_info
@@ -81,6 +90,10 @@ class VehicleHandler:
                 try:
                     LOG.debug('Polling vehicle status')
                     await self.__polling()
+                except SaicLogoutException as e:
+                    self.vehicle_state.mark_failed_refresh()
+                    LOG.error("API Client was logged out, waiting for a new login", exc_info=e)
+                    self.relogin_handler.relogin()
                 except SaicApiException as e:
                     self.vehicle_state.mark_failed_refresh()
                     LOG.exception(
@@ -128,7 +141,8 @@ class VehicleHandler:
 
     def __should_poll(self) -> bool:
         return (
-                self.vehicle_state.is_complete()
+                not self.relogin_handler.relogin_in_progress
+                and self.vehicle_state.is_complete()
                 and self.vehicle_state.should_refresh()
         )
 
@@ -410,6 +424,10 @@ class VehicleHandler:
         except MqttGatewayException as e:
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed: {e.message}')
             LOG.exception(e.message, exc_info=e)
+        except SaicLogoutException as se:
+            self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed: {se.message}')
+            LOG.error("API Client was logged out, waiting for a new login", exc_info=e)
+            self.relogin_handler.relogin()
         except SaicApiException as se:
             self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed: {se.message}')
             LOG.exception(se.message, exc_info=se)

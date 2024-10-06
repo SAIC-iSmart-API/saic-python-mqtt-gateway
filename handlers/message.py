@@ -4,8 +4,9 @@ from typing import Union
 
 from saic_ismart_client_ng import SaicApi
 from saic_ismart_client_ng.api.message.schema import MessageEntity
-from saic_ismart_client_ng.exceptions import SaicApiException
+from saic_ismart_client_ng.exceptions import SaicApiException, SaicLogoutException
 
+from handlers.relogin import ReloginHandler
 from handlers.vehicle import VehicleHandlerLocator
 from vehicle import RefreshMode
 
@@ -13,9 +14,15 @@ LOG = logging.getLogger(__name__)
 
 
 class MessageHandler:
-    def __init__(self, gateway: VehicleHandlerLocator, saicapi: SaicApi):
+    def __init__(
+            self,
+            gateway: VehicleHandlerLocator,
+            relogin_handler: ReloginHandler,
+            saicapi: SaicApi
+    ):
         self.gateway = gateway
         self.saicapi = saicapi
+        self.relogin_handler = relogin_handler
         self.last_message_ts = datetime.datetime.min
         self.last_message_id = None
 
@@ -26,8 +33,6 @@ class MessageHandler:
                 await self.__polling()
             except Exception as e:
                 LOG.exception('MessageHandler poll loop failed', exc_info=e)
-        else:
-            LOG.debug("Not checking for new messages since all cars have RefreshMode.OFF")
 
     async def __polling(self):
         try:
@@ -57,7 +62,9 @@ class MessageHandler:
             ]
             for vehicle_start_message in vehicle_start_messages:
                 await self.__delete_message(vehicle_start_message)
-
+        except SaicLogoutException as e:
+            LOG.error("API Client was logged out, waiting for a new login", exc_info=e)
+            self.relogin_handler.relogin()
         except SaicApiException as e:
             LOG.exception('MessageHandler poll loop failed during SAIC API Call', exc_info=e)
         except Exception as e:
@@ -76,6 +83,8 @@ class MessageHandler:
                 oldest_message = self.__get_oldest_message(all_messages)
                 if oldest_message is not None and oldest_message.message_time < self.last_message_ts:
                     return all_messages
+            except SaicLogoutException as e:
+                raise e
             except Exception as e:
                 LOG.exception(
                     'Error while fetching a message from the SAIC API, please open the app and clear them, '
@@ -110,6 +119,10 @@ class MessageHandler:
         ]
         # We do not poll if we have no cars or all cars have RefreshMode.OFF
         if len(refresh_modes) == 0 or all(mode == RefreshMode.OFF for mode in refresh_modes):
+            logging.debug("Not checking for new messages as all cars have RefreshMode.OFF")
+            return False
+        elif self.relogin_handler.relogin_in_progress:
+            logging.warning("Not checking for new messages as we are waiting to log back in")
             return False
         else:
             return True
