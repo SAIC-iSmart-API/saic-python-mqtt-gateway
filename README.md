@@ -149,7 +149,7 @@ with the default vehicle prefix: `saic/<saic_user>/vehicles/<vehicle_id>`
 | /refresh/period/inActive/set             | refresh interval (sec)                               | Vehicle and charge status are queried once per day (default value: 86400) independently from any event. Changing this to a lower value might affect the 12V battery of your vehicle. Be very careful!                                 |
 | /refresh/period/afterShutdown/set        | refresh interval (sec)                               | After the vehicle has been shutdown, the gateway queries the status every 120 seconds (default value). The refresh interval can be modified with this topic.                                                                          |
 | /refresh/period/inActiveGrace/set        | grace period (sec)                                   | After the vehicle has been shutdown, the gateway continues to query the state for 600 seconds (default value). The duration of this extended query period can be modified with this topic.                                            |
-| /location/findMyCar                      | [activate,lights_only,horn_only,stop]                | Activate 'find my car' with lights and horn (activate), with lights only (lights_only), with horn only (horn_only) or deactivate it (stop).                                                                                           |
+| /location/findMyCar/set                  | [activate,lights_only,horn_only,stop]                | Activate 'find my car' with lights and horn (activate), with lights only (lights_only), with horn only (horn_only) or deactivate it (stop).                                                                                           |
 
 ## Home Assistant auto-discovery
 
