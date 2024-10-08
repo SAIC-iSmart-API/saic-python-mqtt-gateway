@@ -207,7 +207,7 @@ class VehicleState:
         vehicle_status_drift = abs(now_time - vehicle_status_time)
         if vehicle_status_drift > datetime.timedelta(minutes=15):
             raise MqttGatewayException(
-                f"Vehicle status time drifted too much from current time: {vehicle_status_drift}"
+                f"Vehicle status time drifted too much from current time: {vehicle_status_drift}. Server reported {vehicle_status_time}"
             )
 
         is_engine_running = vehicle_status.is_engine_running
