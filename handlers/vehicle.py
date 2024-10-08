@@ -15,6 +15,7 @@ import mqtt_topics
 from configuration import Configuration
 from exceptions import MqttGatewayException
 from handlers.relogin import ReloginHandler
+from integrations import IntegrationException
 from integrations.abrp.api import AbrpApi, AbrpApiException
 from integrations.home_assistant.discovery import HomeAssistantDiscovery
 from integrations.osmand.api import OsmAndApi
@@ -100,8 +101,8 @@ class VehicleHandler:
                         'handle_vehicle loop failed during SAIC API call',
                         exc_info=e
                     )
-                except AbrpApiException as ae:
-                    LOG.exception('handle_vehicle loop failed during ABRP API call', exc_info=ae)
+                except IntegrationException as ae:
+                    LOG.exception('handle_vehicle loop failed during integration processing', exc_info=ae)
                 except Exception as e:
                     self.vehicle_state.mark_failed_refresh()
                     LOG.exception(
@@ -172,7 +173,6 @@ class VehicleHandler:
         LOG.info('Updating vehicle status')
         vehicle_status_response = await self.saic_api.get_vehicle_status(self.vin_info.vin)
         self.vehicle_state.handle_vehicle_status(vehicle_status_response)
-
         return vehicle_status_response
 
     async def update_charge_status(self) -> ChrgMgmtDataResp:

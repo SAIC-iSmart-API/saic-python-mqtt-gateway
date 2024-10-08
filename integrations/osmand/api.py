@@ -10,17 +10,15 @@ from saic_ismart_client_ng.api.vehicle.schema import BasicVehicleStatus
 from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp
 from saic_ismart_client_ng.api.vehicle_charging.schema import RvsChargeStatus
 
+from integrations import IntegrationException
 from utils import value_in_range, get_update_timestamp
 
 LOG = logging.getLogger(__name__)
 
 
-class OsmAndApiException(Exception):
+class OsmAndApiException(IntegrationException):
     def __init__(self, msg: str):
-        self.message = msg
-
-    def __str__(self):
-        return self.message
+        super().__init__(__name__, msg)
 
 
 class OsmAndApiListener(ABC):
