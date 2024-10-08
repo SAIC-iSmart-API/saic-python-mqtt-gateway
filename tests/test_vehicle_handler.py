@@ -15,7 +15,7 @@ import mqtt_topics
 from configuration import Configuration
 from handlers.relogin import ReloginHandler
 from mqtt_gateway import VehicleHandler
-from publisher.log_publisher import Logger
+from . import MessageCapturingConsolePublisher
 from vehicle import VehicleState
 
 VIN = 'vin10000000000000'
@@ -166,7 +166,7 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
             username='aaa@nowhere.org',
             password='xxxxxxxxx'
         ), listener=None)
-        publisher = Logger(config)
+        publisher = MessageCapturingConsolePublisher(config)
         vin_info = VinInfo()
         vin_info.vin = VIN
         vin_info.series = 'EH32 S'

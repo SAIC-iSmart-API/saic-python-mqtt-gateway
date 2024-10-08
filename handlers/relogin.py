@@ -45,6 +45,7 @@ class ReloginHandler():
             LOG.info("Logged in as %s", login_response_message.account)
         except Exception as e:
             logging.exception("Could not login to the SAIC API due to an error", exc_info=e)
+            raise e
         finally:
             if self.__scheduler.get_job(JOB_ID) is not None:
                 self.__scheduler.remove_job(JOB_ID)

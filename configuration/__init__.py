@@ -49,3 +49,11 @@ class Configuration:
         self.osmand_device_id_map: dict[str, str] = {}
         self.osmand_server_uri: str | None = None
         self.publish_raw_osmand_data: bool = False
+
+    @property
+    def is_mqtt_enabled(self) -> bool:
+        return self.mqtt_host is not None and len(str(self.mqtt_host)) > 0
+
+    @property
+    def username_is_email(self):
+        return '@' in self.saic_user

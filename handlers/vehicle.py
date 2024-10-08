@@ -16,7 +16,7 @@ from configuration import Configuration
 from exceptions import MqttGatewayException
 from handlers.relogin import ReloginHandler
 from integrations import IntegrationException
-from integrations.abrp.api import AbrpApi, AbrpApiException
+from integrations.abrp.api import AbrpApi
 from integrations.home_assistant.discovery import HomeAssistantDiscovery
 from integrations.osmand.api import OsmAndApi
 from publisher.core import Publisher
