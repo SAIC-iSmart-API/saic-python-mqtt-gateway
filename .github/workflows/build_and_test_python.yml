@@ -34,7 +34,7 @@ jobs:
           python -m pytest --doctest-modules --junitxml=junit/test-results-${{ matrix.python-version }}.xml
       - name: Lint with Ruff
         run: |
-          python -m pip install install ruff
+          python -m pip install ruff
           ruff check --output-format=github .
         continue-on-error: true
       - name: Surface failing tests
