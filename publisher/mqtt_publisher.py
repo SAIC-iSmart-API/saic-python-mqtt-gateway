@@ -1,8 +1,7 @@
 import logging
 import os
 import ssl
-from abc import ABC
-from typing import Optional, override
+from typing import override
 
 import gmqtt
 
@@ -18,25 +17,15 @@ MQTT_LOG = logging.getLogger(gmqtt.__name__)
 MQTT_LOG.setLevel(level=os.getenv('MQTT_LOG_LEVEL', 'INFO').upper())
 
 
-class MqttCommandListener(ABC):
-    async def on_mqtt_command_received(self, *, vin: str, topic: str, payload: str) -> None:
-        raise NotImplementedError("Should have implemented this")
-
-    async def on_charging_detected(self, vin: str) -> None:
-        raise NotImplementedError("Should have implemented this")
-
-
-class MqttClient(Publisher):
+class MqttPublisher(Publisher):
     def __init__(self, configuration: Configuration):
         super().__init__(configuration)
-        self.configuration = configuration
-        self.publisher_id = self.configuration.mqtt_client_id
+        self.publisher_id = configuration.mqtt_client_id
         self.topic_root = configuration.mqtt_topic
         self.client = None
         self.host = self.configuration.mqtt_host
         self.port = self.configuration.mqtt_port
         self.transport_protocol = self.configuration.mqtt_transport_protocol
-        self.command_listener: Optional[MqttCommandListener] = None
         self.vin_by_charge_state_topic: dict[str, str] = {}
         self.last_charge_state_by_vin: [str, str] = {}
         self.vin_by_charger_connected_topic: dict[str, str] = {}
@@ -56,7 +45,7 @@ class MqttClient(Publisher):
         self.client = mqtt_client
 
     def get_mqtt_account_prefix(self) -> str:
-        return MqttClient.remove_special_mqtt_characters(
+        return MqttPublisher.remove_special_mqtt_characters(
             f'{self.configuration.mqtt_topic}/{self.configuration.saic_user}')
 
     @staticmethod
@@ -64,6 +53,7 @@ class MqttClient(Publisher):
         return input_str.replace('+', '_').replace('#', '_').replace('*', '_') \
             .replace('>', '_').replace('$', '_')
 
+    @override
     async def connect(self):
         if self.configuration.mqtt_user is not None:
             if self.configuration.mqtt_password is not None:

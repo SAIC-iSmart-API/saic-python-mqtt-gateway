@@ -18,7 +18,9 @@ from handlers.message import MessageHandler
 from handlers.relogin import ReloginHandler
 from handlers.vehicle import VehicleHandler, VehicleHandlerLocator
 from integrations.openwb.charging_station import ChargingStation
-from publisher.mqtt_publisher import MqttClient, MqttCommandListener
+from publisher.core import Publisher, MqttCommandListener
+from publisher.log_publisher import ConsolePublisher
+from publisher.mqtt_publisher import MqttPublisher
 from saic_api_listener import MqttGatewaySaicApiListener
 from vehicle import VehicleState
 
@@ -40,9 +42,12 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
     def __init__(self, config: Configuration):
         self.configuration = config
         self.__vehicle_handlers: dict[str, VehicleHandler] = dict()
-        self.publisher = MqttClient(self.configuration)
+        if config.is_mqtt_enabled:
+            self.publisher: Publisher = MqttPublisher(self.configuration)
+        else:
+            LOG.warning("MQTT support disabled")
+            self.publisher: Publisher = ConsolePublisher(self.configuration)
         self.publisher.command_listener = self
-        username_is_email = "@" in self.configuration.saic_user
         if config.publish_raw_api_data:
             listener = MqttGatewaySaicApiListener(self.publisher)
         else:
@@ -51,8 +56,8 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
             configuration=SaicApiConfiguration(
                 username=self.configuration.saic_user,
                 password=self.configuration.saic_password,
-                username_is_email=username_is_email,
-                phone_country_code=None if username_is_email else self.configuration.saic_phone_country_code,
+                username_is_email=config.username_is_email,
+                phone_country_code=None if config.username_is_email else self.configuration.saic_phone_country_code,
                 base_uri=self.configuration.saic_rest_uri,
                 region=self.configuration.saic_region,
                 tenant_id=self.configuration.saic_tenant_id

@@ -47,7 +47,7 @@ def process_arguments() -> Configuration:
                                  + 'TCP: tcp://mqtt.eclipseprojects.io:1883 '
                                  + 'WebSocket: ws://mqtt.eclipseprojects.io:9001'
                                  + 'TLS: tls://mqtt.eclipseprojects.io:8883',
-                            dest='mqtt_uri', required=True, action=EnvDefault, envvar='MQTT_URI')
+                            dest='mqtt_uri', required=False, action=EnvDefault, envvar='MQTT_URI')
         parser.add_argument('--mqtt-server-cert',
                             help='Path to the server certificate authority file in PEM format for TLS.',
                             dest='tls_server_cert_path', required=False, action=EnvDefault, envvar='MQTT_SERVER_CERT')
@@ -211,29 +211,31 @@ def process_arguments() -> Configuration:
         except ValueError:
             raise SystemExit(f'No valid integer value for messages_request_interval: {args.messages_request_interval}')
 
-        parse_result = urllib.parse.urlparse(args.mqtt_uri)
-        if parse_result.scheme == 'tcp':
-            config.mqtt_transport_protocol = TransportProtocol.TCP
-        elif parse_result.scheme == 'ws':
-            config.mqtt_transport_protocol = TransportProtocol.WS
-        elif parse_result.scheme == 'tls':
-            config.mqtt_transport_protocol = TransportProtocol.TLS
-            if args.tls_server_cert_path:
-                config.tls_server_cert_path = args.tls_server_cert_path
+        if args.mqtt_uri is not None and len(args.mqtt_uri) > 0:
+            print(f'MQTT URI: {args.mqtt_uri}')
+            parse_result = urllib.parse.urlparse(args.mqtt_uri)
+            if parse_result.scheme == 'tcp':
+                config.mqtt_transport_protocol = TransportProtocol.TCP
+            elif parse_result.scheme == 'ws':
+                config.mqtt_transport_protocol = TransportProtocol.WS
+            elif parse_result.scheme == 'tls':
+                config.mqtt_transport_protocol = TransportProtocol.TLS
+                if args.tls_server_cert_path:
+                    config.tls_server_cert_path = args.tls_server_cert_path
+                else:
+                    raise SystemExit(f'No server certificate authority file provided for TLS MQTT URI {args.mqtt_uri}')
             else:
-                raise SystemExit(f'No server certificate authority file provided for TLS MQTT URI {args.mqtt_uri}')
-        else:
-            raise SystemExit(f'Invalid MQTT URI scheme: {parse_result.scheme}, use tcp or ws')
+                raise SystemExit(f'Invalid MQTT URI scheme: {parse_result.scheme}, use tcp or ws')
 
-        if not parse_result.port:
-            if config.mqtt_transport_protocol == 'tcp':
-                config.mqtt_port = 1883
+            if not parse_result.port:
+                if config.mqtt_transport_protocol == 'tcp':
+                    config.mqtt_port = 1883
+                else:
+                    config.mqtt_port = 9001
             else:
-                config.mqtt_port = 9001
-        else:
-            config.mqtt_port = parse_result.port
+                config.mqtt_port = parse_result.port
 
-        config.mqtt_host = str(parse_result.hostname)
+            config.mqtt_host = str(parse_result.hostname)
 
         # ABRP Integration
         config.abrp_api_key = args.abrp_api_key

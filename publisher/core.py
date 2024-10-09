@@ -1,14 +1,27 @@
 import json
 import re
 from abc import ABC
+from typing import Optional
 
 import mqtt_topics
 from configuration import Configuration
 
 
+class MqttCommandListener(ABC):
+    async def on_mqtt_command_received(self, *, vin: str, topic: str, payload: str) -> None:
+        raise NotImplementedError("Should have implemented this")
+
+    async def on_charging_detected(self, vin: str) -> None:
+        raise NotImplementedError("Should have implemented this")
+
+
 class Publisher(ABC):
     def __init__(self, config: Configuration):
-        self.configuration = config
+        self.__configuration = config
+        self.__command_listener = None
+
+    async def connect(self):
+        pass
 
     def is_connected(self) -> bool:
         raise NotImplementedError()
@@ -86,3 +99,15 @@ class Publisher(ABC):
         else:
             result = no_binary_strings
         return json.dumps(result, indent=2)
+
+    @property
+    def configuration(self) -> Configuration:
+        return self.__configuration
+
+    @property
+    def command_listener(self) -> Optional[MqttCommandListener]:
+        return self.__command_listener
+
+    @command_listener.setter
+    def command_listener(self, listener: MqttCommandListener):
+        self.__command_listener = listener
