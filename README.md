@@ -33,6 +33,15 @@ do when you run the service from a docker container).
 | --charge-min-percentage     | CHARGE_MIN_PERCENTAGE        | How many % points we should try to refresh the charge state. 1.0 by default                                                                                                         |
 | --publish-raw-api-data      | PUBLISH_RAW_API_DATA_ENABLED | Publish raw SAIC API request/response to MQTT. Disabled (False) by default.                                                                                                         |
 
+#### API Endpoints
+
+The following are the known available endpoints:
+
+| SAIC_REST_URI                               | SAIC_REGION | Notes                                                                                                                                |
+|---------------------------------------------|-------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| https://gateway-mg-au.soimt.com/api.app/v1/ | au          | This endpoint is not used by the iSmart app for Australia and New Zealand but has been tested and proven to work in these countries. |
+| https://gateway-mg-eu.soimt.com/api.app/v1/ | eu          |                                                                                                                                      |
+
 ### MQTT Broker
 
 | CMD param           | ENV variable     | Description                                                                                                                                                                                          |
