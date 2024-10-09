@@ -15,7 +15,7 @@ import mqtt_topics
 from configuration import Configuration
 from handlers.relogin import ReloginHandler
 from mqtt_gateway import VehicleHandler
-from . import MessageCapturingConsolePublisher
+from tests import MessageCapturingConsolePublisher
 from vehicle import VehicleState
 
 VIN = 'vin10000000000000'
