@@ -3,7 +3,7 @@ import datetime
 import json
 import logging
 from abc import ABC
-from typing import Optional
+from typing import Optional, Tuple
 
 from saic_ismart_client_ng import SaicApi
 from saic_ismart_client_ng.api.vehicle.schema import VinInfo, VehicleStatusResp
@@ -19,6 +19,7 @@ from integrations import IntegrationException
 from integrations.abrp.api import AbrpApi
 from integrations.home_assistant.discovery import HomeAssistantDiscovery
 from integrations.osmand.api import OsmAndApi
+from mqtt_topics import SET_SUFFIX, RESULT_SUFFIX
 from publisher.core import Publisher
 from saic_api_listener import MqttGatewayAbrpListener, MqttGatewayOsmAndListener
 from vehicle import VehicleState, RefreshMode
@@ -188,11 +189,11 @@ class VehicleHandler:
         return scheduled_battery_heating_status
 
     async def handle_mqtt_command(self, *, topic: str, payload: str):
-        topic = self.get_topic_without_vehicle_prefix(topic)
+        topic, result_topic = self.__get_command_topics(topic)
         try:
             should_force_refresh = True
             match topic:
-                case mqtt_topics.DRIVETRAIN_HV_BATTERY_ACTIVE:
+                case mqtt_topics.DRIVETRAIN_HV_BATTERY_ACTIVE_SET:
                     match payload.strip().lower():
                         case 'true':
                             LOG.info("HV battery is now active")
@@ -202,7 +203,7 @@ class VehicleHandler:
                             self.vehicle_state.set_hv_battery_active(False)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {payload}')
-                case mqtt_topics.DRIVETRAIN_CHARGING:
+                case mqtt_topics.DRIVETRAIN_CHARGING_SET:
                     match payload.strip().lower():
                         case 'true':
                             LOG.info("Charging will be started")
@@ -212,7 +213,7 @@ class VehicleHandler:
                             await self.saic_api.control_charging(self.vin_info.vin, stop_charging=True)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {payload}')
-                case mqtt_topics.DRIVETRAIN_BATTERY_HEATING:
+                case mqtt_topics.DRIVETRAIN_BATTERY_HEATING_SET:
                     match payload.strip().lower():
                         case 'true':
                             LOG.info("Battery heater wil be will be switched on")
@@ -229,7 +230,7 @@ class VehicleHandler:
                             f'UNKNOWN ({response.ptcHeatResp})' if decoded is None else decoded.name
                         )
 
-                case mqtt_topics.CLIMATE_REMOTE_TEMPERATURE:
+                case mqtt_topics.CLIMATE_REMOTE_TEMPERATURE_SET:
                     payload = payload.strip()
                     try:
                         LOG.info("Setting remote climate target temperature to %s", payload)
@@ -243,7 +244,7 @@ class VehicleHandler:
 
                     except ValueError as e:
                         raise MqttGatewayException(f'Error setting temperature target: {e}')
-                case mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE:
+                case mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE_SET:
                     match payload.strip().lower():
                         case 'off':
                             LOG.info('A/C will be switched off')
@@ -262,7 +263,7 @@ class VehicleHandler:
                             await self.saic_api.start_front_defrost(self.vin_info.vin)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {payload}')
-                case mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_LEFT_LEVEL:
+                case mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_LEFT_LEVEL_SET:
                     try:
                         LOG.info("Setting heated seats front left level to %s", payload)
                         level = int(payload.strip().lower())
@@ -278,7 +279,7 @@ class VehicleHandler:
                     except Exception as e:
                         raise MqttGatewayException(f'Error setting heated seats: {e}')
 
-                case mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_RIGHT_LEVEL:
+                case mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_RIGHT_LEVEL_SET:
                     try:
                         LOG.info("Setting heated seats front right level to %s", payload)
                         level = int(payload.strip().lower())
@@ -294,7 +295,7 @@ class VehicleHandler:
                     except Exception as e:
                         raise MqttGatewayException(f'Error setting heated seats: {e}')
 
-                case mqtt_topics.DOORS_BOOT:
+                case mqtt_topics.DOORS_BOOT_SET:
                     match payload.strip().lower():
                         case 'true':
                             LOG.info(f'We cannot lock vehicle {self.vin_info.vin} boot remotely')
@@ -303,7 +304,7 @@ class VehicleHandler:
                             await self.saic_api.open_tailgate(self.vin_info.vin)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {payload}')
-                case mqtt_topics.DOORS_LOCKED:
+                case mqtt_topics.DOORS_LOCKED_SET:
                     match payload.strip().lower():
                         case 'true':
                             LOG.info(f'Vehicle {self.vin_info.vin} will be locked')
@@ -313,7 +314,7 @@ class VehicleHandler:
                             await self.saic_api.unlock_vehicle(self.vin_info.vin)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {payload}')
-                case mqtt_topics.CLIMATE_BACK_WINDOW_HEAT:
+                case mqtt_topics.CLIMATE_BACK_WINDOW_HEAT_SET:
                     match payload.strip().lower():
                         case 'off':
                             LOG.info('Rear window heating will be switched off')
@@ -323,7 +324,7 @@ class VehicleHandler:
                             await self.saic_api.control_rear_window_heat(self.vin_info.vin, enable=True)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {payload}')
-                case mqtt_topics.CLIMATE_FRONT_WINDOW_HEAT:
+                case mqtt_topics.CLIMATE_FRONT_WINDOW_HEAT_SET:
                     match payload.strip().lower():
                         case 'off':
                             LOG.info('Front window heating will be switched off')
@@ -333,7 +334,7 @@ class VehicleHandler:
                             await self.saic_api.start_front_defrost(self.vin_info.vin)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {payload}')
-                case mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT:
+                case mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT_SET:
                     payload = payload.strip().upper()
                     if self.vehicle_state.target_soc is not None:
                         try:
@@ -354,7 +355,7 @@ class VehicleHandler:
                         )
                         raise MqttGatewayException(
                             f'Error setting charge current limit - SOC {self.vehicle_state.target_soc}')
-                case mqtt_topics.DRIVETRAIN_SOC_TARGET:
+                case mqtt_topics.DRIVETRAIN_SOC_TARGET_SET:
                     payload = payload.strip()
                     try:
                         LOG.info("Setting SoC target to %s", payload)
@@ -363,7 +364,7 @@ class VehicleHandler:
                         self.vehicle_state.update_target_soc(target_battery_code)
                     except ValueError as e:
                         raise MqttGatewayException(f'Error setting SoC target: {e}')
-                case mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE:
+                case mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE_SET:
                     payload = payload.strip()
                     try:
                         LOG.info("Setting charging schedule to %s", payload)
@@ -380,7 +381,7 @@ class VehicleHandler:
                         self.vehicle_state.update_scheduled_charging(start_time, mode)
                     except Exception as e:
                         raise MqttGatewayException(f'Error setting charging schedule: {e}')
-                case mqtt_topics.DRIVETRAIN_BATTERY_HEATING_SCHEDULE:
+                case mqtt_topics.DRIVETRAIN_BATTERY_HEATING_SCHEDULE_SET:
                     payload = payload.strip()
                     try:
                         LOG.info("Setting battery heating schedule to %s", payload)
@@ -403,7 +404,7 @@ class VehicleHandler:
                             LOG.info('Battery heating schedule not changed')
                     except Exception as e:
                         raise MqttGatewayException(f'Error setting battery heating schedule: {e}')
-                case mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK:
+                case mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK_SET:
                     match payload.strip().lower():
                         case 'false':
                             LOG.info(f'Vehicle {self.vin_info.vin} charging cable will be unlocked')
@@ -413,7 +414,7 @@ class VehicleHandler:
                             await self.saic_api.control_charging_port_lock(self.vin_info.vin, unlock=False)
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {payload}')
-                case mqtt_topics.LOCATION_FIND_MY_CAR:
+                case mqtt_topics.LOCATION_FIND_MY_CAR_SET:
                     vin = self.vin_info.vin
                     match payload.strip().lower():
                         case 'activate':
@@ -434,30 +435,28 @@ class VehicleHandler:
                     # set mode, period (in)-active,...
                     should_force_refresh = False
                     await self.vehicle_state.configure_by_message(topic=topic, payload=payload)
-            self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', 'Success')
+            self.publisher.publish_str(result_topic, 'Success')
             if should_force_refresh:
                 self.vehicle_state.set_refresh_mode(RefreshMode.FORCE, f'after command execution on topic {topic}')
         except MqttGatewayException as e:
-            self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed: {e.message}')
+            self.publisher.publish_str(result_topic, f'Failed: {e.message}')
             LOG.exception(e.message, exc_info=e)
         except SaicLogoutException as se:
-            self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed: {se.message}')
+            self.publisher.publish_str(result_topic, f'Failed: {se.message}')
             LOG.error("API Client was logged out, waiting for a new login", exc_info=se)
             self.relogin_handler.relogin()
         except SaicApiException as se:
-            self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', f'Failed: {se.message}')
+            self.publisher.publish_str(result_topic, f'Failed: {se.message}')
             LOG.exception(se.message, exc_info=se)
         except Exception as se:
-            self.publisher.publish_str(f'{self.vehicle_prefix}/{topic}/result', 'Failed unexpectedly')
+            self.publisher.publish_str(result_topic, 'Failed unexpectedly')
             LOG.exception("handle_mqtt_command failed with an unexpected exception", exc_info=se)
 
-    def get_topic_without_vehicle_prefix(self, topic: str) -> str:
-        global_topic_removed = topic[len(self.configuration.mqtt_topic) + 1:]
-        elements = global_topic_removed.split('/')
-        result = ''
-        for i in range(3, len(elements) - 1):
-            result += f'/{elements[i]}'
-        return result[1:]
+    def __get_command_topics(self, topic: str) -> tuple[str, str]:
+        global_topic_removed = topic.removeprefix(self.configuration.mqtt_topic).removeprefix('/')
+        set_topic = global_topic_removed.removeprefix(self.vehicle_prefix).removeprefix('/')
+        result_topic = global_topic_removed.removesuffix(SET_SUFFIX).removesuffix('/') + '/' + RESULT_SUFFIX
+        return set_topic, result_topic
 
 
 class VehicleHandlerLocator(ABC):

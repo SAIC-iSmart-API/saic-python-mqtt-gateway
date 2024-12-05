@@ -551,31 +551,31 @@ class VehicleState:
     async def configure_by_message(self, *, topic: str, payload: str):
         payload = payload.lower()
         match topic:
-            case mqtt_topics.REFRESH_MODE:
+            case mqtt_topics.REFRESH_MODE_SET:
                 try:
                     refresh_mode = RefreshMode.get(payload)
                     self.set_refresh_mode(refresh_mode, "MQTT direct set refresh mode command execution")
                 except KeyError:
                     raise MqttGatewayException(f'Unsupported payload {payload}')
-            case mqtt_topics.REFRESH_PERIOD_ACTIVE:
+            case mqtt_topics.REFRESH_PERIOD_ACTIVE_SET:
                 try:
                     seconds = int(payload)
                     self.set_refresh_period_active(seconds)
                 except ValueError:
                     raise MqttGatewayException(f'Error setting value for payload {payload}')
-            case mqtt_topics.REFRESH_PERIOD_INACTIVE:
+            case mqtt_topics.REFRESH_PERIOD_INACTIVE_SET:
                 try:
                     seconds = int(payload)
                     self.set_refresh_period_inactive(seconds)
                 except ValueError:
                     raise MqttGatewayException(f'Error setting value for payload {payload}')
-            case mqtt_topics.REFRESH_PERIOD_AFTER_SHUTDOWN:
+            case mqtt_topics.REFRESH_PERIOD_AFTER_SHUTDOWN_SET:
                 try:
                     seconds = int(payload)
                     self.set_refresh_period_after_shutdown(seconds)
                 except ValueError:
                     raise MqttGatewayException(f'Error setting value for payload {payload}')
-            case mqtt_topics.REFRESH_PERIOD_INACTIVE_GRACE:
+            case mqtt_topics.REFRESH_PERIOD_INACTIVE_GRACE_SET:
                 try:
                     seconds = int(payload)
                     self.set_refresh_period_inactive_grace(seconds)

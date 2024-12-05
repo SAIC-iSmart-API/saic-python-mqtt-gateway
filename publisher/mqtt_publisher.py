@@ -79,10 +79,10 @@ class MqttPublisher(Publisher):
         if rc == gmqtt.constants.CONNACK_ACCEPTED:
             LOG.info('Connected to MQTT broker')
             mqtt_account_prefix = self.get_mqtt_account_prefix()
-            self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/+/+/set')
-            self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/+/+/+/set')
-            self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/{mqtt_topics.REFRESH_MODE}/set')
-            self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/{mqtt_topics.REFRESH_PERIOD}/+/set')
+            self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/+/+/{mqtt_topics.SET_SUFFIX}')
+            self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/+/+/+/{mqtt_topics.SET_SUFFIX}')
+            self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/{mqtt_topics.REFRESH_MODE}/{mqtt_topics.SET_SUFFIX}')
+            self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/{mqtt_topics.REFRESH_PERIOD}/+/{mqtt_topics.SET_SUFFIX}')
             for charging_station in self.configuration.charging_stations_by_vin.values():
                 LOG.debug(f'Subscribing to MQTT topic {charging_station.charge_state_topic}')
                 self.vin_by_charge_state_topic[charging_station.charge_state_topic] = charging_station.vin
