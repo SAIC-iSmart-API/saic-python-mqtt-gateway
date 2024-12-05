@@ -358,7 +358,7 @@ class VehicleState:
             self.publisher.publish_float(self.get_topic(topic), round(bar_value, 2))
 
     def __publish_electric_range(self, raw_value):
-        if value_in_range(raw_value, 1, 65535):
+        if value_in_range(raw_value, 1, 20460):
             electric_range = raw_value / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_RANGE), electric_range)
             if (
@@ -653,7 +653,7 @@ class VehicleState:
         self.__publish_soc(soc)
 
         estd_elec_rng = charge_mgmt_data.bmsEstdElecRng
-        if value_in_range(estd_elec_rng, 0, 65535) and estd_elec_rng != 2047:
+        if value_in_range(estd_elec_rng, 0, 2046):
             estimated_electrical_range = estd_elec_rng
             self.publisher.publish_int(
                 self.get_topic(mqtt_topics.DRIVETRAIN_HYBRID_ELECTRICAL_RANGE),

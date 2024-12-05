@@ -190,7 +190,7 @@ class OsmAndApi:
 
     @staticmethod
     def __parse_electric_range(raw_value) -> float:
-        if value_in_range(raw_value, 1, 65535):
+        if value_in_range(raw_value, 1, 20460):
             return float(raw_value) / 10.0
         return 0.0
 
