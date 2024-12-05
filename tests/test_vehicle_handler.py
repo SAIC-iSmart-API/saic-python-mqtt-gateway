@@ -6,7 +6,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from saic_ismart_client_ng import SaicApi
 from saic_ismart_client_ng.api.schema import GpsPosition, GpsStatus
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
-from saic_ismart_client_ng.api.vehicle.schema import VinInfo, BasicVehicleStatus
+from saic_ismart_client_ng.api.vehicle.schema import VinInfo, BasicVehicleStatus, VehicleModelConfiguration
 from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp
 from saic_ismart_client_ng.api.vehicle_charging.schema import RvsChargeStatus, ChrgMgmtData
 from saic_ismart_client_ng.model import SaicApiConfiguration
@@ -170,6 +170,12 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
         vin_info = VinInfo()
         vin_info.vin = VIN
         vin_info.series = 'EH32 S'
+        vin_info.modelName = 'MG4 Electric'
+        vin_info.modelYear = 2022
+        vin_info.vehicleModelConfiguration = [
+            VehicleModelConfiguration('BATTERY', 'BATTERY', '1'),
+            VehicleModelConfiguration('BType', 'Battery', '1'),
+        ]
         account_prefix = f'/vehicles/{VIN}'
         scheduler = BlockingScheduler()
         vehicle_state = VehicleState(publisher, scheduler, account_prefix, vin_info)
