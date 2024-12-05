@@ -1008,18 +1008,26 @@ class VehicleState:
     def __get_actual_battery_capacity(self) -> float | None:
         if self.__total_battery_capacity is not None and self.__total_battery_capacity > 0:
             return float(self.__total_battery_capacity)
-        # MG4 "Lux/Trophy"
+        # MG4 high trim level
         elif self.series.startswith('EH32 S'):
             if self.model.startswith('EH32 X3'):
                 # MG4 Trophy Extended Range
                 return 77.0
-            else:
-                # MG4 Lux/Trophy 2022
+            elif self.supports_target_soc:
+                # MG4 high trim level with NMC battery
                 return 64.0
-        # MG4 Standard 2022
-        # MG4 Standard 2023 (EH32 X7)
+            else:
+                # MG4 High trim level with LFP battery
+                return 51.0
+        # MG4 low trim level
+        # Note: EH32 X/ is used for the 2023 MY with both NMC and LFP batter chem
         elif self.series.startswith('EH32 L'):
-            return 51.0
+            if self.supports_target_soc:
+                # MG4 low trim level with NMC battery
+                return 64.0
+            else:
+                # MG4 low trim level with LFP battery
+                return 51.0
         # Model: MG5 Electric, variant MG5 SR Comfort
         elif self.series.startswith('EP2CP3'):
             return 50.3
