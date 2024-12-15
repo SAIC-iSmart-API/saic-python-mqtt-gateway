@@ -94,11 +94,21 @@ class HomeAssistantDiscovery:
                 self.__vehicle_availability
             ]
         )
+        self.published = False
 
     def publish_ha_discovery_messages(self):
+        if self.published:
+            LOG.debug("Skipping Home Assistant discovery messages as it was already published")
+            return
+
         if not self.__vehicle_state.is_complete():
             LOG.debug("Skipping Home Assistant discovery messages as vehicle state is not yet complete")
             return
+
+        self.__publish_ha_discovery_messages_real()
+        self.published = True
+
+    def __publish_ha_discovery_messages_real(self):
 
         LOG.debug("Publishing Home Assistant discovery messages")
 
