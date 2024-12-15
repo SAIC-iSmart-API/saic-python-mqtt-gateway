@@ -21,7 +21,6 @@ class MqttPublisher(Publisher):
     def __init__(self, configuration: Configuration):
         super().__init__(configuration)
         self.publisher_id = configuration.mqtt_client_id
-        self.topic_root = configuration.mqtt_topic
         self.client = None
         self.host = self.configuration.mqtt_host
         self.port = self.configuration.mqtt_port
@@ -43,15 +42,6 @@ class MqttPublisher(Publisher):
         mqtt_client.on_connect = self.__on_connect
         mqtt_client.on_message = self.__on_message
         self.client = mqtt_client
-
-    def get_mqtt_account_prefix(self) -> str:
-        return MqttPublisher.remove_special_mqtt_characters(
-            f'{self.configuration.mqtt_topic}/{self.configuration.saic_user}')
-
-    @staticmethod
-    def remove_special_mqtt_characters(input_str: str) -> str:
-        return input_str.replace('+', '_').replace('#', '_').replace('*', '_') \
-            .replace('>', '_').replace('$', '_')
 
     @override
     async def connect(self):
@@ -81,8 +71,10 @@ class MqttPublisher(Publisher):
             mqtt_account_prefix = self.get_mqtt_account_prefix()
             self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/+/+/{mqtt_topics.SET_SUFFIX}')
             self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/+/+/+/{mqtt_topics.SET_SUFFIX}')
-            self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/{mqtt_topics.REFRESH_MODE}/{mqtt_topics.SET_SUFFIX}')
-            self.client.subscribe(f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/{mqtt_topics.REFRESH_PERIOD}/+/{mqtt_topics.SET_SUFFIX}')
+            self.client.subscribe(
+                f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/{mqtt_topics.REFRESH_MODE}/{mqtt_topics.SET_SUFFIX}')
+            self.client.subscribe(
+                f'{mqtt_account_prefix}/{mqtt_topics.VEHICLES}/+/{mqtt_topics.REFRESH_PERIOD}/+/{mqtt_topics.SET_SUFFIX}')
             for charging_station in self.configuration.charging_stations_by_vin.values():
                 LOG.debug(f'Subscribing to MQTT topic {charging_station.charge_state_topic}')
                 self.vin_by_charge_state_topic[charging_station.charge_state_topic] = charging_station.vin
@@ -134,15 +126,8 @@ class MqttPublisher(Publisher):
                 await self.command_listener.on_mqtt_command_received(vin=vin, topic=topic, payload=payload)
         return
 
-    def publish(self, topic: str, payload) -> None:
-        self.client.publish(self.remove_special_mqtt_characters(topic), payload, retain=True)
-
-    def get_topic(self, key: str, no_prefix: bool) -> str:
-        if no_prefix:
-            topic = key
-        else:
-            topic = f'{self.topic_root}/{key}'
-        return self.remove_special_mqtt_characters(topic)
+    def __publish(self, topic: str, payload) -> None:
+        self.client.publish(topic, payload, retain=True)
 
     @override
     def is_connected(self) -> bool:
@@ -151,15 +136,15 @@ class MqttPublisher(Publisher):
     @override
     def publish_json(self, key: str, data: dict, no_prefix: bool = False) -> None:
         payload = self.dict_to_anonymized_json(data)
-        self.publish(topic=self.get_topic(key, no_prefix), payload=payload)
+        self.__publish(topic=self.get_topic(key, no_prefix), payload=payload)
 
     @override
     def publish_str(self, key: str, value: str, no_prefix: bool = False) -> None:
-        self.publish(topic=self.get_topic(key, no_prefix), payload=value)
+        self.__publish(topic=self.get_topic(key, no_prefix), payload=value)
 
     @override
     def publish_int(self, key: str, value: int, no_prefix: bool = False) -> None:
-        self.publish(topic=self.get_topic(key, no_prefix), payload=value)
+        self.__publish(topic=self.get_topic(key, no_prefix), payload=value)
 
     @override
     def publish_bool(self, key: str, value: bool | int | None, no_prefix: bool = False) -> None:
@@ -167,11 +152,11 @@ class MqttPublisher(Publisher):
             value = False
         elif isinstance(value, int):
             value = value == 1
-        self.publish(topic=self.get_topic(key, no_prefix), payload=value)
+        self.__publish(topic=self.get_topic(key, no_prefix), payload=value)
 
     @override
     def publish_float(self, key: str, value: float, no_prefix: bool = False) -> None:
-        self.publish(topic=self.get_topic(key, no_prefix), payload=value)
+        self.__publish(topic=self.get_topic(key, no_prefix), payload=value)
 
     def get_vin_from_topic(self, topic: str) -> str:
         global_topic_removed = topic[len(self.configuration.mqtt_topic) + 1:]

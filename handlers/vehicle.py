@@ -3,7 +3,7 @@ import datetime
 import json
 import logging
 from abc import ABC
-from typing import Optional, Tuple
+from typing import Optional
 
 from saic_ismart_client_ng import SaicApi
 from saic_ismart_client_ng.api.vehicle.schema import VinInfo, VehicleStatusResp
@@ -42,7 +42,10 @@ class VehicleHandler:
         self.saic_api = saicapi
         self.publisher = publisher
         self.vin_info = vin_info
-        self.vehicle_prefix = f'{self.configuration.saic_user}/vehicles/{self.vin_info.vin}'
+        self.vehicle_prefix = self.publisher.get_topic(
+            f'{self.configuration.saic_user}/vehicles/{self.vin_info.vin}',
+            True
+        )
         self.vehicle_state = vehicle_state
         self.ha_discovery = HomeAssistantDiscovery(vehicle_state, vin_info, config)
 

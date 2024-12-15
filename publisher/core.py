@@ -6,6 +6,8 @@ from typing import Optional
 import mqtt_topics
 from configuration import Configuration
 
+INVALID_MQTT_CHARS = re.compile(r'[^a-zA-Z0-9/]')
+
 
 class MqttCommandListener(ABC):
     async def on_mqtt_command_received(self, *, vin: str, topic: str, payload: str) -> None:
@@ -19,6 +21,7 @@ class Publisher(ABC):
     def __init__(self, config: Configuration):
         self.__configuration = config
         self.__command_listener = None
+        self.__topic_root = self.__remove_special_mqtt_characters(config.mqtt_topic)
 
     async def connect(self):
         pass
@@ -40,6 +43,21 @@ class Publisher(ABC):
 
     def publish_float(self, key: str, value: float, no_prefix: bool = False) -> None:
         raise NotImplementedError()
+
+    def get_mqtt_account_prefix(self) -> str:
+        return self.__remove_special_mqtt_characters(
+            f'{self.__topic_root}/{self.configuration.saic_user}'
+        )
+
+    def get_topic(self, key: str, no_prefix: bool) -> str:
+        if no_prefix:
+            topic = key
+        else:
+            topic = f'{self.__topic_root}/{key}'
+        return self.__remove_special_mqtt_characters(topic)
+
+    def __remove_special_mqtt_characters(self, input_str: str) -> str:
+        return INVALID_MQTT_CHARS.sub('_', input_str)
 
     def __remove_byte_strings(self, data: dict) -> dict:
         for key in data.keys():
