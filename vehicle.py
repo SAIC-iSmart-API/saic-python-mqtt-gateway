@@ -327,10 +327,6 @@ class VehicleState:
             mileage = basic_vehicle_status.mileage / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE), mileage)
 
-        # We can read this from either the BMS or the Vehicle Info
-        self.__publish_electric_range(basic_vehicle_status.fuelRangeElec)
-        self.__publish_soc(basic_vehicle_status.extendedData1)
-
         # Standard fossil fuels vehicles
         if value_in_range(basic_vehicle_status.fuelRange, 1, 65535):
             fuel_range = basic_vehicle_status.fuelRange / 10.0
@@ -357,7 +353,7 @@ class VehicleState:
             bar_value = raw_value * PRESSURE_TO_BAR_FACTOR
             self.publisher.publish_float(self.get_topic(topic), round(bar_value, 2))
 
-    def __publish_electric_range(self, raw_value):
+    def __publish_electric_range(self, raw_value) -> bool:
         if value_in_range(raw_value, 1, 20460):
             electric_range = raw_value / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_RANGE), electric_range)
@@ -366,8 +362,10 @@ class VehicleState:
                     and self.charging_station.range_topic
             ):
                 self.publisher.publish_float(self.charging_station.range_topic, electric_range, True)
+            return True
+        return False
 
-    def __publish_soc(self, soc):
+    def __publish_soc(self, soc) -> bool:
         if value_in_range(soc, 0, 100.0, is_max_excl=False):
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC), soc)
             if (
@@ -375,6 +373,8 @@ class VehicleState:
                     and self.charging_station.soc_topic
             ):
                 self.publisher.publish_float(self.charging_station.soc_topic, soc, True)
+            return True
+        return False
 
     def set_hv_battery_active(self, hv_battery_active: bool):
         if (
@@ -649,9 +649,6 @@ class VehicleState:
             except ValueError:
                 LOG.warning(f'Invalid target SOC received: {raw_target_soc}')
 
-        soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
-        self.__publish_soc(soc)
-
         estd_elec_rng = charge_mgmt_data.bmsEstdElecRng
         if value_in_range(estd_elec_rng, 0, 2046):
             estimated_electrical_range = estd_elec_rng
@@ -687,9 +684,6 @@ class VehicleState:
             )
 
         charge_status = charge_info_resp.rvsChargeStatus
-
-        # We can read this from either the BMS or the Vehicle Info
-        self.__publish_electric_range(charge_status.fuelRangeElec)
 
         if value_in_range(charge_status.mileageOfDay, 0, 65535):
             mileage_of_the_day = charge_status.mileageOfDay / 10.0
@@ -823,6 +817,28 @@ class VehicleState:
             self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK),
             charge_mgmt_data.charging_port_locked
         )
+
+    def update_data_conflicting_in_vehicle_and_bms(
+            self,
+            vehicle_status: VehicleStatusResp,
+            charge_status: Optional[ChrgMgmtDataResp]
+    ):
+        # We can read this from either the BMS or the Vehicle Info
+        electric_range_published = False
+        soc_published = False
+
+        if charge_status is not None:
+            electric_range_published = self.__publish_electric_range(charge_status.rvsChargeStatus.fuelRangeElec)
+            soc_published = self.__publish_soc(charge_status.chrgMgmtData.bmsPackSOCDsp / 10.0)
+        basic_vehicle_status = vehicle_status.basicVehicleStatus
+        if not electric_range_published:
+            electric_range_published = self.__publish_electric_range(basic_vehicle_status.fuelRangeElec)
+        if not soc_published:
+            soc_published = self.__publish_soc(basic_vehicle_status.extendedData1)
+        if not electric_range_published:
+            logging.warning("Could not extract a valid electric range")
+        if not soc_published:
+            logging.warning("Could not extract a valid SoC")
 
     def handle_scheduled_battery_heating_status(self, scheduled_battery_heating_status: ScheduledBatteryHeatingResp):
         if scheduled_battery_heating_status:

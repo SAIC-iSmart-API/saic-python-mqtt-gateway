@@ -122,6 +122,7 @@ class VehicleHandler:
 
     async def __polling(self):
         vehicle_status = await self.update_vehicle_status()
+        charge_status = None
 
         if self.vehicle_state.is_ev:
             try:
@@ -137,6 +138,8 @@ class VehicleHandler:
         else:
             LOG.debug("Skipping EV-related updates as the vehicle is not an EV")
             charge_status = None
+
+        self.vehicle_state.update_data_conflicting_in_vehicle_and_bms(vehicle_status, charge_status)
 
         self.vehicle_state.mark_successful_refresh()
         LOG.info('Refreshing vehicle status succeeded...')

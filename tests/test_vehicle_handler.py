@@ -1,14 +1,9 @@
-import time
 import unittest
 from unittest.mock import patch
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from saic_ismart_client_ng import SaicApi
-from saic_ismart_client_ng.api.schema import GpsPosition, GpsStatus
-from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
-from saic_ismart_client_ng.api.vehicle.schema import VinInfo, BasicVehicleStatus, VehicleModelConfiguration
-from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp
-from saic_ismart_client_ng.api.vehicle_charging.schema import RvsChargeStatus, ChrgMgmtData
+from saic_ismart_client_ng.api.vehicle.schema import VinInfo, VehicleModelConfiguration
 from saic_ismart_client_ng.model import SaicApiConfiguration
 
 import mqtt_topics
@@ -16,146 +11,16 @@ from configuration import Configuration
 from handlers.relogin import ReloginHandler
 from mqtt_gateway import VehicleHandler
 from tests import MessageCapturingConsolePublisher
+from tests.common_mocks import *
 from vehicle import VehicleState
-
-VIN = 'vin10000000000000'
-
-DRIVETRAIN_RUNNING = False
-DRIVETRAIN_CHARGING = True
-DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE = 42
-DRIVETRAIN_MILEAGE = 4000
-DRIVETRAIN_RANGE = 250
-DRIVETRAIN_CURRENT = 42
-DRIVETRAIN_VOLTAGE = 42
-DRIVETRAIN_POWER = 1.764
-DRIVETRAIN_SOC = 96
-DRIVETRAIN_HYBRID_ELECTRICAL_RANGE = 0
-DRIVETRAIN_MILEAGE_OF_DAY = 200
-DRIVETRAIN_MILEAGE_SINCE_LAST_CHARGE = 5
-DRIVETRAIN_SOC_KWH = 42
-DRIVETRAIN_CHARGING_TYPE = 1
-DRIVETRAIN_CHARGER_CONNECTED = True
-DRIVETRAIN_REMAINING_CHARGING_TIME = 0
-DRIVETRAIN_LAST_CHARGE_ENDING_POWER = 200
-DRIVETRAIN_CHARGING_CABLE_LOCK = 1
-REAL_TOTAL_BATTERY_CAPACITY = 64.0
-RAW_TOTAL_BATTERY_CAPACITY = 72.5
-BATTERY_CAPACITY_CORRECTION_FACTOR = REAL_TOTAL_BATTERY_CAPACITY / RAW_TOTAL_BATTERY_CAPACITY
-
-CLIMATE_INTERIOR_TEMPERATURE = 22
-CLIMATE_EXTERIOR_TEMPERATURE = 18
-CLIMATE_REMOTE_CLIMATE_STATE = 2
-CLIMATE_BACK_WINDOW_HEAT = 1
-
-LOCATION_SPEED = 2.0
-LOCATION_HEADING = 42
-LOCATION_LATITUDE = 48.8584
-LOCATION_LONGITUDE = 22.945
-LOCATION_ELEVATION = 200
-
-WINDOWS_DRIVER = False
-WINDOWS_PASSENGER = False
-WINDOWS_REAR_LEFT = False
-WINDOWS_REAR_RIGHT = False
-WINDOWS_SUN_ROOF = False
-
-DOORS_LOCKED = True
-DOORS_DRIVER = False
-DOORS_PASSENGER = False
-DOORS_REAR_LEFT = False
-DOORS_REAR_RIGHT = False
-DOORS_BONNET = False
-DOORS_BOOT = False
-
-TYRES_FRONT_LEFT_PRESSURE = 2.8
-TYRES_FRONT_RIGHT_PRESSURE = 2.8
-TYRES_REAR_LEFT_PRESSURE = 2.8
-TYRES_REAR_RIGHT_PRESSURE = 2.8
-
-LIGHTS_MAIN_BEAM = False
-LIGHTS_DIPPED_BEAM = False
-LIGHTS_SIDE = False
 
 
 def mock_vehicle_status(mocked_vehicle_status):
-    vehicle_status_resp = VehicleStatusResp(
-        statusTime=int(time.time()),
-        basicVehicleStatus=BasicVehicleStatus(
-            engineStatus=0,
-            extendedData1=DRIVETRAIN_SOC,
-            extendedData2=1 if DRIVETRAIN_CHARGING else 0,
-            batteryVoltage=DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE * 10,
-            mileage=DRIVETRAIN_MILEAGE * 10,
-            fuelRangeElec=DRIVETRAIN_RANGE * 10,
-            interiorTemperature=CLIMATE_INTERIOR_TEMPERATURE,
-            exteriorTemperature=CLIMATE_EXTERIOR_TEMPERATURE,
-            remoteClimateStatus=CLIMATE_REMOTE_CLIMATE_STATE,
-            rmtHtdRrWndSt=CLIMATE_BACK_WINDOW_HEAT,
-            driverWindow=WINDOWS_DRIVER,
-            passengerWindow=WINDOWS_PASSENGER,
-            rearLeftWindow=WINDOWS_REAR_LEFT,
-            rearRightWindow=WINDOWS_REAR_RIGHT,
-            sunroofStatus=WINDOWS_SUN_ROOF,
-            lockStatus=DOORS_LOCKED,
-            driverDoor=DOORS_DRIVER,
-            passengerDoor=DOORS_PASSENGER,
-            rearRightDoor=DOORS_REAR_RIGHT,
-            rearLeftDoor=DOORS_REAR_LEFT,
-            bootStatus=DOORS_BOOT,
-            frontLeftTyrePressure=int(TYRES_FRONT_LEFT_PRESSURE * 25),
-            frontRightTyrePressure=int(TYRES_FRONT_RIGHT_PRESSURE * 25),
-            rearLeftTyrePressure=int(TYRES_REAR_LEFT_PRESSURE * 25),
-            rearRightTyrePressure=int(TYRES_REAR_RIGHT_PRESSURE * 25),
-            mainBeamStatus=LIGHTS_MAIN_BEAM,
-            dippedBeamStatus=LIGHTS_DIPPED_BEAM,
-            sideLightStatus=LIGHTS_SIDE,
-            frontLeftSeatHeatLevel=0,
-            frontRightSeatHeatLevel=1
-        ),
-        gpsPosition=GpsPosition(
-            gpsStatus=GpsStatus.FIX_3d.value,
-            timeStamp=42,
-            wayPoint=GpsPosition.WayPoint(
-                position=GpsPosition.WayPoint.Position(
-                    latitude=int(LOCATION_LATITUDE * 1000000),
-                    longitude=int(LOCATION_LONGITUDE * 1000000),
-                    altitude=LOCATION_ELEVATION
-                ),
-                heading=LOCATION_HEADING,
-                hdop=0,
-                satellites=3,
-                speed=20,
-            )
-        )
-    )
-
-    mocked_vehicle_status.return_value = vehicle_status_resp
+    mocked_vehicle_status.return_value = get_mock_vehicle_status_resp()
 
 
 def mock_charge_status(mocked_charge_status):
-    charge_mgmt_data_rsp_msg = ChrgMgmtDataResp(
-        chrgMgmtData=ChrgMgmtData(
-            bmsPackCrntV=0,
-            bmsPackCrnt=int((DRIVETRAIN_CURRENT + 1000.0) * 20),
-            bmsPackVol=DRIVETRAIN_VOLTAGE * 4,
-            bmsPackSOCDsp=int(DRIVETRAIN_SOC * 10.0),
-            bmsEstdElecRng=int(DRIVETRAIN_HYBRID_ELECTRICAL_RANGE * 10.0),
-            ccuEleccLckCtrlDspCmd=1
-        ),
-        rvsChargeStatus=RvsChargeStatus(
-            mileageOfDay=int(DRIVETRAIN_MILEAGE_OF_DAY * 10.0),
-            mileageSinceLastCharge=int(DRIVETRAIN_MILEAGE_SINCE_LAST_CHARGE * 10.0),
-            realtimePower=int((DRIVETRAIN_SOC_KWH / BATTERY_CAPACITY_CORRECTION_FACTOR) * 10),
-            chargingType=DRIVETRAIN_CHARGING_TYPE,
-            chargingGunState=DRIVETRAIN_CHARGER_CONNECTED,
-            lastChargeEndingPower=int(
-                (DRIVETRAIN_LAST_CHARGE_ENDING_POWER / BATTERY_CAPACITY_CORRECTION_FACTOR) * 10.0),
-            totalBatteryCapacity=int(RAW_TOTAL_BATTERY_CAPACITY * 10.0),
-            fuelRangeElec=int(DRIVETRAIN_RANGE * 10.0)
-        ),
-
-    )
-    mocked_charge_status.return_value = charge_mgmt_data_rsp_msg
+    mocked_charge_status.return_value = get_moc_charge_management_data_resp()
 
 
 class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
@@ -192,8 +57,6 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
         await self.vehicle_handler.update_vehicle_status()
 
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_RUNNING), DRIVETRAIN_RUNNING)
-        self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_RANGE),
-                               DRIVETRAIN_RANGE)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_CHARGING), DRIVETRAIN_CHARGING)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE),
                                DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE)
@@ -234,13 +97,11 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.LIGHTS_MAIN_BEAM), LIGHTS_MAIN_BEAM)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.LIGHTS_DIPPED_BEAM), LIGHTS_DIPPED_BEAM)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.LIGHTS_SIDE), LIGHTS_SIDE)
-        self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_SOC), DRIVETRAIN_SOC)
         expected_topics = {
             '/vehicles/vin10000000000000/drivetrain/hvBatteryActive',
             '/vehicles/vin10000000000000/refresh/lastActivity',
             '/vehicles/vin10000000000000/drivetrain/running',
             '/vehicles/vin10000000000000/drivetrain/charging',
-            '/vehicles/vin10000000000000/drivetrain/range',
             '/vehicles/vin10000000000000/climate/interiorTemperature',
             '/vehicles/vin10000000000000/climate/exteriorTemperature',
             '/vehicles/vin10000000000000/drivetrain/auxiliaryBatteryVoltage',
@@ -275,7 +136,6 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
             '/vehicles/vin10000000000000/climate/heatedSeatsFrontRightLevel',
             '/vehicles/vin10000000000000/drivetrain/mileage',
             '/vehicles/vin10000000000000/refresh/lastVehicleState',
-            '/vehicles/vin10000000000000/drivetrain/soc'
         }
         self.assertSetEqual(expected_topics, set(self.vehicle_handler.publisher.map.keys()))
 
@@ -287,7 +147,6 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_CURRENT), DRIVETRAIN_CURRENT)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_VOLTAGE), DRIVETRAIN_VOLTAGE)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_POWER), DRIVETRAIN_POWER)
-        self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_SOC), DRIVETRAIN_SOC)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_HYBRID_ELECTRICAL_RANGE),
                                DRIVETRAIN_HYBRID_ELECTRICAL_RANGE)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE_OF_DAY),
@@ -305,21 +164,15 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
                                DRIVETRAIN_LAST_CHARGE_ENDING_POWER)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_TOTAL_BATTERY_CAPACITY),
                                REAL_TOTAL_BATTERY_CAPACITY)
-        self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_HYBRID_ELECTRICAL_RANGE),
-                               DRIVETRAIN_HYBRID_ELECTRICAL_RANGE)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK),
                                DRIVETRAIN_CHARGING_CABLE_LOCK)
-        self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_RANGE),
-                               DRIVETRAIN_RANGE)
         expected_topics = {
             '/vehicles/vin10000000000000/drivetrain/current',
             '/vehicles/vin10000000000000/drivetrain/voltage',
             '/vehicles/vin10000000000000/drivetrain/power',
             '/vehicles/vin10000000000000/obc/current',
             '/vehicles/vin10000000000000/obc/voltage',
-            '/vehicles/vin10000000000000/drivetrain/soc',
             '/vehicles/vin10000000000000/drivetrain/hybrid_electrical_range',
-            '/vehicles/vin10000000000000/drivetrain/range',
             '/vehicles/vin10000000000000/drivetrain/mileageOfTheDay',
             '/vehicles/vin10000000000000/drivetrain/mileageSinceLastCharge',
             '/vehicles/vin10000000000000/drivetrain/chargingType',
@@ -333,6 +186,29 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
             '/vehicles/vin10000000000000/drivetrain/chargingCableLock'
         }
         self.assertSetEqual(expected_topics, set(self.vehicle_handler.publisher.map.keys()))
+
+    # Note: The closer the decorator is to the function definition, the earlier it is in the parameter list
+    @patch.object(SaicApi, 'get_vehicle_charging_management_data')
+    @patch.object(SaicApi, 'get_vehicle_status')
+    async def test_should_not_publish_same_data_twice(self, mocked_vehicle_status, mocked_charge_status):
+        mock_vehicle_status(mocked_vehicle_status)
+        mock_charge_status(mocked_charge_status)
+        publisher_data: dict = self.vehicle_handler.publisher.map
+
+        await self.vehicle_handler.update_vehicle_status()
+        vehicle_mqtt_map = dict(publisher_data)
+        publisher_data.clear()
+
+        await self.vehicle_handler.update_charge_status()
+        charge_data_mqtt_map = dict(publisher_data)
+        publisher_data.clear()
+
+        common_data = set(vehicle_mqtt_map.keys()).intersection(set(charge_data_mqtt_map.keys()))
+
+        self.assertTrue(
+            len(common_data) == 0,
+            ("Some topics have been published from both car state and BMS state: %s" % str(common_data))
+        )
 
     def assert_mqtt_topic(self, topic: str, value):
         mqtt_map = self.vehicle_handler.publisher.map
