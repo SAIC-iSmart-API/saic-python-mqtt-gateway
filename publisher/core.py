@@ -6,8 +6,7 @@ from typing import Optional
 import mqtt_topics
 from configuration import Configuration
 
-INVALID_MQTT_CHARS = re.compile(r'[^a-zA-Z0-9/]')
-
+INVALID_MQTT_CHARS = re.compile(r'[+#*$>]')
 
 class MqttCommandListener(ABC):
     async def on_mqtt_command_received(self, *, vin: str, topic: str, payload: str) -> None:
