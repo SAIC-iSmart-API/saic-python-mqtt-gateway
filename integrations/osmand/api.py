@@ -1,4 +1,3 @@
-import json
 import logging
 from abc import ABC
 from typing import Any, Tuple, Optional
@@ -16,12 +15,12 @@ from utils import value_in_range, get_update_timestamp
 LOG = logging.getLogger(__name__)
 
 
-class AbrpApiException(IntegrationException):
+class OsmAndApiException(IntegrationException):
     def __init__(self, msg: str):
         super().__init__(__name__, msg)
 
 
-class AbrpApiListener(ABC):
+class OsmAndApiListener(ABC):
     async def on_request(self, path: str, body: Optional[str] = None, headers: Optional[dict] = None):
         pass
 
@@ -29,12 +28,11 @@ class AbrpApiListener(ABC):
         pass
 
 
-class AbrpApi:
-    def __init__(self, abrp_api_key: str, abrp_user_token: str, listener: Optional[AbrpApiListener] = None) -> None:
-        self.abrp_api_key = abrp_api_key
-        self.abrp_user_token = abrp_user_token
+class OsmAndApi:
+    def __init__(self, *, server_uri: str, device_id: str, listener: Optional[OsmAndApiListener] = None) -> None:
+        self.__device_id = device_id
         self.__listener = listener
-        self.__base_uri = 'https://api.iternio.com/1/'
+        self.__server_uri = server_uri
         self.client = httpx.AsyncClient(
             event_hooks={
                 "request": [self.invoke_request_listener],
@@ -42,23 +40,22 @@ class AbrpApi:
             }
         )
 
-    async def update_abrp(self, vehicle_status: VehicleStatusResp, charge_info: ChrgMgmtDataResp) \
+    async def update_osmand(self, vehicle_status: VehicleStatusResp, charge_info: ChrgMgmtDataResp | None) \
             -> Tuple[bool, Any | None]:
 
-        charge_status = None if charge_info is None else charge_info.chrgMgmtData
+        charge_mgmt_data = None if charge_info is None else charge_info.chrgMgmtData
+        charge_status = None if charge_info is None else charge_info.rvsChargeStatus
 
         if (
-                self.abrp_api_key is not None
-                and self.abrp_user_token is not None
+                self.__device_id is not None
+                and self.__server_uri is not None
                 and vehicle_status is not None
-                and charge_status is not None
         ):
             # Request
-            tlm_send_url = f'{self.__base_uri}tlm/send'
             data = {
+                'id': self.__device_id,
                 # Guess the timestamp from either the API, GPS info or current machine time
-                'utc': int(get_update_timestamp(vehicle_status).timestamp()),
-                'soc': (charge_status.bmsPackSOCDsp / 10.0),
+                'timestamp': int(get_update_timestamp(vehicle_status).timestamp()),
                 'is_charging': vehicle_status.is_charging,
                 'is_parked': vehicle_status.is_parked,
             }
@@ -69,49 +66,48 @@ class AbrpApi:
                     'speed': 0.0,
                 })
 
-            # Skip invalid current values reported by the API
-            is_valid_current = (
-                    charge_status.bmsPackCrntV != 1
-                    and value_in_range(charge_status.bmsPackCrnt, 0, 65535)
-            )
-            if is_valid_current:
-                data.update({
-                    'power': charge_status.decoded_power,
-                    'voltage': charge_status.decoded_voltage,
-                    'current': charge_status.decoded_current
-                })
-
             basic_vehicle_status = vehicle_status.basicVehicleStatus
             if basic_vehicle_status is not None:
                 data.update(self.__extract_basic_vehicle_status(basic_vehicle_status))
-
-            data.update(self.__extract_electric_range(basic_vehicle_status, charge_info.rvsChargeStatus))
 
             gps_position = vehicle_status.gpsPosition
             if gps_position is not None:
                 data.update(self.__extract_gps_position(gps_position))
 
-            headers = {
-                'Authorization': f'APIKEY {self.abrp_api_key}'
-            }
+            if charge_mgmt_data is not None:
+                data.update({
+                    'soc': (charge_mgmt_data.bmsPackSOCDsp / 10.0)
+                })
+
+                # Skip invalid current values reported by the API
+                is_valid_current = (
+                        charge_mgmt_data.bmsPackCrntV != 1
+                        and value_in_range(charge_mgmt_data.bmsPackCrnt, 0, 65535)
+                )
+                if is_valid_current:
+                    data.update({
+                        'power': charge_mgmt_data.decoded_power,
+                        'voltage': charge_mgmt_data.decoded_voltage,
+                        'current': charge_mgmt_data.decoded_current
+                    })
+
+            # Extract electric range if available
+            data.update(self.__extract_electric_range(basic_vehicle_status, charge_status))
 
             try:
-                response = await self.client.post(url=tlm_send_url, headers=headers, params={
-                    'token': self.abrp_user_token,
-                    'tlm': json.dumps(data)
-                })
+                response = await self.client.post(url=self.__server_uri, params=data)
                 await response.aread()
                 return True, response.text
             except httpx.ConnectError as ece:
-                raise AbrpApiException(f'Connection error: {ece}')
+                raise OsmAndApiException(f'Connection error: {ece}')
             except httpx.TimeoutException as et:
-                raise AbrpApiException(f'Timeout error {et}')
+                raise OsmAndApiException(f'Timeout error {et}')
             except httpx.RequestError as e:
-                raise AbrpApiException(f'{e}')
+                raise OsmAndApiException(f'{e}')
             except httpx.HTTPError as ehttp:
-                raise AbrpApiException(f'HTTP error {ehttp}')
+                raise OsmAndApiException(f'HTTP error {ehttp}')
         else:
-            return False, 'ABRP request skipped because of missing configuration'
+            return False, 'OsmAnd request skipped because of missing configuration'
 
     @staticmethod
     def __extract_basic_vehicle_status(basic_vehicle_status: BasicVehicleStatus) -> dict:
@@ -123,7 +119,7 @@ class AbrpApi:
         mileage = basic_vehicle_status.mileage
         # Skip invalid range readings
         if mileage is not None and value_in_range(mileage, 1, 2147483647):
-            data['odometer'] = mileage / 10.0
+            data['odometer'] = 100 * mileage
 
         return data
 
@@ -153,7 +149,7 @@ class AbrpApi:
 
         altitude = position.altitude
         if value_in_range(altitude, -500, 8900):
-            data['elevation'] = altitude
+            data['altitude'] = altitude
 
         lat_degrees = position.latitude / 1000000.0
         lon_degrees = position.longitude / 1000000.0
@@ -163,6 +159,7 @@ class AbrpApi:
                 and abs(lon_degrees) <= 180
         ):
             data.update({
+                'hdop': way_point.hdop,
                 'lat': lat_degrees,
                 'lon': lon_degrees,
             })
@@ -210,7 +207,7 @@ class AbrpApi:
                     LOG.warning(f"Error decoding request content: {e}")
 
             await self.__listener.on_request(
-                path=str(request.url).replace(self.__base_uri, "/"),
+                path=str(request.url).replace(self.__server_uri, "/"),
                 body=body,
                 headers=dict(request.headers),
             )
@@ -229,7 +226,7 @@ class AbrpApi:
                     LOG.warning(f"Error decoding request content: {e}")
 
             await self.__listener.on_response(
-                path=str(response.url).replace(self.__base_uri, "/"),
+                path=str(response.url).replace(self.__server_uri, "/"),
                 body=body,
                 headers=dict(response.headers),
             )

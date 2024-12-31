@@ -9,7 +9,7 @@ from saic_ismart_client_ng.api.vehicle_charging import ChargeCurrentLimitCode, S
 
 import mqtt_topics
 from configuration import Configuration
-from publisher.mqtt_publisher import MqttClient
+from publisher.mqtt_publisher import MqttPublisher
 from vehicle import VehicleState, RefreshMode
 
 LOG = logging.getLogger(__name__)
@@ -94,11 +94,21 @@ class HomeAssistantDiscovery:
                 self.__vehicle_availability
             ]
         )
+        self.published = False
 
     def publish_ha_discovery_messages(self):
+        if self.published:
+            LOG.debug("Skipping Home Assistant discovery messages as it was already published")
+            return
+
         if not self.__vehicle_state.is_complete():
             LOG.debug("Skipping Home Assistant discovery messages as vehicle state is not yet complete")
             return
+
+        self.__publish_ha_discovery_messages_real()
+        self.published = True
+
+    def __publish_ha_discovery_messages_real(self):
 
         LOG.debug("Publishing Home Assistant discovery messages")
 
@@ -174,6 +184,8 @@ class HomeAssistantDiscovery:
 
         self.__publish_switch(mqtt_topics.CLIMATE_BACK_WINDOW_HEAT, 'Rear window defroster heating',
                               icon='mdi:car-defrost-rear', payload_on='on', payload_off='off')
+        self.__publish_switch(mqtt_topics.LOCATION_FIND_MY_CAR, 'Find my car',
+                              icon='mdi:car-search', payload_on='activate', payload_off='stop')
 
         # Locks
         self.__publish_lock(mqtt_topics.DOORS_LOCKED, 'Doors Lock', icon='mdi:car-door-lock')
@@ -289,6 +301,19 @@ class HomeAssistantDiscovery:
                               device_class='voltage', state_class='measurement', unit_of_measurement='V',
                               icon='mdi:car-battery')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_RANGE, 'Range', device_class='distance', unit_of_measurement='km')
+        self.__publish_sensor(
+            mqtt_topics.DRIVETRAIN_FOSSIL_FUEL_RANGE, 'Fossil fuel range',
+            device_class='distance',
+            unit_of_measurement='km',
+            enabled=self.__vehicle_state.has_fossil_fuel
+        )
+        self.__publish_sensor(
+            mqtt_topics.DRIVETRAIN_FOSSIL_FUEL_PERCENTAGE, 'Fossil fuel percentage',
+            state_class='measurement',
+            unit_of_measurement='%',
+            icon='mdi:fuel',
+            enabled=self.__vehicle_state.has_fossil_fuel
+        )
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_CURRENT, 'Current', device_class='current',
                               state_class='measurement', unit_of_measurement='A')
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_VOLTAGE, 'Voltage', device_class='voltage',
@@ -385,39 +410,35 @@ class HomeAssistantDiscovery:
     def __publish_remote_ac(self):
         # This has been converted into 2 switches and a climate entity for ease of operation
 
-        self.__publish_ha_discovery_message('switch', 'Front window defroster heating', {
-            'icon': 'mdi:car-defrost-front',
-            'state_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE),
-            'command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE) + '/set',
-            'value_template': '{% if value == "front" %}front{% else %}off{% endif %}',
-            'state_on': 'front',
-            'state_off': 'off',
-            'payload_on': 'front',
-            'payload_off': 'off',
-        })
+        self.__publish_switch(
+            mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE,
+            'Front window defroster heating',
+            icon='mdi:car-defrost-front',
+            value_template='{% if value == "front" %}front{% else %}off{% endif %}',
+            payload_on='front',
+            payload_off='off'
+        )
 
-        self.__publish_ha_discovery_message('switch', 'Vehicle climate fan only', {
-            'icon': 'mdi:fan',
-            'state_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE),
-            'command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE) + '/set',
-            'value_template': '{% if value == "blowingonly" %}blowingonly{% else %}off{% endif %}',
-            'state_on': 'blowingonly',
-            'state_off': 'off',
-            'payload_on': 'blowingonly',
-            'payload_off': 'off',
-        })
+        self.__publish_switch(
+            mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE,
+            'Vehicle climate fan only',
+            icon='mdi:fan',
+            value_template='{% if value == "blowingonly" %}blowingonly{% else %}off{% endif %}',
+            payload_on='blowingonly',
+            payload_off='off'
+        )
 
         self.__publish_ha_discovery_message('climate', 'Vehicle climate', {
             'precision': 1.0,
             'temperature_unit': 'C',
             'mode_state_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE),
-            'mode_command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE) + '/set',
+            'mode_command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_CLIMATE_STATE_SET),
             'mode_state_template': '{% if value == "on" %}auto{% else %}off{% endif %}',
             'mode_command_template': '{% if value == "auto" %}on{% else %}off{% endif %}',
             'modes': ['off', 'auto'],
             'current_temperature_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_INTERIOR_TEMPERATURE),
             'current_temperature_template': '{{ value }}',
-            'temperature_command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_TEMPERATURE) + '/set',
+            'temperature_command_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_TEMPERATURE_SET),
             'temperature_command_template': '{{ value | int }}',
             'temperature_state_topic': self.__get_vehicle_topic(mqtt_topics.CLIMATE_REMOTE_TEMPERATURE),
             'temperature_state_template': '{{ value | int }}',
@@ -439,7 +460,7 @@ class HomeAssistantDiscovery:
     ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
-            'command_topic': self.__get_vehicle_topic(topic) + '/set',
+            'command_topic': self.__get_vehicle_set_topic(topic),
             'value_template': value_template,
             'payload_on': payload_on,
             'payload_off': payload_off,
@@ -465,7 +486,7 @@ class HomeAssistantDiscovery:
     ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
-            'command_topic': self.__get_vehicle_topic(topic) + '/set',
+            'command_topic': self.__get_vehicle_set_topic(topic),
             'payload_lock': payload_lock,
             'payload_unlock': payload_unlock,
             'state_locked': state_locked,
@@ -529,7 +550,7 @@ class HomeAssistantDiscovery:
     ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
-            'command_topic': self.__get_vehicle_topic(topic) + '/set',
+            'command_topic': self.__get_vehicle_set_topic(topic),
             'value_template': value_template,
             'retain': str(retain).lower(),
             'mode': mode,
@@ -567,7 +588,7 @@ class HomeAssistantDiscovery:
     ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
-            'command_topic': self.__get_vehicle_topic(topic) + '/set',
+            'command_topic': self.__get_vehicle_set_topic(topic),
             'value_template': value_template,
             'command_template': command_template,
             'retain': str(retain).lower(),
@@ -625,7 +646,7 @@ class HomeAssistantDiscovery:
     ) -> str:
         payload = {
             'state_topic': self.__get_vehicle_topic(topic),
-            'command_topic': self.__get_vehicle_topic(topic) + '/set',
+            'command_topic': self.__get_vehicle_set_topic(topic),
             'value_template': value_template,
             'command_template': command_template,
             'options': options,
@@ -680,16 +701,19 @@ class HomeAssistantDiscovery:
 
     def __get_system_topic(self, topic: str) -> str:
         publisher = self.__vehicle_state.publisher
-        if isinstance(publisher, MqttClient):
+        if isinstance(publisher, MqttPublisher):
             return publisher.get_topic(topic, no_prefix=False)
         return topic
 
     def __get_vehicle_topic(self, topic: str) -> str:
         vehicle_topic = self.__vehicle_state.get_topic(topic)
         publisher = self.__vehicle_state.publisher
-        if isinstance(publisher, MqttClient):
+        if isinstance(publisher, MqttPublisher):
             return publisher.get_topic(vehicle_topic, no_prefix=False)
         return vehicle_topic
+
+    def __get_vehicle_set_topic(self, topic: str) -> str:
+        return self.__get_vehicle_topic(topic) + '/' + mqtt_topics.SET_SUFFIX
 
     def __publish_ha_discovery_message(
             self,

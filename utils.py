@@ -5,11 +5,12 @@ from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 
 
 def value_in_range(value, min_value, max_value, is_max_excl: bool = True) -> bool:
-    return (
-        value is not None
-        and
-        min_value <= value < max_value if is_max_excl else min_value <= value <= max_value
-    )
+    if value is None:
+        return False
+    elif is_max_excl:
+        return min_value <= value < max_value
+    else:
+        return min_value <= value <= max_value
 
 
 def is_valid_temperature(value) -> bool:
@@ -33,3 +34,7 @@ def get_update_timestamp(vehicle_status: VehicleStatusResp) -> datetime:
         return reference_time
     else:
         return now_time
+
+
+def datetime_to_str(dt: datetime) -> str:
+    return datetime.astimezone(dt, tz=timezone.utc).isoformat()

@@ -22,7 +22,7 @@ import mqtt_topics
 from integrations.openwb.charging_station import ChargingStation
 from exceptions import MqttGatewayException
 from publisher.core import Publisher
-from utils import value_in_range, is_valid_temperature
+from utils import value_in_range, is_valid_temperature, datetime_to_str
 
 DEFAULT_AC_TEMP = 22
 PRESSURE_TO_BAR_FACTOR = 0.04
@@ -207,7 +207,7 @@ class VehicleState:
         vehicle_status_drift = abs(now_time - vehicle_status_time)
         if vehicle_status_drift > datetime.timedelta(minutes=15):
             raise MqttGatewayException(
-                f"Vehicle status time drifted too much from current time: {vehicle_status_drift}"
+                f"Vehicle status time drifted too much from current time: {vehicle_status_drift}. Server reported {vehicle_status_time}"
             )
 
         is_engine_running = vehicle_status.is_engine_running
@@ -327,9 +327,14 @@ class VehicleState:
             mileage = basic_vehicle_status.mileage / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE), mileage)
 
-        # We can read this from either the BMS or the Vehicle Info
-        self.__publish_electric_range(basic_vehicle_status.fuelRangeElec)
-        self.__publish_soc(basic_vehicle_status.extendedData1)
+        # Standard fossil fuels vehicles
+        if value_in_range(basic_vehicle_status.fuelRange, 1, 65535):
+            fuel_range = basic_vehicle_status.fuelRange / 10.0
+            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_FOSSIL_FUEL_RANGE), fuel_range)
+
+        if value_in_range(basic_vehicle_status.fuelLevelPrc, 0, 100, is_max_excl=False):
+            self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_FOSSIL_FUEL_PERCENTAGE),
+                                         basic_vehicle_status.fuelLevelPrc)
 
         if (
                 basic_vehicle_status.currentJourneyId is not None
@@ -341,15 +346,15 @@ class VehicleState:
             })
 
         self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_VEHICLE_STATE),
-                                   VehicleState.datetime_to_str(datetime.datetime.now()))
+                                   datetime_to_str(datetime.datetime.now()))
 
     def __publish_tyre(self, raw_value: int, topic: str):
         if value_in_range(raw_value, 1, 255):
             bar_value = raw_value * PRESSURE_TO_BAR_FACTOR
             self.publisher.publish_float(self.get_topic(topic), round(bar_value, 2))
 
-    def __publish_electric_range(self, raw_value):
-        if value_in_range(raw_value, 1, 65535):
+    def __publish_electric_range(self, raw_value) -> bool:
+        if value_in_range(raw_value, 1, 20460):
             electric_range = raw_value / 10.0
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_RANGE), electric_range)
             if (
@@ -357,8 +362,10 @@ class VehicleState:
                     and self.charging_station.range_topic
             ):
                 self.publisher.publish_float(self.charging_station.range_topic, electric_range, True)
+            return True
+        return False
 
-    def __publish_soc(self, soc):
+    def __publish_soc(self, soc) -> bool:
         if value_in_range(soc, 0, 100.0, is_max_excl=False):
             self.publisher.publish_float(self.get_topic(mqtt_topics.DRIVETRAIN_SOC), soc)
             if (
@@ -366,6 +373,8 @@ class VehicleState:
                     and self.charging_station.soc_topic
             ):
                 self.publisher.publish_float(self.charging_station.soc_topic, soc, True)
+            return True
+        return False
 
     def set_hv_battery_active(self, hv_battery_active: bool):
         if (
@@ -378,17 +387,14 @@ class VehicleState:
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_HV_BATTERY_ACTIVE), hv_battery_active)
 
         if hv_battery_active:
-            self.notify_car_activity_time(datetime.datetime.now(), True)
+            self.notify_car_activity()
 
-    def notify_car_activity_time(self, now: datetime.datetime, force: bool):
-        if (
-                self.last_car_activity == datetime.datetime.min
-                or force
-                or self.last_car_activity < now
-        ):
-            self.last_car_activity = datetime.datetime.now()
-            self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_ACTIVITY),
-                                       VehicleState.datetime_to_str(self.last_car_activity))
+    def notify_car_activity(self):
+        self.last_car_activity = datetime.datetime.now()
+        self.publisher.publish_str(
+            self.get_topic(mqtt_topics.REFRESH_LAST_ACTIVITY),
+            datetime_to_str(self.last_car_activity)
+        )
 
     def notify_message(self, message: MessageEntity):
         if (
@@ -400,14 +406,14 @@ class VehicleState:
             self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_TYPE), message.messageType)
             self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_TITLE), message.title)
             self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_TIME),
-                                       VehicleState.datetime_to_str(self.last_car_vehicle_message))
+                                       datetime_to_str(self.last_car_vehicle_message))
             self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_SENDER), message.sender)
             if message.content:
                 self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_CONTENT), message.content)
             self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_STATUS), message.read_status)
             if message.vin:
                 self.publisher.publish_str(self.get_topic(mqtt_topics.INFO_LAST_MESSAGE_VIN), message.vin)
-                self.notify_car_activity_time(message.message_time, True)
+                self.notify_car_activity()
 
     def should_refresh(self) -> bool:
         match self.refresh_mode:
@@ -498,7 +504,7 @@ class VehicleState:
             self.__failed_refresh_counter = self.__failed_refresh_counter + 1
             self.publisher.publish_str(
                 self.get_topic(mqtt_topics.REFRESH_LAST_ERROR),
-                VehicleState.datetime_to_str(value)
+                datetime_to_str(value)
             )
         self.publisher.publish_int(self.get_topic(mqtt_topics.REFRESH_PERIOD_ERROR), self.__refresh_period_error)
 
@@ -545,31 +551,31 @@ class VehicleState:
     async def configure_by_message(self, *, topic: str, payload: str):
         payload = payload.lower()
         match topic:
-            case mqtt_topics.REFRESH_MODE:
+            case mqtt_topics.REFRESH_MODE_SET:
                 try:
                     refresh_mode = RefreshMode.get(payload)
                     self.set_refresh_mode(refresh_mode, "MQTT direct set refresh mode command execution")
                 except KeyError:
                     raise MqttGatewayException(f'Unsupported payload {payload}')
-            case mqtt_topics.REFRESH_PERIOD_ACTIVE:
+            case mqtt_topics.REFRESH_PERIOD_ACTIVE_SET:
                 try:
                     seconds = int(payload)
                     self.set_refresh_period_active(seconds)
                 except ValueError:
                     raise MqttGatewayException(f'Error setting value for payload {payload}')
-            case mqtt_topics.REFRESH_PERIOD_INACTIVE:
+            case mqtt_topics.REFRESH_PERIOD_INACTIVE_SET:
                 try:
                     seconds = int(payload)
                     self.set_refresh_period_inactive(seconds)
                 except ValueError:
                     raise MqttGatewayException(f'Error setting value for payload {payload}')
-            case mqtt_topics.REFRESH_PERIOD_AFTER_SHUTDOWN:
+            case mqtt_topics.REFRESH_PERIOD_AFTER_SHUTDOWN_SET:
                 try:
                     seconds = int(payload)
                     self.set_refresh_period_after_shutdown(seconds)
                 except ValueError:
                     raise MqttGatewayException(f'Error setting value for payload {payload}')
-            case mqtt_topics.REFRESH_PERIOD_INACTIVE_GRACE:
+            case mqtt_topics.REFRESH_PERIOD_INACTIVE_GRACE_SET:
                 try:
                     seconds = int(payload)
                     self.set_refresh_period_inactive_grace(seconds)
@@ -643,11 +649,8 @@ class VehicleState:
             except ValueError:
                 LOG.warning(f'Invalid target SOC received: {raw_target_soc}')
 
-        soc = charge_mgmt_data.bmsPackSOCDsp / 10.0
-        self.__publish_soc(soc)
-
         estd_elec_rng = charge_mgmt_data.bmsEstdElecRng
-        if value_in_range(estd_elec_rng, 0, 65535) and estd_elec_rng != 2047:
+        if value_in_range(estd_elec_rng, 0, 2046):
             estimated_electrical_range = estd_elec_rng
             self.publisher.publish_int(
                 self.get_topic(mqtt_topics.DRIVETRAIN_HYBRID_ELECTRICAL_RANGE),
@@ -681,9 +684,6 @@ class VehicleState:
             )
 
         charge_status = charge_info_resp.rvsChargeStatus
-
-        # We can read this from either the BMS or the Vehicle Info
-        self.__publish_electric_range(charge_status.fuelRangeElec)
 
         if value_in_range(charge_status.mileageOfDay, 0, 65535):
             mileage_of_the_day = charge_status.mileageOfDay / 10.0
@@ -742,36 +742,12 @@ class VehicleState:
             )
 
         self.publisher.publish_str(self.get_topic(mqtt_topics.REFRESH_LAST_CHARGE_STATE),
-                                   VehicleState.datetime_to_str(datetime.datetime.now()))
+                                   datetime_to_str(datetime.datetime.now()))
 
-        real_total_battery_capacity = self.get_actual_battery_capacity()
-        raw_total_battery_capacity = None
+        real_total_battery_capacity, battery_capacity_correction_factor = self.get_actual_battery_capacity(
+            charge_status)
 
-        if (
-                charge_status.totalBatteryCapacity is not None
-                and charge_status.totalBatteryCapacity > 0
-        ):
-            raw_total_battery_capacity = charge_status.totalBatteryCapacity / 10.0
-
-        battery_capacity_correction_factor = 1.0
-        if real_total_battery_capacity is None and raw_total_battery_capacity is not None:
-            LOG.debug(f"Setting real battery capacity to raw battery capacity {raw_total_battery_capacity}")
-            real_total_battery_capacity = raw_total_battery_capacity
-            battery_capacity_correction_factor = 1.0
-        elif real_total_battery_capacity is not None and raw_total_battery_capacity is None:
-            LOG.debug(f"Setting raw battery capacity to real battery capacity {real_total_battery_capacity}")
-            battery_capacity_correction_factor = 1.0
-        elif real_total_battery_capacity is not None and raw_total_battery_capacity is not None:
-            LOG.debug(
-                f"Calculating full battery capacity correction factor based on "
-                f"real={real_total_battery_capacity} and raw={raw_total_battery_capacity}"
-            )
-            battery_capacity_correction_factor = real_total_battery_capacity / raw_total_battery_capacity
-        elif real_total_battery_capacity is None and raw_total_battery_capacity is None:
-            LOG.warning("No battery capacity information available")
-            battery_capacity_correction_factor = 1.0
-
-        if real_total_battery_capacity is not None and real_total_battery_capacity > 0:
+        if real_total_battery_capacity > 0:
             self.publisher.publish_float(
                 self.get_topic(mqtt_topics.DRIVETRAIN_TOTAL_BATTERY_CAPACITY),
                 real_total_battery_capacity
@@ -809,7 +785,7 @@ class VehicleState:
                 and charge_mgmt_data.decoded_power < -1
         ):
             # Only compute a dynamic refresh period if we have detected at least 1kW of power during charging
-            time_for_1pct = 36.0 * self.get_actual_battery_capacity() / abs(charge_mgmt_data.decoded_power)
+            time_for_1pct = 36.0 * real_total_battery_capacity / abs(charge_mgmt_data.decoded_power)
             time_for_min_pct = math.ceil(self.charge_polling_min_percent * time_for_1pct)
             # It doesn't make sense to refresh less often than the estimated time for completion
             if remaining_charging_time is not None and remaining_charging_time > 0:
@@ -841,6 +817,28 @@ class VehicleState:
             self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK),
             charge_mgmt_data.charging_port_locked
         )
+
+    def update_data_conflicting_in_vehicle_and_bms(
+            self,
+            vehicle_status: VehicleStatusResp,
+            charge_status: Optional[ChrgMgmtDataResp]
+    ):
+        # We can read this from either the BMS or the Vehicle Info
+        electric_range_published = False
+        soc_published = False
+
+        if charge_status is not None:
+            electric_range_published = self.__publish_electric_range(charge_status.rvsChargeStatus.fuelRangeElec)
+            soc_published = self.__publish_soc(charge_status.chrgMgmtData.bmsPackSOCDsp / 10.0)
+        basic_vehicle_status = vehicle_status.basicVehicleStatus
+        if not electric_range_published:
+            electric_range_published = self.__publish_electric_range(basic_vehicle_status.fuelRangeElec)
+        if not soc_published:
+            soc_published = self.__publish_soc(basic_vehicle_status.extendedData1)
+        if not electric_range_published:
+            logging.warning("Could not extract a valid electric range")
+        if not soc_published:
+            logging.warning("Could not extract a valid SoC")
 
     def handle_scheduled_battery_heating_status(self, scheduled_battery_heating_status: ScheduledBatteryHeatingResp):
         if scheduled_battery_heating_status:
@@ -893,10 +891,6 @@ class VehicleState:
 
         return f'unknown ({rmt_htd_rr_wnd_st})'
 
-    @staticmethod
-    def datetime_to_str(dt: datetime.datetime) -> str:
-        return datetime.datetime.astimezone(dt, tz=datetime.timezone.utc).isoformat()
-
     def set_refresh_mode(self, mode: RefreshMode, cause: str):
         if (
                 mode is not None and
@@ -913,6 +907,17 @@ class VehicleState:
                 self.previous_refresh_mode = self.refresh_mode
             self.refresh_mode = mode
             LOG.debug(f'Refresh mode set to {new_mode_value} due to {cause}')
+
+    @property
+    def is_ev(self):
+        if self.series.startswith('ZP22'):
+            return False
+        else:
+            return True
+
+    @property
+    def has_fossil_fuel(self):
+        return not self.is_ev
 
     @property
     def has_sunroof(self):
@@ -981,21 +986,64 @@ class VehicleState:
     def model(self):
         return str(self.__vin_info.modelName).strip().upper()
 
-    def get_actual_battery_capacity(self) -> float | None:
+    def get_actual_battery_capacity(self, charge_status) -> tuple[float, float]:
+
+        real_total_battery_capacity = self.__get_actual_battery_capacity()
+        if (
+                real_total_battery_capacity is not None
+                and real_total_battery_capacity <= 0
+        ):
+            # Negative or 0 value for real capacity means we don't know that info
+            real_total_battery_capacity = None
+
+        raw_total_battery_capacity = None
+        if (
+                charge_status.totalBatteryCapacity is not None
+                and charge_status.totalBatteryCapacity > 0
+        ):
+            raw_total_battery_capacity = charge_status.totalBatteryCapacity / 10.0
+
+        if raw_total_battery_capacity is not None:
+            if real_total_battery_capacity is not None:
+                LOG.debug(
+                    f"Calculating full battery capacity correction factor based on "
+                    f"real={real_total_battery_capacity} and raw={raw_total_battery_capacity}"
+                )
+                return real_total_battery_capacity, real_total_battery_capacity / raw_total_battery_capacity
+            else:
+                LOG.debug(f"Setting real battery capacity to raw battery capacity {raw_total_battery_capacity}")
+                return raw_total_battery_capacity, 1.0
+        else:
+            if real_total_battery_capacity is not None:
+                LOG.debug(f"Setting raw battery capacity to real battery capacity {real_total_battery_capacity}")
+                return real_total_battery_capacity, 1.0
+            else:
+                LOG.warning("No battery capacity information available")
+                return 0, 1.0
+
+    def __get_actual_battery_capacity(self) -> float | None:
         if self.__total_battery_capacity is not None and self.__total_battery_capacity > 0:
             return float(self.__total_battery_capacity)
-        # MG4 "Lux/Trophy"
+        # MG4 high trim level
         elif self.series.startswith('EH32 S'):
             if self.model.startswith('EH32 X3'):
                 # MG4 Trophy Extended Range
                 return 77.0
-            else:
-                # MG4 Lux/Trophy 2022
+            elif self.supports_target_soc:
+                # MG4 high trim level with NMC battery
                 return 64.0
-        # MG4 Standard 2022
-        # MG4 Standard 2023 (EH32 X7)
+            else:
+                # MG4 High trim level with LFP battery
+                return 51.0
+        # MG4 low trim level
+        # Note: EH32 X/ is used for the 2023 MY with both NMC and LFP batter chem
         elif self.series.startswith('EH32 L'):
-            return 51.0
+            if self.supports_target_soc:
+                # MG4 low trim level with NMC battery
+                return 64.0
+            else:
+                # MG4 low trim level with LFP battery
+                return 51.0
         # Model: MG5 Electric, variant MG5 SR Comfort
         elif self.series.startswith('EP2CP3'):
             return 50.3

@@ -17,39 +17,83 @@ the [SAIC-iSmart-API Documentation](https://github.com/SAIC-iSmart-API/documenta
 Configuration parameters can be provided as command line parameters or environment variables (this is what you typically
 do when you run the service from a docker container).
 
-| CMD param                   | ENV variable              | Description                                                                                                                                                                         |
-|-----------------------------|---------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| -u or --saic-user           | SAIC_USER                 | SAIC user name - **required**                                                                                                                                                       |
-| -p or --saic-password       | SAIC_PASSWORD             | SAIC password - **required**                                                                                                                                                        |
-| --saic-phone-country-code   | SAIC_PHONE_COUNTRY_CODE   | Phone country code, used if the username is not an email address                                                                                                                    |
-| -m or --mqtt-uri            | MQTT_URI                  | URI to the MQTT Server. TCP: tcp://mqtt.eclipseprojects.io:1883, WebSocket: ws://mqtt.eclipseprojects.io:9001 or TLS: tls://mqtt.eclipseprojects.io:8883 - **required**             |
-| --mqtt-server-cert          | MQTT_SERVER_CERT          | Path to the server certificate authority file in PEM format is required for TLS                                                                                                     |
-| --mqtt-user                 | MQTT_USER                 | MQTT user name                                                                                                                                                                      |
-| --mqtt-password             | MQTT_PASSWORD             | MQTT password                                                                                                                                                                       |
-| --mqtt-client-id            | MQTT_CLIENT_ID            | MQTT Client Identifier. Defaults to saic-python-mqtt-gateway.                                                                                                                       |
-| --mqtt-topic-prefix         | MQTT_TOPIC                | Provide a custom MQTT prefix to replace the default: saic                                                                                                                           |
-| --saic-rest-uri             | SAIC_REST_URI             | SAIC API URI. Default is the European Production endpoint: https://gateway-mg-eu.soimt.com/api.app/v1/                                                                              |
-| --saic-region               | SAIC_REGION               | SAIC API region. Default is eu.                                                                                                                                                     |
-| --saic-tenant-id            | SAIC_TENANT_ID            | SAIC API tenant ID. Default is 459771.                                                                                                                                              |
-| --abrp-api-key              | ABRP_API_KEY              | API key for the A Better Route Planner telemetry API. Default is the open source telemetry API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d.                                            |
-| --abrp-user-token           | ABRP_USER_TOKEN           | Mapping of VIN to ABRP User Token. Multiple mappings can be provided separated by ',' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl                                            |
-| --charging-stations-json    | CHARGING_STATIONS_JSON    | Custom charging stations configuration file name                                                                                                                                    |
-| --saic-relogin-delay        | SAIC_RELOGIN_DELAY        | The gateway detects logins from other devices (e.g. the iSMART app). It then pauses it's activity for 900 seconds (default value). The delay can be configured with this parameter. |
-| --ha-discovery              | HA_DISCOVERY_ENABLED      | Home Assistant auto-discovery is enabled (True) by default. It can be disabled (False) with this parameter.                                                                         |
-| --ha-discovery-prefix       | HA_DISCOVERY_PREFIX       | The default MQTT prefix for Home Assistant auto-discovery is 'homeassistant'. Another prefix can be configured with this parameter                                                  |
-| --messages-request-interval | MESSAGES_REQUEST_INTERVAL | The interval for retrieving messages in seconds. Default is 60 seconds.                                                                                                             |
+### SAIC API
 
-### SAIC API Endpoints
+| CMD param                   | ENV variable                 | Description                                                                                                                                                                         |
+|-----------------------------|------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| -u or --saic-user           | SAIC_USER                    | SAIC user name - **required**                                                                                                                                                       |
+| -p or --saic-password       | SAIC_PASSWORD                | SAIC password - **required**                                                                                                                                                        |
+| --saic-phone-country-code   | SAIC_PHONE_COUNTRY_CODE      | Phone country code, used if the username is not an email address                                                                                                                    |
+| --saic-rest-uri             | SAIC_REST_URI                | SAIC API URI. Default is the European Production endpoint: https://gateway-mg-eu.soimt.com/api.app/v1/                                                                              |
+| --saic-region               | SAIC_REGION                  | SAIC API region. Default is eu.                                                                                                                                                     |
+| --saic-tenant-id            | SAIC_TENANT_ID               | SAIC API tenant ID. Default is 459771.                                                                                                                                              |
+| --saic-relogin-delay        | SAIC_RELOGIN_DELAY           | The gateway detects logins from other devices (e.g. the iSMART app). It then pauses it's activity for 900 seconds (default value). The delay can be configured with this parameter. |
+| --messages-request-interval | MESSAGES_REQUEST_INTERVAL    | The interval for retrieving messages in seconds. Default is 60 seconds.                                                                                                             |
+| --battery-capacity-mapping  | BATTERY_CAPACITY_MAPPING     | Mapping of VIN to full battery capacity. Multiple mappings can be provided separated by ',' Example: LSJXXXX=54.0,LSJYYYY=64.0                                                      |
+| --charge-min-percentage     | CHARGE_MIN_PERCENTAGE        | How many % points we should try to refresh the charge state. 1.0 by default                                                                                                         |
+| --publish-raw-api-data      | PUBLISH_RAW_API_DATA_ENABLED | Publish raw SAIC API request/response to MQTT. Disabled (False) by default.                                                                                                         |
+
+#### API Endpoints
 
 The following are the known available endpoints:
 
-| SAIC_REST_URI                               | SAIC_REGION | Notes                                                                                                                               |
+| SAIC_REST_URI                               | SAIC_REGION | Notes                                                                                                                                |
 |---------------------------------------------|-------------|--------------------------------------------------------------------------------------------------------------------------------------|
 | https://gateway-mg-au.soimt.com/api.app/v1/ | au          | This endpoint is not used by the iSmart app for Australia and New Zealand but has been tested and proven to work in these countries. |
 | https://gateway-mg-eu.soimt.com/api.app/v1/ | eu          |                                                                                                                                      |
 
+### MQTT Broker
 
-### Charging Station Configuration
+| CMD param           | ENV variable     | Description                                                                                                                                                                                          |
+|---------------------|------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| -m or --mqtt-uri    | MQTT_URI         | URI to the MQTT Server. TCP: tcp://mqtt.eclipseprojects.io:1883, WebSocket: ws://mqtt.eclipseprojects.io:9001 or TLS: tls://mqtt.eclipseprojects.io:8883 - Leave it empty to disable MQTT connection |
+| --mqtt-server-cert  | MQTT_SERVER_CERT | Path to the server certificate authority file in PEM format is required for TLS                                                                                                                      |
+| --mqtt-user         | MQTT_USER        | MQTT user name                                                                                                                                                                                       |
+| --mqtt-password     | MQTT_PASSWORD    | MQTT password                                                                                                                                                                                        |
+| --mqtt-client-id    | MQTT_CLIENT_ID   | MQTT Client Identifier. Defaults to saic-python-mqtt-gateway.                                                                                                                                        |
+| --mqtt-topic-prefix | MQTT_TOPIC       | Provide a custom MQTT prefix to replace the default: saic                                                                                                                                            |
+|                     | MQTT_LOG_LEVEL   | Log level of the MQTT Client: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)                          |
+
+### Home Assistant Integration
+
+| CMD param             | ENV variable         | Description                                                                                                                                                                         |
+|-----------------------|----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| --ha-discovery        | HA_DISCOVERY_ENABLED | Home Assistant auto-discovery is enabled (True) by default. It can be disabled (False) with this parameter.                                                                         |
+| --ha-discovery-prefix | HA_DISCOVERY_PREFIX  | The default MQTT prefix for Home Assistant auto-discovery is 'homeassistant'. Another prefix can be configured with this parameter                                                  |
+| --ha-show-unavailable | HA_SHOW_UNAVAILABLE  | Show entities as Unavailable in Home Assistant when car polling fails. Enabled (True) by default. Can be disabled, to retain the pre 0.6.x behaviour, but do that at your own risk. |
+
+### A Better Route Planner (ABRP) integration
+
+Telemetry data from your car can be provided to [ABRP](https://abetterrouteplanner.com/). **Be aware that this is not
+done by default.** The data will be sent only if you provide the mapping of your vehicle identification number (VIN) to
+an ABRP user token.
+
+Those parameters can be used to allow the MQTT Gateway to send data to ABRP API
+
+| CMD param               | ENV variable                  | Description                                                                                                                              |
+|-------------------------|-------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| --abrp-api-key          | ABRP_API_KEY                  | API key for the A Better Route Planner telemetry API. Default is the open source telemetry API key 8cfc314b-03cd-4efe-ab7d-4431cd8f2e2d. |
+| --abrp-user-token       | ABRP_USER_TOKEN               | Mapping of VIN to ABRP User Token. Multiple mappings can be provided separated by ',' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl |
+| --publish-raw-abrp-data | PUBLISH_RAW_ABRP_DATA_ENABLED | Publish raw ABRP API request/response to MQTT. Disabled (False) by default.                                                              |
+
+### OsmAnd Integration (e.g. Traccar)
+
+Telemetry data from your car can be provided to a generic fleet tracking software supporting
+the [OsmAnd](https://www.traccar.org/osmand/) protocol like [Traccar](https://www.traccar.org/)
+
+Those parameters can be used to allow the MQTT Gateway to send data to an OsmAnd-compatibile server.
+
+| CMD param                 | ENV variable                    | Description                                                                                                                                                                                  |
+|---------------------------|---------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| --osmand-server-uri       | OSMAND_SERVER_URI               | The URL of your OsmAnd Server                                                                                                                                                                |
+| --osmand-device-id        | OSMAND_DEVICE_ID                | Mapping of VIN to OsmAnd Device Id. Multiple mappings can be provided separated by ',' Example: LSJXXXX=12345-abcdef,LSJYYYY=67890-ghijkl. Defaults to use the car VIN as Device Id if unset |
+| --publish-raw-osmand-data | PUBLISH_RAW_OSMAND_DATA_ENABLED | Publish raw ABRP OSMAND request/response to MQTT. Disabled (False) by default.                                                                                                               |
+
+### OpenWB Integration
+
+| CMD param                | ENV variable           | Description                                      |
+|--------------------------|------------------------|--------------------------------------------------|
+| --charging-stations-json | CHARGING_STATIONS_JSON | Custom charging stations configuration file name |
 
 If your charging station also provides information over MQTT or if you somehow manage to publish information from your
 charging station, the MQTT gateway can benefit from it. In addition, the MQTT gateway can provide the SoC to your
@@ -73,22 +117,18 @@ The key-value pairs in the JSON express the following:
 | chargerConnectedValue | payload that indicates that the charger is connected - optional                                   |
 | vin                   | vehicle identification number to map the charging station information to a vehicle - **required** |
 
-## Advanced settings
+### Advanced settings
 
-| CMD param                       | ENV variable                  | Description                                                                                                                                                                                               |
-|---------------------------------|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| --battery-capacity-mapping      | BATTERY_CAPACITY_MAPPING      | Mapping of VIN to full battery capacity. Multiple mappings can be provided separated by ',' Example: LSJXXXX=54.0,LSJYYYY=64.0                                                                            |
-| --charge-min-percentage         | CHARGE_MIN_PERCENTAGE         | How many % points we should try to refresh the charge state. 1.0 by default                                                                                                                               |
-| --ha-show-unavailable           | HA_SHOW_UNAVAILABLE           | Show entities as Unavailable in Home Assistant when car polling fails. Enabled (True) by default. Can be disabled, to retain the pre 0.6.x behaviour, but do that at your own risk.                       |
-|                                 | LOG_LEVEL                     | Log level: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)                                                  |
-|                                 | MQTT_LOG_LEVEL                | Log level of the MQTT Client: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels)                               |
+| CMD param | ENV variable | Description                                                                                                                                              |
+|-----------|--------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+|           | LOG_LEVEL    | Log level: INFO (default), use DEBUG for detailed output, use CRITICAL for no output, [more info](https://docs.python.org/3/library/logging.html#levels) |
 
 ## Running the service
 
 ### From Command-line
 
 To run the service from the command line you need to have Python version 3.12 or later.
-Launch the MQTT gateway with the mandatory parameters.
+Launch the MQTT gateway with the mandatory parametersn and, optionally, the url to the MQTT broker.
 
 ```
 $ python ./mqtt_gateway.py -m tcp://my-broker-host:1883 -u <saic-user> -p <saic-pwd>
@@ -106,12 +146,6 @@ $ docker build -t saic-mqtt-gateway .
 ```
 
 There is a [docker compose file](docker-compose.yml) that shows how to set up the service.
-
-## A Better Route Planner (ABRP) integration
-
-Telemetry data from your car can be provided to [ABRP](https://abetterrouteplanner.com/). **Be aware that this is not
-done by default.** The data will be sent only if you provide the mapping of your vehicle identification number (VIN) to
-an ABRP user token.
 
 ## Commands over MQTT
 
@@ -140,6 +174,7 @@ with the default vehicle prefix: `saic/<saic_user>/vehicles/<vehicle_id>`
 | /refresh/period/inActive/set             | refresh interval (sec)                               | Vehicle and charge status are queried once per day (default value: 86400) independently from any event. Changing this to a lower value might affect the 12V battery of your vehicle. Be very careful!                                 |
 | /refresh/period/afterShutdown/set        | refresh interval (sec)                               | After the vehicle has been shutdown, the gateway queries the status every 120 seconds (default value). The refresh interval can be modified with this topic.                                                                          |
 | /refresh/period/inActiveGrace/set        | grace period (sec)                                   | After the vehicle has been shutdown, the gateway continues to query the state for 600 seconds (default value). The duration of this extended query period can be modified with this topic.                                            |
+| /location/findMyCar/set                  | [activate,lights_only,horn_only,stop]                | Activate 'find my car' with lights and horn (activate), with lights only (lights_only), with horn only (horn_only) or deactivate it (stop).                                                                                           |
 
 ## Home Assistant auto-discovery
 
