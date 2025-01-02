@@ -76,7 +76,7 @@ class MessageHandler:
         while True:
             try:
                 message_list = await self.saicapi.get_alarm_list(page_num=idx, page_size=1)
-                if message_list.messages and len(message_list.messages) > 0:
+                if message_list is not None and message_list.messages and len(message_list.messages) > 0:
                     all_messages.extend(message_list.messages)
                 else:
                     return all_messages

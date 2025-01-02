@@ -1,5 +1,27 @@
 # Change Log
 
+## 0.7.0
+
+## What's Changed
+* Fixed many stability issues with the login process
+* Fixed battery capacity calculation for newer MG4 variants
+* Updated README.md with SAIC API Endpoints section by @karter16 in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/260
+* Add suffix to battery heating stop reason topic to allow discriminate it from battery heating topic by @pakozm in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/253
+* Gracefully handle scenarios where we don't know the real battery capcity of the car by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/261
+* Initial support for fossil fuel cars like MG3 Hybrid by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/262
+* Move relogin logic to the MQTT Gateway instead of the API library by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/265
+* [WIP] Expose Find by car functionality by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/266
+* Fix #73: Allow running the gateway without an MQTT connection by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/267
+* Minor updates by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/268
+* #283: Publish HA discovery once per car by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/284
+* #279: Restore the original normalization rule by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/285
+
+## New Contributors
+* @karter16 made their first contribution in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/260
+* @pakozm made their first contribution in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/253
+
+**Full Changelog**: https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/compare/0.6.3...0.7.0
+
 ## 0.6.3
 
 ### What's changed
