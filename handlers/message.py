@@ -45,7 +45,11 @@ class MessageHandler:
                 await self.__read_message(message)
 
             latest_message = self.__get_latest_message(all_messages)
-            if latest_message.messageId != self.last_message_id and latest_message.message_time > self.last_message_ts:
+            if (
+                    latest_message is not None
+                    and latest_message.messageId != self.last_message_id
+                    and latest_message.message_time > self.last_message_ts
+            ):
                 self.last_message_id = latest_message.messageId
                 self.last_message_ts = latest_message.message_time
                 LOG.info(
