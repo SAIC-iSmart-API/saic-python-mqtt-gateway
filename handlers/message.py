@@ -45,7 +45,11 @@ class MessageHandler:
                 await self.__read_message(message)
 
             latest_message = self.__get_latest_message(all_messages)
-            if latest_message.messageId != self.last_message_id and latest_message.message_time > self.last_message_ts:
+            if (
+                    latest_message is not None
+                    and latest_message.messageId != self.last_message_id
+                    and latest_message.message_time > self.last_message_ts
+            ):
                 self.last_message_id = latest_message.messageId
                 self.last_message_ts = latest_message.message_time
                 LOG.info(
@@ -76,7 +80,7 @@ class MessageHandler:
         while True:
             try:
                 message_list = await self.saicapi.get_alarm_list(page_num=idx, page_size=1)
-                if message_list.messages and len(message_list.messages) > 0:
+                if message_list is not None and message_list.messages and len(message_list.messages) > 0:
                     all_messages.extend(message_list.messages)
                 else:
                     return all_messages
