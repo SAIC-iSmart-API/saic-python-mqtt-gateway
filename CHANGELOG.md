@@ -1,5 +1,10 @@
 # Change Log
 
+## 0.7.1
+
+## What's changed
+* #287: Gracefully handle cases where the messages api returns no data by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/290
+
 ## 0.7.0
 
 ## What's Changed
