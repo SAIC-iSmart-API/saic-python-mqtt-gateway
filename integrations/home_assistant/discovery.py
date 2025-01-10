@@ -96,8 +96,8 @@ class HomeAssistantDiscovery:
         )
         self.published = False
 
-    def publish_ha_discovery_messages(self):
-        if self.published:
+    def publish_ha_discovery_messages(self, force=False):
+        if self.published and not force:
             LOG.debug("Skipping Home Assistant discovery messages as it was already published")
             return
 
