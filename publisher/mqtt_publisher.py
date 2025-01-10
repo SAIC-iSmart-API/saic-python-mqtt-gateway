@@ -85,7 +85,7 @@ class MqttPublisher(Publisher):
                     self.client.subscribe(charging_station.connected_topic)
             if self.configuration.ha_discovery_enabled:
                 # enable dynamic discovery pushing in case ha reconnects
-                self.client.subscibe(f'{self.configuration.ha_discovery_prefix}/status')
+                self.client.subscribe(self.configuration.ha_lwt_topic)
             self.keepalive()
         else:
             if rc == gmqtt.constants.CONNACK_REFUSED_BAD_USERNAME_PASSWORD:
@@ -123,9 +123,9 @@ class MqttPublisher(Publisher):
                 LOG.debug(f'Vehicle with vin {vin} is connected to its charging station')
             else:
                 LOG.debug(f'Vehicle with vin {vin} is disconnected from its charging station')
-        elif topic == f'{self.configuration.ha_discovery_prefix}/status' and payload == "online":
-            LOG.debug('HomeAssistant restarted. Send discovery payload')
-            self.command_listener.on_homeassistant_got_online_received()
+        elif topic == self.configuration.ha_lwt_topic:
+            if self.command_listener is not None:
+                await self.command_listener.on_mqtt_global_command_received(topic=topic, payload=payload)
         else:
             vin = self.get_vin_from_topic(topic)
             if self.command_listener is not None:

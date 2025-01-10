@@ -47,7 +47,10 @@ class VehicleHandler:
             True
         )
         self.vehicle_state = vehicle_state
-        self.ha_discovery = HomeAssistantDiscovery(vehicle_state, vin_info, config)
+        if self.configuration.ha_discovery_enabled:
+            self.__ha_discovery = HomeAssistantDiscovery(vehicle_state, vin_info, config)
+        else:
+            self.__ha_discovery = None
 
         self.__setup_abrp(config, vin_info)
         self.__setup_osmand(config, vin_info)
@@ -114,8 +117,7 @@ class VehicleHandler:
                         exc_info=e
                     )
                 finally:
-                    if self.configuration.ha_discovery_enabled:
-                        self.ha_discovery.publish_ha_discovery_messages()
+                    self.publish_ha_discovery_messages(force=False)
             else:
                 # car not active, wait a second
                 await asyncio.sleep(1.0)
@@ -176,9 +178,10 @@ class VehicleHandler:
         else:
             LOG.info(f'ABRP not refreshed, reason {abrp_response}')
 
-    async def publish_ha_discovery_messages(self, force=False):
-        LOG.info(f'Sending HA discovery messages for {self.vin_info.vin} (Force: {force})')
-        self.ha_discovery.publish_ha_discovery_messages(force)
+    def publish_ha_discovery_messages(self, *, force=False):
+        if self.__ha_discovery is not None:
+            LOG.info(f'Sending HA discovery messages for {self.vin_info.vin} (Force: {force})')
+            self.__ha_discovery.publish_ha_discovery_messages(force=force)
 
     async def update_vehicle_status(self) -> VehicleStatusResp:
         LOG.info('Updating vehicle status')

@@ -15,6 +15,10 @@ REAR_WINDOW_HEAT_STATE = 'on'
 
 class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
     @override
+    async def on_mqtt_global_command_received(self, *, topic: str, payload: str):
+        pass
+
+    @override
     async def on_mqtt_command_received(self, *, vin: str, topic: str, payload: str) -> None:
         self.received_vin = vin
         self.received_payload = payload.strip().lower()

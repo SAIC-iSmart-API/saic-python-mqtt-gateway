@@ -8,6 +8,7 @@ from configuration import Configuration
 
 INVALID_MQTT_CHARS = re.compile(r'[+#*$>]')
 
+
 class MqttCommandListener(ABC):
     async def on_mqtt_command_received(self, *, vin: str, topic: str, payload: str) -> None:
         raise NotImplementedError("Should have implemented this")
@@ -15,7 +16,7 @@ class MqttCommandListener(ABC):
     async def on_charging_detected(self, vin: str) -> None:
         raise NotImplementedError("Should have implemented this")
 
-    async def on_homeassistant_got_online_received(self) -> None:
+    async def on_mqtt_global_command_received(self, *, topic: str, payload: str):
         raise NotImplementedError("Should have implemented this")
 
 
