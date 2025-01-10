@@ -57,3 +57,7 @@ class Configuration:
     @property
     def username_is_email(self):
         return '@' in self.saic_user
+
+    @property
+    def ha_lwt_topic(self) -> str:
+        return f'{self.ha_discovery_prefix}/status'

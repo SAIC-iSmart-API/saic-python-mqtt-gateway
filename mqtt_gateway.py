@@ -179,11 +179,15 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
             LOG.debug(f'Charging detected for unknown vin {vin}')
 
     @override
-    async def on_homeassistant_got_online_received(self) -> None:
-        # we only receive this if we subscribed to this topic => resend
-        for (key, vh) in self.vehicle_handlers.items():
-            LOG.debug(f'Send HomeAssistant discovery for car {key}')
-            vh.publish_ha_discovery_messages(True)
+    async def on_mqtt_global_command_received(self, *, topic: str, payload: str):
+        match topic:
+            case self.configuration.ha_lwt_topic:
+                if payload == 'online':
+                    for (vin, vh) in self.vehicle_handlers.items():
+                        LOG.debug(f'Send HomeAssistant discovery for car {vin}')
+                        vh.publish_ha_discovery_messages(force=True)
+            case _:
+                LOG.warning(f'Received unknown global command {topic}: {payload}')
 
     def __on_publish_raw_value(self, key: str, raw: str):
         self.publisher.publish_str(key, raw)

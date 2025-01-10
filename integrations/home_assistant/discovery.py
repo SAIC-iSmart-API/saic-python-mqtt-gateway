@@ -96,15 +96,15 @@ class HomeAssistantDiscovery:
         )
         self.published = False
 
-    def publish_ha_discovery_messages(self, force=False):
+    def publish_ha_discovery_messages(self, *, force: bool = False):
+        if not self.__vehicle_state.is_complete():
+            LOG.warning("Skipping Home Assistant discovery messages as vehicle state is not yet complete")
+            return
+
         if self.published and not force:
             LOG.debug("Skipping Home Assistant discovery messages as it was already published")
             return
-
-        if not self.__vehicle_state.is_complete():
-            LOG.debug("Skipping Home Assistant discovery messages as vehicle state is not yet complete")
-            return
-
+        
         self.__publish_ha_discovery_messages_real()
         self.published = True
 
