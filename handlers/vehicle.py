@@ -176,6 +176,10 @@ class VehicleHandler:
         else:
             LOG.info(f'ABRP not refreshed, reason {abrp_response}')
 
+    async def publish_ha_discovery_messages(self, force=False):
+        LOG.info(f'Sending HA discovery messages for {self.vin_info.vin} (Force: {force})')
+        self.ha_discovery.publish_ha_discovery_messages(force)
+
     async def update_vehicle_status(self) -> VehicleStatusResp:
         LOG.info('Updating vehicle status')
         vehicle_status_response = await self.saic_api.get_vehicle_status(self.vin_info.vin)

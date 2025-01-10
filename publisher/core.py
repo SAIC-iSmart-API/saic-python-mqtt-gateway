@@ -15,6 +15,9 @@ class MqttCommandListener(ABC):
     async def on_charging_detected(self, vin: str) -> None:
         raise NotImplementedError("Should have implemented this")
 
+    async def on_homeassistant_got_online_received(self) -> None:
+        raise NotImplementedError("Should have implemented this")
+
 
 class Publisher(ABC):
     def __init__(self, config: Configuration):
