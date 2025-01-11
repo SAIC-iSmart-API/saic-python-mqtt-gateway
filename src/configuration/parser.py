@@ -6,6 +6,7 @@ import urllib.parse
 from configuration import Configuration, TransportProtocol
 from configuration.argparse_extensions import EnvDefault, check_positive, check_bool, check_positive_float, \
     cfg_value_to_dict
+from exceptions import MqttGatewayException
 from integrations.openwb.charging_station import ChargingStation
 
 LOG = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ def __process_charging_stations_file(config: Configuration, json_file: str):
     except FileNotFoundError:
         LOG.warning(f'File {json_file} does not exist')
     except json.JSONDecodeError as e:
-        LOG.exception(f'Reading {json_file} failed', exc_info=e)
+        raise MqttGatewayException(f'Reading {json_file} failed') from e
 
 
 def process_arguments() -> Configuration:

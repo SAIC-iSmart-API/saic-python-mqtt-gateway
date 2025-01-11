@@ -103,7 +103,7 @@ An [openWB](https://openwb.de) charging station is capable of providing informat
 need to provide the configuration in the file charging-stations.json. A sample configuration for two cars connected to
 an openWB charging station would be the following.
 
-Check-out the [sample file](charging-stations.json.sample)
+Check-out the [sample file](examples\charging-stations.json.sample)
 
 The key-value pairs in the JSON express the following:
 
