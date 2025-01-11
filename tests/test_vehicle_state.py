@@ -5,8 +5,8 @@ from saic_ismart_client_ng.api.vehicle.schema import VinInfo
 
 import mqtt_topics
 from configuration import Configuration
-from tests import MessageCapturingConsolePublisher
-from tests.common_mocks import VIN, get_mock_vehicle_status_resp, DRIVETRAIN_SOC_BMS, DRIVETRAIN_RANGE_BMS, \
+from . import MessageCapturingConsolePublisher
+from .common_mocks import VIN, get_mock_vehicle_status_resp, DRIVETRAIN_SOC_BMS, DRIVETRAIN_RANGE_BMS, \
     DRIVETRAIN_SOC_VEHICLE, DRIVETRAIN_RANGE_VEHICLE, get_moc_charge_management_data_resp
 from vehicle import VehicleState
 

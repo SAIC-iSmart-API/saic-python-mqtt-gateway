@@ -29,7 +29,7 @@ inflection = "^0.5.1"
 apscheduler = "^3.11.0"
 
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"
 mock = "^5.1.0"
 coverage = "^7.5.4"
