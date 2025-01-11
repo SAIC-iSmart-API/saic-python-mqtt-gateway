@@ -4,6 +4,7 @@ import logging
 import os
 import signal
 import sys
+from random import uniform
 from typing import override, Optional
 
 import apscheduler.schedulers.asyncio
@@ -184,6 +185,8 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
             case self.configuration.ha_lwt_topic:
                 if payload == 'online':
                     for (vin, vh) in self.vehicle_handlers.items():
+                        # wait randomly between 0.1 and 10 seconds before sending discovery
+                        await asyncio.sleep(uniform(0.1, 10.0))
                         LOG.debug(f'Send HomeAssistant discovery for car {vin}')
                         vh.publish_ha_discovery_messages(force=True)
             case _:
