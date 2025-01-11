@@ -7,7 +7,7 @@ from saic_ismart_client_ng.api.vehicle.schema import VinInfo, VehicleModelConfig
 from saic_ismart_client_ng.model import SaicApiConfiguration
 
 import mqtt_topics
-from common_mocks import DOORS_REAR_RIGHT, LOCATION_HEADING, DRIVETRAIN_CHARGING_CABLE_LOCK, DRIVETRAIN_POWER, \
+from .common_mocks import DOORS_REAR_RIGHT, LOCATION_HEADING, DRIVETRAIN_CHARGING_CABLE_LOCK, DRIVETRAIN_POWER, \
     LOCATION_LATITUDE, TYRES_FRONT_RIGHT_PRESSURE, TYRES_REAR_RIGHT_PRESSURE, get_mock_vehicle_status_resp, \
     WINDOWS_PASSENGER, LIGHTS_SIDE, DRIVETRAIN_CHARGER_CONNECTED, LOCATION_LONGITUDE, WINDOWS_REAR_LEFT, \
     TYRES_REAR_LEFT_PRESSURE, WINDOWS_SUN_ROOF, DRIVETRAIN_REMAINING_CHARGING_TIME, DRIVETRAIN_RUNNING, DOORS_BOOT, \
@@ -20,7 +20,7 @@ from common_mocks import DOORS_REAR_RIGHT, LOCATION_HEADING, DRIVETRAIN_CHARGING
 from configuration import Configuration
 from handlers.relogin import ReloginHandler
 from mqtt_gateway import VehicleHandler
-from tests import MessageCapturingConsolePublisher
+from . import MessageCapturingConsolePublisher
 from vehicle import VehicleState
 
 
