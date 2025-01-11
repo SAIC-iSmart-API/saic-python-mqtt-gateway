@@ -1,0 +1,83 @@
+[tool.poetry]
+name = "saic-python-mqtt-gateway"
+homepage = "https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway"
+version = "0.7.2-rc"
+description = "A service that queries the data from an MG iSMART account and publishes the data over MQTT and to other sources"
+authors = [
+    "Giovanni Condello <saic-python-client@nanomad.net>",
+]
+license = "MIT"
+readme = "README.md"
+package-mode = false
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/issues"
+
+
+[tool.poetry.dependencies]
+python = "^3.12"
+saic-ismart-client-ng = "0.5.4"
+httpx = "^0.27.0"
+gmqtt = "^0.7.0"
+inflection = "^0.5.1"
+apscheduler = "^3.11.0"
+
+
+[tool.poetry.dev-dependencies]
+pytest = "^8.2.2"
+mock = "^5.1.0"
+coverage = "^7.5.4"
+ruff = "^0.9.1"
+pytest-cov = "^6.0.0"
+pytest-asyncio = "^0.25.2"
+pytest-mock = "^3.14.0"
+
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+norecursedirs = ".git build dist"
+testpaths = "tests"
+pythonpath = [
+    "src"
+]
+mock_use_standalone_module = true
+addopts = [
+    "--import-mode=importlib",
+]
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.coverage.run]
+omit = [
+    "tests/*",
+]
+branch = true
+command_line = "-m pytest"
+
+[tool.coverage.report]
+# Regexes for lines to exclude from consideration
+exclude_lines = [
+    # Have to re-enable the standard pragma
+    'pragma: no cover',
+    # Don't complain about missing debug-only code:
+    'def __repr__',
+    'if self\.debug',
+    # Don't complain if tests don't hit defensive assertion code:
+    'raise AssertionError',
+    'raise NotImplementedError',
+    # Don't complain if non-runnable code isn't run:
+    'if 0:',
+    'if __name__ == .__main__.:',
+]
+ignore_errors = true
+
+[tool.ruff]
+output-format = "github"

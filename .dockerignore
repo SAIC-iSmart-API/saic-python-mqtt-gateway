@@ -186,4 +186,5 @@ fabric.properties
 
 # Test results
 junit/
-.run/
+
+.github/
