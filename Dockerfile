@@ -16,6 +16,11 @@ RUN pip install "poetry==${POETRY_VERSION}"
 
 WORKDIR /usr/src/app
 
+# Install gcc and python3-dev for native code
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # --- Reproduce the environment ---
 # You can comment the following two lines if you prefer to manually install
 #   the dependencies from inside the container.

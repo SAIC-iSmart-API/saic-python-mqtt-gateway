@@ -54,6 +54,8 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: |
             ghcr.io/${{ steps.lowercase-repository.outputs.lowercase }}/saic-mqtt-gateway:dev
             ghcr.io/${{ steps.lowercase-repository.outputs.lowercase }}/saic-mqtt-gateway:${{ env.RELEASE_VERSION }}
@@ -65,6 +67,8 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: |
             ghcr.io/${{ steps.lowercase-repository.outputs.lowercase }}/saic-mqtt-gateway:dev
             ghcr.io/${{ steps.lowercase-repository.outputs.lowercase }}/saic-mqtt-gateway:${{ env.RELEASE_VERSION }}
