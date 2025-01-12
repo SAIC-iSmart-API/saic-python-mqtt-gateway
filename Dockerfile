@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS builder
+FROM python:3.12 AS builder
 
 # --- Install Poetry ---
 ARG POETRY_VERSION=1.8
@@ -15,11 +15,6 @@ ENV POETRY_CACHE_DIR=/opt/.cache
 RUN pip install "poetry==${POETRY_VERSION}"
 
 WORKDIR /usr/src/app
-
-# Install gcc and python3-dev for native code
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc python3-dev \
-    && rm -rf /var/lib/apt/lists/*
 
 # --- Reproduce the environment ---
 # You can comment the following two lines if you prefer to manually install
