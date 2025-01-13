@@ -63,6 +63,7 @@ class VehicleState:
         self.last_car_vehicle_message = datetime.datetime.min
         # treat high voltage battery as active, if we don't have any other information
         self.hv_battery_active = True
+        self.hv_battery_active_from_car = True
         self.is_charging = False
         self.refresh_period_active = -1
         self.refresh_period_inactive = -1
@@ -192,7 +193,7 @@ class VehicleState:
             and self.refresh_period_inactive != -1 \
             and self.refresh_period_after_shutdown != -1 \
             and self.refresh_period_inactive_grace != -1 \
-            and self.refresh_mode
+            and self.refresh_mode is not None
 
     def set_is_charging(self, is_charging: bool):
         self.is_charging = is_charging
@@ -209,22 +210,14 @@ class VehicleState:
             )
 
         is_engine_running = vehicle_status.is_engine_running
-        self.is_charging = vehicle_status.is_charging
         basic_vehicle_status = vehicle_status.basicVehicleStatus
         remote_climate_status = basic_vehicle_status.remoteClimateStatus or 0
         rear_window_heat_state = basic_vehicle_status.rmtHtdRrWndSt or 0
 
-        hv_battery_active = (
-                self.is_charging
-                or is_engine_running
-                or remote_climate_status > 0
-                or rear_window_heat_state > 0
-        )
-
-        self.set_hv_battery_active(hv_battery_active)
+        self.hv_battery_active_from_car = is_engine_running or remote_climate_status > 0 or rear_window_heat_state > 0
 
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_RUNNING), is_engine_running)
-        self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING), self.is_charging)
+
         interior_temperature = basic_vehicle_status.interiorTemperature
         if is_valid_temperature(interior_temperature):
             self.publisher.publish_int(self.get_topic(mqtt_topics.CLIMATE_INTERIOR_TEMPERATURE), interior_temperature)
@@ -416,21 +409,28 @@ class VehicleState:
     def should_refresh(self) -> bool:
         match self.refresh_mode:
             case RefreshMode.OFF:
+                LOG.debug(f'Refresh mode is OFF, skipping vehicle {self.vin} refresh')
                 return False
             case RefreshMode.FORCE:
+                LOG.debug(f'Refresh mode is FORCE, skipping vehicle {self.vin} refresh')
                 self.set_refresh_mode(
                     self.previous_refresh_mode,
                     'restoring of previous refresh mode after a FORCE execution'
                 )
                 return True
             # RefreshMode.PERIODIC is treated like default
-            case _:
+            case other:
+                LOG.debug(f'Refresh mode is {other}, checking for other vehicle {self.vin} conditions')
                 last_actual_poll = self.last_successful_refresh
                 if self.last_failed_refresh is not None:
                     last_actual_poll = max(last_actual_poll, self.last_failed_refresh)
 
                 # Try refreshing even if we last failed as long as the last_car_activity is newer
                 if self.last_car_activity > last_actual_poll:
+                    LOG.debug(
+                        f"Polling vehicle {self.vin} as last_car_activity is newer than last_actual_poll."
+                        f" {self.last_car_activity} > {last_actual_poll}"
+                    )
                     return True
 
                 if self.last_failed_refresh is not None:
@@ -459,7 +459,8 @@ class VehicleState:
                 )
                 if last_shutdown_plus_refresh > datetime.datetime.now():
                     result = self.last_successful_refresh < datetime.datetime.now() - datetime.timedelta(
-                        seconds=float(self.refresh_period_after_shutdown))
+                        seconds=float(self.refresh_period_after_shutdown)
+                    )
                     LOG.debug(f'Refresh grace period after shutdown has not passed. Should refresh: {result}')
                     return result
 
@@ -777,8 +778,19 @@ class VehicleState:
                 round(power_usage_since_last_charge, 2)
             )
 
-        if (
+        # We are charging if the charging gun is connected and we are feeding power into the battery
+        self.is_charging = (
                 charge_status.chargingGunState
+                and is_valid_power
+                and charge_mgmt_data.decoded_power < 0
+        )
+        self.publisher.publish_bool(
+            self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING),
+            self.is_charging
+        )
+
+        if (
+                self.is_charging
                 and is_valid_power
                 and charge_mgmt_data.decoded_power < -1
         ):
@@ -821,6 +833,16 @@ class VehicleState:
             vehicle_status: VehicleStatusResp,
             charge_status: Optional[ChrgMgmtDataResp]
     ):
+        # Deduce if the car is awake or not
+        hv_battery_active = self.is_charging or self.hv_battery_active_from_car
+        LOG.debug(
+            f"Vehicle {self.vin} hv_battery_active={hv_battery_active}. "
+            f"is_charging={self.is_charging} "
+            f"hv_battery_active_from_car={self.hv_battery_active_from_car}")
+        self.set_hv_battery_active(
+            hv_battery_active
+        )
+
         # We can read this from either the BMS or the Vehicle Info
         electric_range_published = False
         soc_published = False

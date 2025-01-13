@@ -45,21 +45,21 @@ class AbrpApi:
     async def update_abrp(self, vehicle_status: VehicleStatusResp, charge_info: ChrgMgmtDataResp) \
             -> Tuple[bool, Any | None]:
 
-        charge_status = None if charge_info is None else charge_info.chrgMgmtData
+        charge_mgmt_data = None if charge_info is None else charge_info.chrgMgmtData
+        charge_status = None if charge_info is None else charge_info.rvsChargeStatus
 
         if (
                 self.abrp_api_key is not None
                 and self.abrp_user_token is not None
                 and vehicle_status is not None
-                and charge_status is not None
+                and charge_mgmt_data is not None
         ):
             # Request
             tlm_send_url = f'{self.__base_uri}tlm/send'
             data = {
                 # Guess the timestamp from either the API, GPS info or current machine time
                 'utc': int(get_update_timestamp(vehicle_status).timestamp()),
-                'soc': (charge_status.bmsPackSOCDsp / 10.0),
-                'is_charging': vehicle_status.is_charging,
+                'soc': (charge_mgmt_data.bmsPackSOCDsp / 10.0),
                 'is_parked': vehicle_status.is_parked,
             }
 
@@ -71,14 +71,21 @@ class AbrpApi:
 
             # Skip invalid current values reported by the API
             is_valid_current = (
-                    charge_status.bmsPackCrntV != 1
-                    and value_in_range(charge_status.bmsPackCrnt, 0, 65535)
+                    charge_mgmt_data.bmsPackCrntV != 1
+                    and value_in_range(charge_mgmt_data.bmsPackCrnt, 0, 65535)
             )
             if is_valid_current:
+                is_charging = (
+                        charge_status is not None
+                        and charge_status.chargingGunState
+                        and is_valid_current
+                        and charge_mgmt_data.decoded_current < 0
+                )
                 data.update({
-                    'power': charge_status.decoded_power,
-                    'voltage': charge_status.decoded_voltage,
-                    'current': charge_status.decoded_current
+                    'power': charge_mgmt_data.decoded_power,
+                    'voltage': charge_mgmt_data.decoded_voltage,
+                    'current': charge_mgmt_data.decoded_current,
+                    'is_charging': is_charging,
                 })
 
             basic_vehicle_status = vehicle_status.basicVehicleStatus
