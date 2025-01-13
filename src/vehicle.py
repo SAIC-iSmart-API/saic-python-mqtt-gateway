@@ -2,7 +2,6 @@ import datetime
 import json
 import logging
 import math
-import os
 from dataclasses import asdict
 from enum import Enum
 from typing import Optional
@@ -19,8 +18,8 @@ from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp, TargetB
 from saic_ismart_client_ng.api.vehicle_charging.schema import ChrgMgmtData
 
 import mqtt_topics
-from integrations.openwb.charging_station import ChargingStation
 from exceptions import MqttGatewayException
+from integrations.openwb.charging_station import ChargingStation
 from publisher.core import Publisher
 from utils import value_in_range, is_valid_temperature, datetime_to_str
 
@@ -28,7 +27,6 @@ DEFAULT_AC_TEMP = 22
 PRESSURE_TO_BAR_FACTOR = 0.04
 
 LOG = logging.getLogger(__name__)
-LOG.setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
 
 
 class RefreshMode(Enum):
