@@ -56,7 +56,6 @@ class OsmAndApi:
                 'id': self.__device_id,
                 # Guess the timestamp from either the API, GPS info or current machine time
                 'timestamp': int(get_update_timestamp(vehicle_status).timestamp()),
-                'is_charging': vehicle_status.is_charging,
                 'is_parked': vehicle_status.is_parked,
             }
 
@@ -85,10 +84,17 @@ class OsmAndApi:
                         and value_in_range(charge_mgmt_data.bmsPackCrnt, 0, 65535)
                 )
                 if is_valid_current:
+                    is_charging = (
+                            charge_status is not None
+                            and charge_status.chargingGunState
+                            and is_valid_current
+                            and charge_mgmt_data.decoded_current < 0
+                    )
                     data.update({
                         'power': charge_mgmt_data.decoded_power,
                         'voltage': charge_mgmt_data.decoded_voltage,
-                        'current': charge_mgmt_data.decoded_current
+                        'current': charge_mgmt_data.decoded_current,
+                        'is_charging': is_charging
                     })
 
             # Extract electric range if available

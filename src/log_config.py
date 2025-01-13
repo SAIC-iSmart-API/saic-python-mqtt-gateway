@@ -4,9 +4,12 @@ import os
 from typing import Optional
 
 MODULES_DEFAULT_LOG_LEVEL = {
-    'httpx': 'WARNING',
+    'asyncio': 'WARNING',
     'gmqtt': 'WARNING',
+    'httpcore': 'WARNING',
+    'httpx': 'WARNING',
     'saic_ismart_client_ng': 'WARNING',
+    'tzlocal': 'WARNING',
 }
 
 MODULES_REPLACE_ENV_PREFIX = {
@@ -27,6 +30,7 @@ def get_module_log_level(module_name: str) -> Optional[str]:
     default_log_level = MODULES_DEFAULT_LOG_LEVEL.get(module_name, None)
     env_prefix = MODULES_REPLACE_ENV_PREFIX.get(module_name, module_name.upper().replace('.', '_'))
     return os.getenv(f'{env_prefix}_LOG_LEVEL', default_log_level)
+
 
 def setup_logging():
     logger = logging.getLogger(__name__)

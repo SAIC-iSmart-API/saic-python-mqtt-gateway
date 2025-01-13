@@ -4,6 +4,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from saic_ismart_client_ng.api.vehicle.schema import VinInfo
 
 import mqtt_topics
+from common_mocks import DRIVETRAIN_CHARGING
 from configuration import Configuration
 from . import MessageCapturingConsolePublisher
 from .common_mocks import VIN, get_mock_vehicle_status_resp, DRIVETRAIN_SOC_BMS, DRIVETRAIN_RANGE_BMS, \
@@ -27,18 +28,26 @@ class TestVehicleState(unittest.IsolatedAsyncioTestCase):
                                                                       charge_status=None)
         self.assert_mqtt_topic(TestVehicleState.get_topic(mqtt_topics.DRIVETRAIN_SOC), DRIVETRAIN_SOC_VEHICLE)
         self.assert_mqtt_topic(TestVehicleState.get_topic(mqtt_topics.DRIVETRAIN_RANGE), DRIVETRAIN_RANGE_VEHICLE)
+        self.assert_mqtt_topic(TestVehicleState.get_topic(mqtt_topics.DRIVETRAIN_HV_BATTERY_ACTIVE), True)
         expected_topics = {
+            '/vehicles/vin10000000000000/drivetrain/hvBatteryActive',
+            '/vehicles/vin10000000000000/refresh/lastActivity',
             '/vehicles/vin10000000000000/drivetrain/soc',
             '/vehicles/vin10000000000000/drivetrain/range',
         }
         self.assertSetEqual(expected_topics, set(self.vehicle_state.publisher.map.keys()))
 
     async def test_update_soc_with_bms_data(self):
-        self.vehicle_state.update_data_conflicting_in_vehicle_and_bms(vehicle_status=get_mock_vehicle_status_resp(),
-                                                                      charge_status=get_moc_charge_management_data_resp())
+        self.vehicle_state.update_data_conflicting_in_vehicle_and_bms(
+            vehicle_status=get_mock_vehicle_status_resp(),
+            charge_status=get_moc_charge_management_data_resp()
+        )
         self.assert_mqtt_topic(TestVehicleState.get_topic(mqtt_topics.DRIVETRAIN_SOC), DRIVETRAIN_SOC_BMS)
         self.assert_mqtt_topic(TestVehicleState.get_topic(mqtt_topics.DRIVETRAIN_RANGE), DRIVETRAIN_RANGE_BMS)
+        self.assert_mqtt_topic(TestVehicleState.get_topic(mqtt_topics.DRIVETRAIN_HV_BATTERY_ACTIVE), True)
         expected_topics = {
+            '/vehicles/vin10000000000000/drivetrain/hvBatteryActive',
+            '/vehicles/vin10000000000000/refresh/lastActivity',
             '/vehicles/vin10000000000000/drivetrain/soc',
             '/vehicles/vin10000000000000/drivetrain/range',
         }

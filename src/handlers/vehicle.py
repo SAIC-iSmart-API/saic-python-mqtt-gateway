@@ -124,7 +124,6 @@ class VehicleHandler:
 
     async def __polling(self):
         vehicle_status = await self.update_vehicle_status()
-        charge_status = None
 
         if self.vehicle_state.is_ev:
             try:
