@@ -66,7 +66,6 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
         await self.vehicle_handler.update_vehicle_status()
 
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_RUNNING), DRIVETRAIN_RUNNING)
-        self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_CHARGING), DRIVETRAIN_CHARGING)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE),
                                DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE), DRIVETRAIN_MILEAGE)
@@ -107,10 +106,7 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.LIGHTS_DIPPED_BEAM), LIGHTS_DIPPED_BEAM)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.LIGHTS_SIDE), LIGHTS_SIDE)
         expected_topics = {
-            '/vehicles/vin10000000000000/drivetrain/hvBatteryActive',
-            '/vehicles/vin10000000000000/refresh/lastActivity',
             '/vehicles/vin10000000000000/drivetrain/running',
-            '/vehicles/vin10000000000000/drivetrain/charging',
             '/vehicles/vin10000000000000/climate/interiorTemperature',
             '/vehicles/vin10000000000000/climate/exteriorTemperature',
             '/vehicles/vin10000000000000/drivetrain/auxiliaryBatteryVoltage',
@@ -146,13 +142,17 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
             '/vehicles/vin10000000000000/drivetrain/mileage',
             '/vehicles/vin10000000000000/refresh/lastVehicleState',
         }
-        self.assertSetEqual(expected_topics, set(self.vehicle_handler.publisher.map.keys()))
+        self.assertSetEqual(
+            expected_topics, 
+            set(self.vehicle_handler.publisher.map.keys()),
+        )
 
     @patch.object(SaicApi, 'get_vehicle_charging_management_data')
     async def test_update_charge_status(self, mocked_charge_status):
         mock_charge_status(mocked_charge_status)
         await self.vehicle_handler.update_charge_status()
 
+        self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_CHARGING), DRIVETRAIN_CHARGING)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_CURRENT), DRIVETRAIN_CURRENT)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_VOLTAGE), DRIVETRAIN_VOLTAGE)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_POWER), DRIVETRAIN_POWER)
@@ -176,6 +176,7 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK),
                                DRIVETRAIN_CHARGING_CABLE_LOCK)
         expected_topics = {
+            '/vehicles/vin10000000000000/drivetrain/charging',
             '/vehicles/vin10000000000000/drivetrain/current',
             '/vehicles/vin10000000000000/drivetrain/voltage',
             '/vehicles/vin10000000000000/drivetrain/power',
@@ -192,7 +193,8 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
             '/vehicles/vin10000000000000/drivetrain/soc_kwh',
             '/vehicles/vin10000000000000/drivetrain/lastChargeEndingPower',
             '/vehicles/vin10000000000000/drivetrain/batteryHeating',
-            '/vehicles/vin10000000000000/drivetrain/chargingCableLock'
+            '/vehicles/vin10000000000000/drivetrain/chargingCableLock',
+            '/vehicles/vin10000000000000/refresh/period/charging'
         }
         self.assertSetEqual(expected_topics, set(self.vehicle_handler.publisher.map.keys()))
 
