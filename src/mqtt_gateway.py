@@ -1,7 +1,6 @@
 import asyncio
 import faulthandler
 import logging
-import os
 import signal
 import sys
 from random import uniform
@@ -27,16 +26,7 @@ from vehicle import VehicleState
 
 MSG_CMD_SUCCESSFUL = 'Success'
 
-logging.root.handlers = []
-logging.basicConfig(format='{asctime:s} [{levelname:^8s}] {message:s} - {name:s}', style='{')
 LOG = logging.getLogger(__name__)
-LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
-LOG.setLevel(level=LOG_LEVEL)
-logging.getLogger('apscheduler').setLevel(level=LOG_LEVEL)
-
-
-def debug_log_enabled():
-    return LOG_LEVEL == 'DEBUG'
 
 
 class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
@@ -236,6 +226,11 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
 
 
 if __name__ == '__main__':
+    # Keep this at the top!
+    from log_config import setup_logging, debug_log_enabled
+
+    setup_logging()
+
     # Enable fault handler to get a thread dump on SIGQUIT
     faulthandler.enable(file=sys.stderr, all_threads=True)
     if hasattr(faulthandler, 'register'):
