@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 from typing import List
 
 import inflection as inflection
@@ -13,7 +12,6 @@ from publisher.mqtt_publisher import MqttPublisher
 from vehicle import VehicleState, RefreshMode
 
 LOG = logging.getLogger(__name__)
-LOG.setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
 
 
 class HaCustomAvailabilityEntry:
@@ -104,7 +102,7 @@ class HomeAssistantDiscovery:
         if self.published and not force:
             LOG.debug("Skipping Home Assistant discovery messages as it was already published")
             return
-        
+
         self.__publish_ha_discovery_messages_real()
         self.published = True
 

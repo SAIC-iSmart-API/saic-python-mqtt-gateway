@@ -1,5 +1,4 @@
 import logging
-import os
 import ssl
 from typing import override
 
@@ -11,10 +10,6 @@ from integrations.openwb.charging_station import ChargingStation
 from publisher.core import Publisher
 
 LOG = logging.getLogger(__name__)
-LOG.setLevel(level=os.getenv('LOG_LEVEL', 'INFO').upper())
-
-MQTT_LOG = logging.getLogger(gmqtt.__name__)
-MQTT_LOG.setLevel(level=os.getenv('MQTT_LOG_LEVEL', 'INFO').upper())
 
 
 class MqttPublisher(Publisher):
@@ -32,7 +27,6 @@ class MqttPublisher(Publisher):
         mqtt_client = gmqtt.Client(
             client_id=str(self.publisher_id),
             transport=self.transport_protocol.transport_mechanism,
-            logger=MQTT_LOG,
             will_message=gmqtt.Message(
                 topic=self.get_topic(mqtt_topics.INTERNAL_LWT, False),
                 payload='offline',
