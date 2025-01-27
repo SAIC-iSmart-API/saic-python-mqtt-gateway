@@ -778,12 +778,8 @@ class VehicleState:
                 round(power_usage_since_last_charge, 2)
             )
 
-        # We are charging if the charging gun is connected and we are feeding power into the battery
-        self.is_charging = (
-                charge_status.chargingGunState
-                and is_valid_power
-                and charge_mgmt_data.decoded_power < 0
-        )
+        # We are charging if the BMS tells us so
+        self.is_charging = charge_mgmt_data.is_bms_charging
         self.publisher.publish_bool(
             self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING),
             self.is_charging
