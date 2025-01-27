@@ -66,6 +66,7 @@ LIGHTS_MAIN_BEAM = False
 LIGHTS_DIPPED_BEAM = False
 LIGHTS_SIDE = False
 
+BMS_CHARGE_STATUS = 'CHARGING_1'
 
 def get_mock_vehicle_status_resp():
     return VehicleStatusResp(
@@ -128,7 +129,8 @@ def get_moc_charge_management_data_resp():
             bmsPackVol=DRIVETRAIN_VOLTAGE * 4,
             bmsPackSOCDsp=int(DRIVETRAIN_SOC_BMS * 10.0),
             bmsEstdElecRng=int(DRIVETRAIN_HYBRID_ELECTRICAL_RANGE * 10.0),
-            ccuEleccLckCtrlDspCmd=1
+            ccuEleccLckCtrlDspCmd=1,
+            bmsChrgSts=1 if DRIVETRAIN_CHARGING else 0,
         ),
         rvsChargeStatus=RvsChargeStatus(
             mileageOfDay=int(DRIVETRAIN_MILEAGE_OF_DAY * 10.0),
