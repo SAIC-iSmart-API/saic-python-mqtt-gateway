@@ -7,7 +7,7 @@ from saic_ismart_client_ng.api.vehicle.schema import VinInfo, VehicleModelConfig
 from saic_ismart_client_ng.model import SaicApiConfiguration
 
 import mqtt_topics
-from .common_mocks import DOORS_REAR_RIGHT, LOCATION_HEADING, DRIVETRAIN_CHARGING_CABLE_LOCK, DRIVETRAIN_POWER, \
+from .common_mocks import BMS_CHARGE_STATUS, DOORS_REAR_RIGHT, LOCATION_HEADING, DRIVETRAIN_CHARGING_CABLE_LOCK, DRIVETRAIN_POWER, \
     LOCATION_LATITUDE, TYRES_FRONT_RIGHT_PRESSURE, TYRES_REAR_RIGHT_PRESSURE, get_mock_vehicle_status_resp, \
     WINDOWS_PASSENGER, LIGHTS_SIDE, DRIVETRAIN_CHARGER_CONNECTED, LOCATION_LONGITUDE, WINDOWS_REAR_LEFT, \
     TYRES_REAR_LEFT_PRESSURE, WINDOWS_SUN_ROOF, DRIVETRAIN_REMAINING_CHARGING_TIME, DRIVETRAIN_RUNNING, DOORS_BOOT, \
@@ -175,6 +175,7 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
                                REAL_TOTAL_BATTERY_CAPACITY)
         self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK),
                                DRIVETRAIN_CHARGING_CABLE_LOCK)
+        self.assert_mqtt_topic(TestVehicleHandler.get_topic(mqtt_topics.BMS_CHARGE_STATUS), BMS_CHARGE_STATUS)
         expected_topics = {
             '/vehicles/vin10000000000000/drivetrain/charging',
             '/vehicles/vin10000000000000/drivetrain/current',
@@ -194,6 +195,7 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
             '/vehicles/vin10000000000000/drivetrain/lastChargeEndingPower',
             '/vehicles/vin10000000000000/drivetrain/batteryHeating',
             '/vehicles/vin10000000000000/drivetrain/chargingCableLock',
+            '/vehicles/vin10000000000000/bms/chargeStatus',
             '/vehicles/vin10000000000000/refresh/period/charging'
         }
         self.assertSetEqual(expected_topics, set(self.vehicle_handler.publisher.map.keys()))
