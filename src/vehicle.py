@@ -62,8 +62,8 @@ class VehicleState:
         self.last_car_shutdown = datetime.datetime.now()
         self.last_car_vehicle_message = datetime.datetime.min
         # treat high voltage battery as active, if we don't have any other information
-        self.hv_battery_active = True
-        self.hv_battery_active_from_car = True
+        self.__hv_battery_active = True
+        self.__hv_battery_active_from_car = True
         self.is_charging = False
         self.refresh_period_active = -1
         self.refresh_period_inactive = -1
@@ -197,7 +197,7 @@ class VehicleState:
 
     def set_is_charging(self, is_charging: bool):
         self.is_charging = is_charging
-        self.set_hv_battery_active(self.is_charging)
+        self.hv_battery_active = self.is_charging
         self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING), self.is_charging)
 
     def handle_vehicle_status(self, vehicle_status: VehicleStatusResp) -> None:
@@ -367,18 +367,29 @@ class VehicleState:
             return True
         return False
 
-    def set_hv_battery_active(self, hv_battery_active: bool):
-        if (
-                not hv_battery_active
-                and self.hv_battery_active
-        ):
-            self.last_car_shutdown = datetime.datetime.now()
+    @property
+    def hv_battery_active(self):
+        return self.__hv_battery_active
 
-        self.hv_battery_active = hv_battery_active
-        self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_HV_BATTERY_ACTIVE), hv_battery_active)
+    @hv_battery_active.setter
+    def hv_battery_active(self, new_state: bool):
+        self.__hv_battery_active = new_state
+        self.publisher.publish_bool(self.get_topic(mqtt_topics.DRIVETRAIN_HV_BATTERY_ACTIVE), new_state)
 
-        if hv_battery_active:
+        if new_state:
             self.notify_car_activity()
+
+    @property
+    def hv_battery_active_from_car(self):
+        return self.__hv_battery_active_from_car
+
+    @hv_battery_active_from_car.setter
+    def hv_battery_active_from_car(self, new_state):
+        old_state = self.__hv_battery_active_from_car
+        if old_state and not new_state:
+            self.last_car_shutdown = datetime.datetime.now()
+            LOG.info(f'Detected vehicle {self.vin} shutdown at {self.last_car_shutdown}')
+        self.__hv_battery_active_from_car = new_state
 
     def notify_car_activity(self):
         self.last_car_activity = datetime.datetime.now()
@@ -835,9 +846,7 @@ class VehicleState:
             f"Vehicle {self.vin} hv_battery_active={hv_battery_active}. "
             f"is_charging={self.is_charging} "
             f"hv_battery_active_from_car={self.hv_battery_active_from_car}")
-        self.set_hv_battery_active(
-            hv_battery_active
-        )
+        self.hv_battery_active = hv_battery_active
 
         # We can read this from either the BMS or the Vehicle Info
         electric_range_published = False
