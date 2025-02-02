@@ -295,6 +295,8 @@ class HomeAssistantDiscovery:
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_CURRENT_JOURNEY, 'Mileage of journey',
                               device_class='distance', state_class='total_increasing', unit_of_measurement='km',
                               value_template='{{ value_json["distance"] | int(0) }}', enabled=False)
+        self.__publish_sensor(mqtt_topics.DRIVETRAIN_CURRENT_JOURNEY, 'Identifier of journey',
+                              value_template='{{ value_json["id"] | int(0) }}', enabled=False)
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE, 'Auxiliary battery voltage',
                               device_class='voltage', state_class='measurement', unit_of_measurement='V',
                               icon='mdi:car-battery')
