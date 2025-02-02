@@ -220,7 +220,7 @@ class HomeAssistantDiscovery:
         self.__publish_sensor(mqtt_topics.DRIVETRAIN_LAST_CHARGE_ENDING_POWER,
                               'Last Charge SoC kWh',
                               device_class='ENERGY_STORAGE',
-                              state_class='measurement',
+                              state_class='total_increasing',
                               icon='mdi:battery-charging-70',
                               unit_of_measurement='kWh'
                               )
