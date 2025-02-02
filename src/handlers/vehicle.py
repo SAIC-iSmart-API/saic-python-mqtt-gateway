@@ -209,10 +209,10 @@ class VehicleHandler:
                     match payload.strip().lower():
                         case 'true':
                             LOG.info("HV battery is now active")
-                            self.vehicle_state.set_hv_battery_active(True)
+                            self.vehicle_state.hv_battery_active = True
                         case 'false':
                             LOG.info("HV battery is now inactive")
-                            self.vehicle_state.set_hv_battery_active(False)
+                            self.vehicle_state.hv_battery_active = False
                         case _:
                             raise MqttGatewayException(f'Unsupported payload {payload}')
                 case mqtt_topics.DRIVETRAIN_CHARGING_SET:
