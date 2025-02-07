@@ -100,7 +100,7 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
             ):
                 LOG.debug('Range of %s for charging station will be published over MQTT topic: %s', vin_info.vin,
                           charging_station.range_topic)
-            total_battery_capacity = configuration.battery_capacity_map.get(vin_info.vin, None)
+            total_battery_capacity = self.configuration.battery_capacity_map.get(vin_info.vin, None)
             vehicle_state = VehicleState(
                 self.publisher,
                 self.__scheduler,
