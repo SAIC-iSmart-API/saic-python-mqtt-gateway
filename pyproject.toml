@@ -22,8 +22,8 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.12"
-saic-ismart-client-ng = "0.6.0"
-httpx = "^0.27.0"
+saic-ismart-client-ng = "0.7.1"
+httpx = "^0.28.1"
 gmqtt = "^0.7.0"
 inflection = "^0.5.1"
 apscheduler = "^3.11.0"
