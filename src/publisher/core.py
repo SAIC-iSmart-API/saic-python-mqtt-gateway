@@ -21,11 +21,11 @@ class Publisher(ABC):
     def __init__(self, config: Configuration):
         self.__configuration = config
         self.__command_listener = None
-        self.__topic_root = self.__remove_special_mqtt_characters(config.mqtt_topic)
         if config.mqtt_allow_dots_in_topic:
             self.__invalid_mqtt_chars = re.compile(r'[+#*$>]')
         else:
             self.__invalid_mqtt_chars = re.compile(r'[+#*$>.]')
+        self.__topic_root = self.__remove_special_mqtt_characters(config.mqtt_topic)
 
     async def connect(self):
         pass
