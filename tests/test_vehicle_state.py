@@ -4,7 +4,6 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from saic_ismart_client_ng.api.vehicle.schema import VinInfo
 
 import mqtt_topics
-from common_mocks import DRIVETRAIN_CHARGING
 from configuration import Configuration
 from . import MessageCapturingConsolePublisher
 from .common_mocks import VIN, get_mock_vehicle_status_resp, DRIVETRAIN_SOC_BMS, DRIVETRAIN_RANGE_BMS, \
