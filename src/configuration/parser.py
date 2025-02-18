@@ -65,6 +65,10 @@ def process_arguments() -> Configuration:
         parser.add_argument('--mqtt-topic-prefix',
                             help='MQTT topic prefix. Environment Variable: MQTT_TOPIC Default is saic', default='saic',
                             dest='mqtt_topic', required=False, action=EnvDefault, envvar='MQTT_TOPIC')
+        parser.add_argument('--mqtt-allow-dots-in-topic',
+                            help='Allow dots in MQTT topics. Environment Variable: MQTT_ALLOW_DOTS_IN_TOPIC Default is True',
+                            dest='mqtt_allow_dots_in_topic', required=False, action=EnvDefault, default=True,
+                            type=check_bool, envvar='MQTT_ALLOW_DOTS_IN_TOPIC')
         parser.add_argument('-s', '--saic-rest-uri',
                             help='The SAIC uri. Environment Variable: SAIC_REST_URI Default is the European '
                                  'Production Endpoint: https://tap-eu.soimt.com',
@@ -176,6 +180,7 @@ def process_arguments() -> Configuration:
         if args.saic_relogin_delay:
             config.saic_relogin_delay = args.saic_relogin_delay
         config.mqtt_topic = args.mqtt_topic
+        config.mqtt_allow_dots_in_topic = args.mqtt_allow_dots_in_topic
         config.saic_rest_uri = args.saic_rest_uri
         config.saic_region = args.saic_region
         config.saic_tenant_id = str(args.saic_tenant_id)

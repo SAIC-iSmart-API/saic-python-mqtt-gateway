@@ -6,9 +6,6 @@ from typing import Optional
 import mqtt_topics
 from configuration import Configuration
 
-INVALID_MQTT_CHARS = re.compile(r'[+#*$>]')
-
-
 class MqttCommandListener(ABC):
     async def on_mqtt_command_received(self, *, vin: str, topic: str, payload: str) -> None:
         raise NotImplementedError("Should have implemented this")
@@ -25,6 +22,10 @@ class Publisher(ABC):
         self.__configuration = config
         self.__command_listener = None
         self.__topic_root = self.__remove_special_mqtt_characters(config.mqtt_topic)
+        if config.mqtt_allow_dots_in_topic:
+            self.__invalid_mqtt_chars = re.compile(r'[+#*$>]')
+        else:
+            self.__invalid_mqtt_chars = re.compile(r'[+#*$>.]')
 
     async def connect(self):
         pass
@@ -60,7 +61,7 @@ class Publisher(ABC):
         return self.__remove_special_mqtt_characters(topic)
 
     def __remove_special_mqtt_characters(self, input_str: str) -> str:
-        return INVALID_MQTT_CHARS.sub('_', input_str)
+        return self.__invalid_mqtt_chars.sub('_', input_str)
 
     def __remove_byte_strings(self, data: dict) -> dict:
         for key in data.keys():
