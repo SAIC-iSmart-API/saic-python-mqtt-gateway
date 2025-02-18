@@ -31,6 +31,7 @@ class Configuration:
         self.mqtt_password: str | None = None
         self.mqtt_client_id: str = 'saic-python-mqtt-gateway'
         self.mqtt_topic: str = 'saic'
+        self.mqtt_allow_dots_in_topic: bool = True
         self.charging_stations_by_vin: dict[str, ChargingStation] = {}
         self.anonymized_publishing: bool = False
         self.messages_request_interval: int = 60  # in seconds
