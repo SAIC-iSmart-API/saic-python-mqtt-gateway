@@ -1,8 +1,5 @@
 import asyncio
-import faulthandler
 import logging
-import signal
-import sys
 from random import uniform
 from typing import override, Optional
 
@@ -13,7 +10,6 @@ from saic_ismart_client_ng.model import SaicApiConfiguration
 
 import mqtt_topics
 from configuration import Configuration
-from configuration.parser import process_arguments
 from handlers.message import MessageHandler
 from handlers.relogin import ReloginHandler
 from handlers.vehicle import VehicleHandler, VehicleHandlerLocator
@@ -223,19 +219,3 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
                 break
             else:
                 LOG.warning(f'There are still {len(pending)} tasks... waiting for them to complete')
-
-
-if __name__ == '__main__':
-    # Keep this at the top!
-    from log_config import setup_logging, debug_log_enabled
-
-    setup_logging()
-
-    # Enable fault handler to get a thread dump on SIGQUIT
-    faulthandler.enable(file=sys.stderr, all_threads=True)
-    if hasattr(faulthandler, 'register'):
-        faulthandler.register(signal.SIGQUIT, chain=False)
-    configuration = process_arguments()
-
-    mqtt_gateway = MqttGateway(configuration)
-    asyncio.run(mqtt_gateway.run(), debug=debug_log_enabled())
