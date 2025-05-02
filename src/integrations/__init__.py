@@ -1,6 +1,9 @@
-class IntegrationException(Exception):
-    def __init__(self, integration: str, msg: str):
-        self.message = f'{integration}: {msg}'
+from __future__ import annotations
 
-    def __str__(self):
+
+class IntegrationException(Exception):
+    def __init__(self, integration: str, msg: str) -> None:
+        self.message = f"{integration}: {msg}"
+
+    def __str__(self) -> str:
         return self.message

@@ -53,9 +53,9 @@ jobs:
 
       - name: Lint with Ruff
         run: |
-          poetry run ruff check .
+          poetry run ruff check . --output-format=github
         continue-on-error: true
-
+        
       - name: Surface failing tests
         uses: pmeier/pytest-results-action@main
         with:
