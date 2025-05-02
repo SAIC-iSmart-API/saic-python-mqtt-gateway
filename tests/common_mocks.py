@@ -1,14 +1,19 @@
+from __future__ import annotations
+
 import time
 
 from saic_ismart_client_ng.api.schema import GpsPosition, GpsStatus
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.api.vehicle.schema import BasicVehicleStatus
 from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp
-from saic_ismart_client_ng.api.vehicle_charging.schema import ChrgMgmtData, RvsChargeStatus
+from saic_ismart_client_ng.api.vehicle_charging.schema import (
+    ChrgMgmtData,
+    RvsChargeStatus,
+)
 
-VIN = 'vin10000000000000'
+VIN = "vin10000000000000"
 
-DRIVETRAIN_RUNNING = False
+DRIVETRAIN_RUNNING = True
 DRIVETRAIN_CHARGING = True
 DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE = 42
 DRIVETRAIN_MILEAGE = 4000
@@ -30,7 +35,9 @@ DRIVETRAIN_LAST_CHARGE_ENDING_POWER = 200
 DRIVETRAIN_CHARGING_CABLE_LOCK = 1
 REAL_TOTAL_BATTERY_CAPACITY = 64.0
 RAW_TOTAL_BATTERY_CAPACITY = 72.5
-BATTERY_CAPACITY_CORRECTION_FACTOR = REAL_TOTAL_BATTERY_CAPACITY / RAW_TOTAL_BATTERY_CAPACITY
+BATTERY_CAPACITY_CORRECTION_FACTOR = (
+    REAL_TOTAL_BATTERY_CAPACITY / RAW_TOTAL_BATTERY_CAPACITY
+)
 
 CLIMATE_INTERIOR_TEMPERATURE = 22
 CLIMATE_EXTERIOR_TEMPERATURE = 18
@@ -51,10 +58,10 @@ WINDOWS_SUN_ROOF = False
 
 DOORS_LOCKED = True
 DOORS_DRIVER = False
-DOORS_PASSENGER = False
+DOORS_PASSENGER = True
 DOORS_REAR_LEFT = False
 DOORS_REAR_RIGHT = False
-DOORS_BONNET = False
+DOORS_BONNET = True
 DOORS_BOOT = False
 
 TYRES_FRONT_LEFT_PRESSURE = 2.8
@@ -66,13 +73,14 @@ LIGHTS_MAIN_BEAM = False
 LIGHTS_DIPPED_BEAM = False
 LIGHTS_SIDE = False
 
-BMS_CHARGE_STATUS = 'CHARGING_1'
+BMS_CHARGE_STATUS = "CHARGING_1"
 
-def get_mock_vehicle_status_resp():
+
+def get_mock_vehicle_status_resp() -> VehicleStatusResp:
     return VehicleStatusResp(
         statusTime=int(time.time()),
         basicVehicleStatus=BasicVehicleStatus(
-            engineStatus=0,
+            engineStatus=1 if DRIVETRAIN_RUNNING else 0,
             extendedData1=DRIVETRAIN_SOC_VEHICLE,
             extendedData2=1 if DRIVETRAIN_CHARGING else 0,
             batteryVoltage=DRIVETRAIN_AUXILIARY_BATTERY_VOLTAGE * 10,
@@ -93,6 +101,7 @@ def get_mock_vehicle_status_resp():
             rearRightDoor=DOORS_REAR_RIGHT,
             rearLeftDoor=DOORS_REAR_LEFT,
             bootStatus=DOORS_BOOT,
+            bonnetStatus=DOORS_BONNET,
             frontLeftTyrePressure=int(TYRES_FRONT_LEFT_PRESSURE * 25),
             frontRightTyrePressure=int(TYRES_FRONT_RIGHT_PRESSURE * 25),
             rearLeftTyrePressure=int(TYRES_REAR_LEFT_PRESSURE * 25),
@@ -101,7 +110,7 @@ def get_mock_vehicle_status_resp():
             dippedBeamStatus=LIGHTS_DIPPED_BEAM,
             sideLightStatus=LIGHTS_SIDE,
             frontLeftSeatHeatLevel=0,
-            frontRightSeatHeatLevel=1
+            frontRightSeatHeatLevel=1,
         ),
         gpsPosition=GpsPosition(
             gpsStatus=GpsStatus.FIX_3d.value,
@@ -110,18 +119,18 @@ def get_mock_vehicle_status_resp():
                 position=GpsPosition.WayPoint.Position(
                     latitude=int(LOCATION_LATITUDE * 1000000),
                     longitude=int(LOCATION_LONGITUDE * 1000000),
-                    altitude=LOCATION_ELEVATION
+                    altitude=LOCATION_ELEVATION,
                 ),
                 heading=LOCATION_HEADING,
                 hdop=0,
                 satellites=3,
                 speed=20,
-            )
-        )
+            ),
+        ),
     )
 
 
-def get_moc_charge_management_data_resp():
+def get_mock_charge_management_data_resp() -> ChrgMgmtDataResp:
     return ChrgMgmtDataResp(
         chrgMgmtData=ChrgMgmtData(
             bmsPackCrntV=0,
@@ -135,13 +144,19 @@ def get_moc_charge_management_data_resp():
         rvsChargeStatus=RvsChargeStatus(
             mileageOfDay=int(DRIVETRAIN_MILEAGE_OF_DAY * 10.0),
             mileageSinceLastCharge=int(DRIVETRAIN_MILEAGE_SINCE_LAST_CHARGE * 10.0),
-            realtimePower=int((DRIVETRAIN_SOC_KWH / BATTERY_CAPACITY_CORRECTION_FACTOR) * 10),
+            realtimePower=int(
+                (DRIVETRAIN_SOC_KWH / BATTERY_CAPACITY_CORRECTION_FACTOR) * 10
+            ),
             chargingType=DRIVETRAIN_CHARGING_TYPE,
             chargingGunState=DRIVETRAIN_CHARGER_CONNECTED,
             lastChargeEndingPower=int(
-                (DRIVETRAIN_LAST_CHARGE_ENDING_POWER / BATTERY_CAPACITY_CORRECTION_FACTOR) * 10.0),
+                (
+                    DRIVETRAIN_LAST_CHARGE_ENDING_POWER
+                    / BATTERY_CAPACITY_CORRECTION_FACTOR
+                )
+                * 10.0
+            ),
             totalBatteryCapacity=int(RAW_TOTAL_BATTERY_CAPACITY * 10.0),
-            fuelRangeElec=int(DRIVETRAIN_RANGE_BMS * 10.0)
+            fuelRangeElec=int(DRIVETRAIN_RANGE_BMS * 10.0),
         ),
-
     )
