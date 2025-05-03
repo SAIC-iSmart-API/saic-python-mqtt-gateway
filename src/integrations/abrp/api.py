@@ -102,6 +102,7 @@ class AbrpApi:
                 is_charging = (
                     charge_status is not None
                     and charge_status.chargingGunState
+                    and decoded_current is not None
                     and decoded_current < 0.0
                 )
                 data.update(
