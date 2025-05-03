@@ -57,6 +57,7 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
                 base_uri=self.configuration.saic_rest_uri,
                 region=self.configuration.saic_region,
                 tenant_id=self.configuration.saic_tenant_id,
+                read_timeout=self.configuration.saic_read_timeout,
             ),
             listener=listener,
         )
