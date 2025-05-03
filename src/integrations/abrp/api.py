@@ -28,29 +28,29 @@ class AbrpApiException(IntegrationException):
 class AbrpApiListener(ABC):
     @abstractmethod
     async def on_request(
-        self,
-        path: str,
-        body: str | None = None,
-        headers: dict[str, str] | None = None,
+            self,
+            path: str,
+            body: str | None = None,
+            headers: dict[str, str] | None = None,
     ) -> None:
         pass
 
     @abstractmethod
     async def on_response(
-        self,
-        path: str,
-        body: str | None = None,
-        headers: dict[str, str] | None = None,
+            self,
+            path: str,
+            body: str | None = None,
+            headers: dict[str, str] | None = None,
     ) -> None:
         pass
 
 
 class AbrpApi:
     def __init__(
-        self,
-        abrp_api_key: str | None,
-        abrp_user_token: str | None,
-        listener: AbrpApiListener | None = None,
+            self,
+            abrp_api_key: str | None,
+            abrp_user_token: str | None,
+            listener: AbrpApiListener | None = None,
     ) -> None:
         self.abrp_api_key = abrp_api_key
         self.abrp_user_token = abrp_user_token
@@ -64,18 +64,18 @@ class AbrpApi:
         )
 
     async def update_abrp(
-        self,
-        vehicle_status: VehicleStatusResp | None,
-        charge_info: ChrgMgmtDataResp | None,
+            self,
+            vehicle_status: VehicleStatusResp | None,
+            charge_info: ChrgMgmtDataResp | None,
     ) -> tuple[bool, str]:
         charge_mgmt_data = None if charge_info is None else charge_info.chrgMgmtData
         charge_status = None if charge_info is None else charge_info.rvsChargeStatus
 
         if (
-            self.abrp_api_key is not None
-            and self.abrp_user_token is not None
-            and vehicle_status is not None
-            and charge_mgmt_data is not None
+                self.abrp_api_key is not None
+                and self.abrp_user_token is not None
+                and vehicle_status is not None
+                and charge_mgmt_data is not None
         ):
             # Request
             tlm_send_url = f"{self.__base_uri}tlm/send"
@@ -91,19 +91,18 @@ class AbrpApi:
                 )
 
             # Skip invalid current values reported by the API
+            decoded_current = charge_mgmt_data.decoded_current
             is_valid_current = (
-                charge_mgmt_data.bmsPackCrntV != 1
-                and (raw_current := charge_mgmt_data.bmsPackCrnt) is not None
-                and value_in_range(raw_current, 0, 65535)
+                    charge_mgmt_data.bmsPackCrntV != 1
+                    and (raw_current := charge_mgmt_data.bmsPackCrnt) is not None
+                    and value_in_range(raw_current, 0, 65535)
+                    and decoded_current is not None
             )
             if is_valid_current:
                 is_charging = (
-                    charge_status is not None
-                    and charge_status.chargingGunState
-                    and is_valid_current
-                    and (decoded_current := charge_mgmt_data.decoded_current)
-                    is not None
-                    and decoded_current < 0.0
+                        charge_status is not None
+                        and charge_status.chargingGunState
+                        and decoded_current < 0.0
                 )
                 data.update(
                     {
@@ -154,7 +153,7 @@ class AbrpApi:
 
     @staticmethod
     def __extract_basic_vehicle_status(
-        basic_vehicle_status: BasicVehicleStatus,
+            basic_vehicle_status: BasicVehicleStatus,
     ) -> dict[str, Any]:
         data: dict[str, Any] = {
             "is_parked": basic_vehicle_status.is_parked,
@@ -162,7 +161,7 @@ class AbrpApi:
 
         exterior_temperature = basic_vehicle_status.exteriorTemperature
         if exterior_temperature is not None and value_in_range(
-            exterior_temperature, -127, 127
+                exterior_temperature, -127, 127
         ):
             data["ext_temp"] = exterior_temperature
         mileage = basic_vehicle_status.mileage
@@ -206,7 +205,7 @@ class AbrpApi:
             data["elevation"] = altitude
 
         if (raw_lat := position.latitude) is not None and (
-            raw_lon := position.longitude
+                raw_lon := position.longitude
         ) is not None:
             lat_degrees = raw_lat / 1000000.0
             lon_degrees = raw_lon / 1000000.0
@@ -222,16 +221,16 @@ class AbrpApi:
         return data
 
     def __extract_electric_range(
-        self,
-        basic_vehicle_status: BasicVehicleStatus | None,
-        charge_status: RvsChargeStatus | None,
+            self,
+            basic_vehicle_status: BasicVehicleStatus | None,
+            charge_status: RvsChargeStatus | None,
     ) -> dict[str, Any]:
         data = {}
 
         range_elec_vehicle = 0.0
         if (
-            basic_vehicle_status
-            and (fuel_range := basic_vehicle_status.fuelRangeElec) is not None
+                basic_vehicle_status
+                and (fuel_range := basic_vehicle_status.fuelRangeElec) is not None
         ):
             range_elec_vehicle = self.__parse_electric_range(raw_value=fuel_range)
 
