@@ -75,15 +75,18 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
         return ConsolePublisher(self.configuration)
 
     async def run(self) -> None:
-        try:
-            await self.__relogin_handler.login()
-        except Exception as e:
-            LOG.exception(
-                "MqttGateway crashed due to an Exception during startup", exc_info=e
-            )
-            raise SystemExit(
-                "MqttGateway crashed due to an Exception during startup"
-            ) from e
+        message_request_interval = self.configuration.messages_request_interval
+        while True:
+            try:
+                await self.__relogin_handler.login()
+                break
+            except Exception as e:
+                LOG.exception(
+                    "Could not complete initial login to the SAIC API, retrying in %d seconds",
+                    message_request_interval,
+                    exc_info=e,
+                )
+                await asyncio.sleep(message_request_interval)
 
         LOG.info("Fetching vehicle list")
         vin_list = await self.saic_api.vehicle_list()
@@ -98,7 +101,7 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
         self.__scheduler.add_job(
             func=message_handler.check_for_new_messages,
             trigger="interval",
-            seconds=self.configuration.messages_request_interval,
+            seconds=message_request_interval,
             id="message_handler",
             name="Check for new messages",
             max_instances=1,
