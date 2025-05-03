@@ -208,6 +208,16 @@ def process_arguments() -> Configuration:
             type=check_positive,
         )
         parser.add_argument(
+            "--saic-read-timeout",
+            help="HTTP Read timeout for the SAIC API. Environment "
+            "Variable: SAIC_READ_TIMEOUT",
+            dest="saic_read_timeout",
+            required=False,
+            action=EnvDefault,
+            envvar="SAIC_READ_TIMEOUT",
+            type=check_positive_float,
+        )
+        parser.add_argument(
             "--ha-discovery",
             help="Enable Home Assistant Discovery. Environment Variable: HA_DISCOVERY_ENABLED",
             dest="ha_discovery_enabled",
@@ -348,8 +358,13 @@ def process_arguments() -> Configuration:
         config.charge_dynamic_polling_min_percentage = (
             args.charge_dynamic_polling_min_percentage
         )
+
         if args.saic_relogin_delay:
             config.saic_relogin_delay = args.saic_relogin_delay
+
+        if args.saic_read_timeout:
+            config.saic_read_timeout = args.saic_read_timeout
+
         config.mqtt_topic = args.mqtt_topic
         config.mqtt_allow_dots_in_topic = args.mqtt_allow_dots_in_topic
         config.saic_rest_uri = args.saic_rest_uri
