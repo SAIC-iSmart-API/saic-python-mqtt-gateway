@@ -633,14 +633,14 @@ files = [
 
 [[package]]
 name = "saic-ismart-client-ng"
-version = "0.8.0"
+version = "0.8.1"
 description = "SAIC next gen client library (MG iSMART)"
 optional = false
 python-versions = ">=3.11"
 groups = ["main"]
 files = [
-    {file = "saic_ismart_client_ng-0.8.0-py3-none-any.whl", hash = "sha256:3b5853464730b1b05acc43e9edc475290b995087b4c3054748cc36e170f38172"},
-    {file = "saic_ismart_client_ng-0.8.0.tar.gz", hash = "sha256:cb649e6e94d15d2cf1704b7ccedd089c8f4ae70983309a603d647108510f305c"},
+    {file = "saic_ismart_client_ng-0.8.1-py3-none-any.whl", hash = "sha256:70a4b9dad54c983d937d254c85103f0f7f710abf53ed2d22361b4ed0865c2602"},
+    {file = "saic_ismart_client_ng-0.8.1.tar.gz", hash = "sha256:e6ff89a6f8dd323979aced1676002ea96e96bfb9674a67dc0fe77c1ebc19ba85"},
 ]
 
 [package.dependencies]
@@ -736,4 +736,4 @@ devenv = ["check-manifest", "pytest (>=4.3)", "pytest-cov", "pytest-mock (>=3.3)
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "441d9e0d65cc9e504daf9fcd3df7fc3ded3236843255c04476a9f29121b5b526"
+content-hash = "a721fdaf4028548051c68b2bf86e9b77fd70c226a2290397f08986d964b8bde3"

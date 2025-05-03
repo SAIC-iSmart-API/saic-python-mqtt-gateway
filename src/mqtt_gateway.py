@@ -102,8 +102,13 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
             name="Check for new messages",
             max_instances=1,
         )
+        LOG.info("Connecting to MQTT Broker")
         await self.publisher.connect()
+
+        LOG.info("Starting scheduler")
         self.__scheduler.start()
+
+        LOG.info("Entering main loop")
         await self.__main_loop()
 
     async def setup_vehicle(
@@ -225,7 +230,7 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
     async def __main_loop(self) -> None:
         tasks = []
         for key, vh in self.vehicle_handlers.items():
-            LOG.debug(f"Starting process for car {key}")
+            LOG.info(f"Starting process for car {key}")
             task = asyncio.create_task(
                 vh.handle_vehicle(), name=f"handle_vehicle_{key}"
             )
