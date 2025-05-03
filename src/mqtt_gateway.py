@@ -76,17 +76,7 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
 
     async def run(self) -> None:
         message_request_interval = self.configuration.messages_request_interval
-        while True:
-            try:
-                await self.__relogin_handler.login()
-                break
-            except Exception as e:
-                LOG.exception(
-                    "Could not complete initial login to the SAIC API, retrying in %d seconds",
-                    message_request_interval,
-                    exc_info=e,
-                )
-                await asyncio.sleep(message_request_interval)
+        await self.__do_initial_login(message_request_interval)
 
         LOG.info("Fetching vehicle list")
         vin_list = await self.saic_api.vehicle_list()
@@ -114,6 +104,19 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
 
         LOG.info("Entering main loop")
         await self.__main_loop()
+
+    async def __do_initial_login(self, message_request_interval: int) -> None:
+        while True:
+            try:
+                await self.__relogin_handler.login()
+                break
+            except Exception as e:
+                LOG.exception(
+                    "Could not complete initial login to the SAIC API, retrying in %d seconds",
+                    message_request_interval,
+                    exc_info=e,
+                )
+                await asyncio.sleep(message_request_interval)
 
     async def setup_vehicle(
         self, alarm_switches: list[AlarmType], original_vin_info: VinInfo
