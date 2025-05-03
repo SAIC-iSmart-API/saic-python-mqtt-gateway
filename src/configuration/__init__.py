@@ -26,7 +26,7 @@ class Configuration:
         self.saic_region: str = "eu"
         self.saic_tenant_id: str = "459771"
         self.saic_relogin_delay: int = 15 * 60  # in seconds
-        self.saic_read_timeout: float = 10.0 # in seconds
+        self.saic_read_timeout: float = 10.0  # in seconds
         self.battery_capacity_map: dict[str, float] = {}
         self.mqtt_host: str | None = None
         self.mqtt_port: int = 1883
