@@ -36,6 +36,13 @@ class BasicVehicleStatusPublisher(VehicleDataPublisher):
             is_engine_running or remote_climate_status > 0 or rear_window_heat_state > 0
         )
 
+        is_valid_mileage, _ = self._transform_and_publish(
+            topic=mqtt_topics.DRIVETRAIN_MILEAGE,
+            value=basic_vehicle_status.mileage,
+            validator=lambda x: value_in_range(x, 1, 2147483647),
+            transform=lambda x: x / 10.0,
+        )
+
         self._publish(
             topic=mqtt_topics.DRIVETRAIN_RUNNING,
             value=is_engine_running,
@@ -60,35 +67,30 @@ class BasicVehicleStatusPublisher(VehicleDataPublisher):
             transform=lambda x: x / 10.0,
         )
 
-        self._transform_and_publish(
-            topic=mqtt_topics.WINDOWS_DRIVER,
-            value=basic_vehicle_status.driverWindow,
-            transform=int_to_bool,
-        )
+        if is_valid_mileage:
+            self._transform_and_publish(
+                topic=mqtt_topics.WINDOWS_DRIVER,
+                value=basic_vehicle_status.driverWindow,
+                transform=int_to_bool,
+            )
 
-        self._transform_and_publish(
-            topic=mqtt_topics.WINDOWS_DRIVER,
-            value=basic_vehicle_status.driverWindow,
-            transform=int_to_bool,
-        )
+            self._transform_and_publish(
+                topic=mqtt_topics.WINDOWS_PASSENGER,
+                value=basic_vehicle_status.passengerWindow,
+                transform=int_to_bool,
+            )
 
-        self._transform_and_publish(
-            topic=mqtt_topics.WINDOWS_PASSENGER,
-            value=basic_vehicle_status.passengerWindow,
-            transform=int_to_bool,
-        )
+            self._transform_and_publish(
+                topic=mqtt_topics.WINDOWS_REAR_LEFT,
+                value=basic_vehicle_status.rearLeftWindow,
+                transform=int_to_bool,
+            )
 
-        self._transform_and_publish(
-            topic=mqtt_topics.WINDOWS_REAR_LEFT,
-            value=basic_vehicle_status.rearLeftWindow,
-            transform=int_to_bool,
-        )
-
-        self._transform_and_publish(
-            topic=mqtt_topics.WINDOWS_REAR_RIGHT,
-            value=basic_vehicle_status.rearRightWindow,
-            transform=int_to_bool,
-        )
+            self._transform_and_publish(
+                topic=mqtt_topics.WINDOWS_REAR_RIGHT,
+                value=basic_vehicle_status.rearRightWindow,
+                transform=int_to_bool,
+            )
 
         self._transform_and_publish(
             topic=mqtt_topics.WINDOWS_SUN_ROOF,
@@ -198,13 +200,6 @@ class BasicVehicleStatusPublisher(VehicleDataPublisher):
             topic=mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_RIGHT_LEVEL,
             value=basic_vehicle_status.frontRightSeatHeatLevel,
             validator=lambda x: value_in_range(x, 0, 255),
-        )
-
-        self._transform_and_publish(
-            topic=mqtt_topics.DRIVETRAIN_MILEAGE,
-            value=basic_vehicle_status.mileage,
-            validator=lambda x: value_in_range(x, 1, 2147483647),
-            transform=lambda x: x / 10.0,
         )
 
         # Standard fossil fuels vehicles
