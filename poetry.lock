@@ -638,18 +638,16 @@ description = "SAIC next gen client library (MG iSMART)"
 optional = false
 python-versions = ">=3.11"
 groups = ["main"]
-files = []
-develop = true
+files = [
+    {file = "saic_ismart_client_ng-0.8.0-py3-none-any.whl", hash = "sha256:3b5853464730b1b05acc43e9edc475290b995087b4c3054748cc36e170f38172"},
+    {file = "saic_ismart_client_ng-0.8.0.tar.gz", hash = "sha256:cb649e6e94d15d2cf1704b7ccedd089c8f4ae70983309a603d647108510f305c"},
+]
 
 [package.dependencies]
 dacite = ">=1.8.1,<2.0.0"
 httpx = ">=0.27.0,<0.29.0"
 pycryptodome = ">=3.20.0,<4.0.0"
 tenacity = ">=9.0.0,<10.0.0"
-
-[package.source]
-type = "directory"
-url = "../saic-python-client-ng"
 
 [[package]]
 name = "sniffio"
@@ -738,4 +736,4 @@ devenv = ["check-manifest", "pytest (>=4.3)", "pytest-cov", "pytest-mock (>=3.3)
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "cb612a938ba08b55d0ccca04fd95f31b3ce94a388ceabc3ee9057a2ee8329641"
+content-hash = "441d9e0d65cc9e504daf9fcd3df7fc3ded3236843255c04476a9f29121b5b526"
