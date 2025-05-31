@@ -335,7 +335,7 @@ class HomeAssistantDiscovery:
             mqtt_topics.DRIVETRAIN_LAST_CHARGE_ENDING_POWER,
             "Last Charge SoC kWh",
             device_class="ENERGY_STORAGE",
-            state_class="total_increasing",
+            state_class="measurement",
             icon="mdi:battery-charging-70",
             unit_of_measurement="kWh",
         )
