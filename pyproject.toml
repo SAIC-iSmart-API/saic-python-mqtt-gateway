@@ -1,6 +1,5 @@
 [project]
 name = "saic-python-mqtt-gateway"
-version = "0.9.4"
 description = "A service that queries the data from an MG iSMART account and publishes the data over MQTT and to other sources"
 authors = [
     { name = "Giovanni Condello", email = "saic-python-client@nanomad.net" }
@@ -22,14 +21,20 @@ dependencies = [
     'inflection (>=0.5.1,<0.6.0)',
     'apscheduler (>=3.11.0,<4.0.0)',
 ]
+dynamic = ["version"]
 
 [project.urls]
 Homepage = "https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway"
 Issues = "https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/issues"
 
+[build-system]
+requires = ["poetry-core>=2.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
+
 [tool.poetry]
 package-mode = false
 requires-poetry = '>=2.0,<3.0'
+version = "0.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"
@@ -45,9 +50,14 @@ pylint = "^3.3.6"
 [tool.poetry.dependencies]
 saic-ismart-client-ng = { develop = true }
 
-[build-system]
-requires = ["poetry-core>=2.0.0"]
-build-backend = "poetry.core.masonry.api"
+[tool.poetry.requires-plugins]
+poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+style = "semver"
+pattern = "default-unprefixed"
 
 [tool.pytest.ini_options]
 norecursedirs = ".git build dist"
