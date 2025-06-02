@@ -1,6 +1,8 @@
 services:
   saic-mqtt-gateway:
     image: "saicismartapi/saic-python-mqtt-gateway:latest"
+    build:
+      context: .
     container_name: "saic-mqtt-gateway"
     environment:
       - MQTT_URI=${MQTT_BROKER_URI}
