@@ -1,6 +1,12 @@
 # Change Log
 
+## 0.9.3
+
+## What's Changed
+* Restore phone login by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/334
+
 ## 0.9.2
+
 ### What's Changed
 * Migrated Last Charge SoC kWh sensor to 'measurement' state_class
 
