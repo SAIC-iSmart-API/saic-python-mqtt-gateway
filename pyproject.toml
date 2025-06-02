@@ -1,6 +1,6 @@
 [project]
 name = "saic-python-mqtt-gateway"
-version = "0.7.2-rc"
+version = "0.9.3"
 description = "A service that queries the data from an MG iSMART account and publishes the data over MQTT and to other sources"
 authors = [
     { name = "Giovanni Condello", email = "saic-python-client@nanomad.net" }
@@ -16,7 +16,7 @@ classifiers = [
 
 requires-python = '>=3.12,<4.0'
 dependencies = [
-    "saic-ismart-client-ng (>=0.8.2,<0.9.0)",
+    "saic-ismart-client-ng (>=0.9.1,<0.10.0)",
     'httpx (>=0.28.1,<0.29.0)',
     'gmqtt (>=0.7.0,<0.8.0)',
     'inflection (>=0.5.1,<0.6.0)',
@@ -35,7 +35,7 @@ requires-poetry = '>=2.0,<3.0'
 pytest = "^8.2.2"
 mock = "^5.1.0"
 coverage = "^7.5.4"
-ruff = "^0.9.1"
+ruff = "^0.11.12"
 pytest-cov = "^6.0.0"
 pytest-asyncio = "^0.25.2"
 pytest-mock = "^3.14.0"
@@ -46,7 +46,7 @@ pylint = "^3.3.6"
 saic-ismart-client-ng = { develop = true }
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
