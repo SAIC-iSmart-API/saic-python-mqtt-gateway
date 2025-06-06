@@ -131,7 +131,7 @@ To run the service from the command line you need to have Python version 3.12 or
 Launch the MQTT gateway with the mandatory parametersn and, optionally, the url to the MQTT broker.
 
 ```
-$ python ./main.py -m tcp://my-broker-host:1883 -u <saic-user> -p <saic-pwd>
+$ cd src && python ./main.py -m tcp://my-broker-host:1883 -u <saic-user> -p <saic-pwd>
 ```
 
 ### In a docker container
