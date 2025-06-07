@@ -626,10 +626,10 @@ class VehicleState:
             soc_published = self.__publish_soc(vehicle_status.raw_soc)
 
         if not electric_range_published:
-            logging.warning("Could not extract a valid electric range")
+            LOG.warning("Could not extract a valid electric range")
 
         if not soc_published:
-            logging.warning("Could not extract a valid SoC")
+            LOG.warning("Could not extract a valid SoC")
 
     def handle_scheduled_battery_heating_status(
         self, scheduled_battery_heating_status: ScheduledBatteryHeatingResp | None
