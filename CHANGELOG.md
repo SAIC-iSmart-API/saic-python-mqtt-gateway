@@ -1,5 +1,10 @@
 # Change Log
 
+## 0.9.5
+
+## What's Changed
+* Extend ZS EV battery capacity to high trim and long range models by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/339
+
 ## 0.9.4
 
 ## What's Changed
