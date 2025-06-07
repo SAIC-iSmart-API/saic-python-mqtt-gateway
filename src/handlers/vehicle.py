@@ -150,6 +150,8 @@ class VehicleHandler:
             vehicle_status_processing_result,
         ) = await self.update_vehicle_status()
 
+        charge_status = None
+        charge_status_processing_result = None
         if self.vin_info.is_ev:
             try:
                 (
@@ -158,8 +160,6 @@ class VehicleHandler:
                 ) = await self.update_charge_status()
             except Exception as e:
                 LOG.exception("Error updating charge status", exc_info=e)
-                charge_status = None
-                charge_status_processing_result = None
 
             try:
                 await self.update_scheduled_battery_heating_status()
@@ -477,7 +477,7 @@ class VehicleHandler:
                             msg = f"Error setting value for payload {payload}"
                             raise MqttGatewayException(msg) from e
                     else:
-                        logging.info(
+                        LOG.info(
                             "Unknown Target SOC: waiting for state update before changing charge current limit"
                         )
                         msg = f"Error setting charge current limit - SOC {self.vehicle_state.target_soc}"
