@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Final
 
 from exceptions import MqttGatewayException
 
 if TYPE_CHECKING:
     from saic_ismart_client_ng.api.vehicle import VehicleModelConfiguration, VinInfo
+
+LOG = logging.getLogger(__name__)
 
 
 class VehicleInfo:
@@ -106,12 +109,26 @@ class VehicleInfo:
         return self.__get_property_value("Battery") == "1"
 
     @property
-    def battery_capacity(self) -> float | None:
+    def real_battery_capacity(self) -> float | None:
         if (
             self.__custom_battery_capacity is not None
             and self.__custom_battery_capacity > 0
         ):
             return float(self.__custom_battery_capacity)
+        if self.series.startswith("EH32"):
+            return self.__mg4_real_battery_capacity()
+        if self.series.startswith("EP2"):
+            return self.__mg5_real_battery_capacity()
+        # Model: MG ZS EV 2021
+        if self.series.startswith("ZS EV"):
+            return self.__zs_ev_real_battery_capacity()
+        LOG.warning(
+            f"Unknown battery capacity for car series='{self.series}' and model='{self.model}'. "
+            "Please file an issue to improve data accuracy"
+        )
+        return None
+
+    def __mg4_real_battery_capacity(self) -> float | None:
         # MG4 high trim level
         if self.series.startswith("EH32 S"):
             if self.model.startswith("EH32 X3"):
@@ -130,13 +147,20 @@ class VehicleInfo:
                 return 64.0
             # MG4 low trim level with LFP battery
             return 51.0
+        return None
+
+    def __mg5_real_battery_capacity(self) -> float | None:
         # Model: MG5 Electric, variant MG5 SR Comfort
         if self.series.startswith("EP2CP3"):
             return 50.3
         # Model: MG5 Electric, variant MG5 MR Luxury
         if self.series.startswith("EP2DP3"):
             return 61.1
-        # ZS EV Standard 2021
-        if self.series.startswith("ZS EV S"):
-            return 49.0
         return None
+
+    def __zs_ev_real_battery_capacity(self) -> float | None:
+        if self.supports_target_soc:
+            # Long Range with NMC battery
+            return 68.3
+        # Standard Range with LFP battery
+        return 49.0
