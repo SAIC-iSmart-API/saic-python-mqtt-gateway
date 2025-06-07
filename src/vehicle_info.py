@@ -115,40 +115,35 @@ class VehicleInfo:
             and self.__custom_battery_capacity > 0
         ):
             return float(self.__custom_battery_capacity)
+
+        result: float | None = None
+
         if self.series.startswith("EH32"):
-            return self.__mg4_real_battery_capacity()
-        if self.series.startswith("EP2"):
-            return self.__mg5_real_battery_capacity()
-        # Model: MG ZS EV 2021
-        if self.series.startswith("ZS EV"):
-            return self.__zs_ev_real_battery_capacity()
-        LOG.warning(
-            f"Unknown battery capacity for car series='{self.series}' and model='{self.model}'. "
-            "Please file an issue to improve data accuracy"
-        )
-        return None
+            result = self.__mg4_real_battery_capacity
+        elif self.series.startswith("EP2"):
+            result = self.__mg5_real_battery_capacity
+        elif self.series.startswith("ZS EV"):
+            result = self.__zs_ev_real_battery_capacity
 
+        if result is None:
+            LOG.warning(
+                f"Unknown battery capacity for car series='{self.series}', model='{self.model}', "
+                f"supports_target_soc={self.supports_target_soc}. Please file an issue to improve data accuracy"
+            )
+        return result
+
+    @property
     def __mg4_real_battery_capacity(self) -> float | None:
-        # MG4 high trim level
-        if self.series.startswith("EH32 S"):
-            if self.model.startswith("EH32 X3"):
-                # MG4 Trophy Extended Range
-                return 77.0
-            if self.supports_target_soc:
-                # MG4 high trim level with NMC battery
-                return 64.0
-            # MG4 High trim level with LFP battery
-            return 51.0
-        # MG4 low trim level
-        # Note: EH32 X/ is used for the 2023 MY with both NMC and LFP batter chem
-        if self.series.startswith("EH32 L"):
-            if self.supports_target_soc:
-                # MG4 low trim level with NMC battery
-                return 64.0
-            # MG4 low trim level with LFP battery
-            return 51.0
-        return None
+        # MG4 Trophy Extended Range
+        if self.model.startswith("EH32 X3"):
+            return 77.0
+        if self.supports_target_soc:
+            # MG4 with NMC battery
+            return 64.0
+        # MG4 with LFP battery
+        return 51.0
 
+    @property
     def __mg5_real_battery_capacity(self) -> float | None:
         # Model: MG5 Electric, variant MG5 SR Comfort
         if self.series.startswith("EP2CP3"):
@@ -158,7 +153,9 @@ class VehicleInfo:
             return 61.1
         return None
 
+    @property
     def __zs_ev_real_battery_capacity(self) -> float | None:
+        # Model: MG ZS EV 2021
         if self.supports_target_soc:
             # Long Range with NMC battery
             return 68.3
