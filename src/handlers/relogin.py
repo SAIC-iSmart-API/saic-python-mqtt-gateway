@@ -27,7 +27,7 @@ class ReloginHandler:
 
     def relogin(self) -> None:
         if self.__login_task is None:
-            logging.warning(
+            LOG.warning(
                 f"API Client got logged out, logging back in {self.__relogin_relay} seconds"
             )
             self.__login_task = self.__scheduler.add_job(
@@ -45,9 +45,7 @@ class ReloginHandler:
             login_response_message = await self.__api.login()
             LOG.info("Logged in as %s", login_response_message.account)
         except Exception as e:
-            logging.exception(
-                "Could not login to the SAIC API due to an error", exc_info=e
-            )
+            LOG.exception("Could not login to the SAIC API due to an error", exc_info=e)
             raise e
         finally:
             if self.__scheduler.get_job(JOB_ID) is not None:

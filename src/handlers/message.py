@@ -151,12 +151,10 @@ class MessageHandler:
         if len(refresh_modes) == 0 or all(
             mode == RefreshMode.OFF for mode in refresh_modes
         ):
-            logging.debug(
-                "Not checking for new messages as all cars have RefreshMode.OFF"
-            )
+            LOG.debug("Not checking for new messages as all cars have RefreshMode.OFF")
             return False
         if self.relogin_handler.relogin_in_progress:
-            logging.warning(
+            LOG.warning(
                 "Not checking for new messages as we are waiting to log back in"
             )
             return False
