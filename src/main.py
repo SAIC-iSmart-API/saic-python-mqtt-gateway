@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
     # Enable fault handler to get a thread dump on SIGQUIT
     faulthandler.enable(file=sys.stderr, all_threads=True)
-    if hasattr(faulthandler, "register"):
+    if hasattr(faulthandler, "register") and hasattr(signal, "SIGQUIT"):
         faulthandler.register(signal.SIGQUIT, chain=False)
     configuration = process_arguments()
 
