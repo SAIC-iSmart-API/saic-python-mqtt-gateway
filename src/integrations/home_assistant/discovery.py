@@ -25,12 +25,12 @@ LOG = logging.getLogger(__name__)
 
 class HaCustomAvailabilityEntry:
     def __init__(
-        self,
-        *,
-        topic: str,
-        template: str | None = None,
-        payload_available: str = "online",
-        payload_not_available: str = "offline",
+            self,
+            *,
+            topic: str,
+            template: str | None = None,
+            payload_available: str = "online",
+            payload_not_available: str = "offline",
     ) -> None:
         self.__topic = topic
         self.__template = template
@@ -66,10 +66,10 @@ class HaCustomAvailabilityEntry:
 
 class HaCustomAvailabilityConfig:
     def __init__(
-        self,
-        *,
-        rules: list[HaCustomAvailabilityEntry],
-        mode: str = "all",
+            self,
+            *,
+            rules: list[HaCustomAvailabilityEntry],
+            mode: str = "all",
     ) -> None:
         self.__rules = rules
         self.__mode = mode
@@ -83,10 +83,10 @@ class HaCustomAvailabilityConfig:
 
 class HomeAssistantDiscovery:
     def __init__(
-        self,
-        vehicle_state: VehicleState,
-        vin_info: VehicleInfo,
-        configuration: Configuration,
+            self,
+            vehicle_state: VehicleState,
+            vin_info: VehicleInfo,
+            configuration: Configuration,
     ) -> None:
         self.__vehicle_state = vehicle_state
         self.__vin_info = vin_info
@@ -330,6 +330,15 @@ class HomeAssistantDiscovery:
             state_class="measurement",
             icon="mdi:battery-charging-70",
             unit_of_measurement="kWh",
+        )
+        self.__publish_sensor(
+            mqtt_topics.DRIVETRAIN_TOTAL_BATTERY_CAPACITY,
+            "Total Battery Capacity",
+            device_class="ENERGY_STORAGE",
+            state_class="measurement",
+            icon="mdi:battery-high",
+            unit_of_measurement="kWh",
+            entity_category="diagnostic",
         )
         self.__publish_sensor(
             mqtt_topics.DRIVETRAIN_LAST_CHARGE_ENDING_POWER,
@@ -803,16 +812,16 @@ class HomeAssistantDiscovery:
         )
 
     def __publish_switch(
-        self,
-        topic: str,
-        name: str,
-        *,
-        enabled: bool = True,
-        icon: str | None = None,
-        value_template: str = "{{ value }}",
-        payload_on: str = "True",
-        payload_off: str = "False",
-        custom_availability: HaCustomAvailabilityConfig | None = None,
+            self,
+            topic: str,
+            name: str,
+            *,
+            enabled: bool = True,
+            icon: str | None = None,
+            value_template: str = "{{ value }}",
+            payload_on: str = "True",
+            payload_off: str = "False",
+            custom_availability: HaCustomAvailabilityConfig | None = None,
     ) -> str:
         payload = {
             "state_topic": self.__get_vehicle_topic(topic),
@@ -831,16 +840,16 @@ class HomeAssistantDiscovery:
         )
 
     def __publish_lock(
-        self,
-        topic: str,
-        name: str,
-        enabled: bool = True,
-        icon: str | None = None,
-        payload_lock: str = "True",
-        payload_unlock: str = "False",
-        state_locked: str = "True",
-        state_unlocked: str = "False",
-        custom_availability: HaCustomAvailabilityConfig | None = None,
+            self,
+            topic: str,
+            name: str,
+            enabled: bool = True,
+            icon: str | None = None,
+            payload_lock: str = "True",
+            payload_unlock: str = "False",
+            state_locked: str = "True",
+            state_unlocked: str = "False",
+            custom_availability: HaCustomAvailabilityConfig | None = None,
     ) -> str:
         payload = {
             "state_topic": self.__get_vehicle_topic(topic),
@@ -860,17 +869,17 @@ class HomeAssistantDiscovery:
         )
 
     def __publish_sensor(
-        self,
-        topic: str,
-        name: str,
-        enabled: bool = True,
-        entity_category: str | None = None,
-        device_class: str | None = None,
-        state_class: str | None = None,
-        unit_of_measurement: str | None = None,
-        icon: str | None = None,
-        value_template: str = "{{ value }}",
-        custom_availability: HaCustomAvailabilityConfig | None = None,
+            self,
+            topic: str,
+            name: str,
+            enabled: bool = True,
+            entity_category: str | None = None,
+            device_class: str | None = None,
+            state_class: str | None = None,
+            unit_of_measurement: str | None = None,
+            icon: str | None = None,
+            value_template: str = "{{ value }}",
+            custom_availability: HaCustomAvailabilityConfig | None = None,
     ) -> str:
         payload = {
             "state_topic": self.__get_vehicle_topic(topic),
@@ -893,22 +902,22 @@ class HomeAssistantDiscovery:
         )
 
     def __publish_number(
-        self,
-        topic: str,
-        name: str,
-        enabled: bool = True,
-        entity_category: str | None = None,
-        device_class: str | None = None,
-        state_class: str | None = None,
-        unit_of_measurement: str | None = None,
-        icon: str | None = None,
-        value_template: str = "{{ value }}",
-        retain: bool = False,
-        mode: str = "auto",
-        min_value: float = 1.0,
-        max_value: float = 100.0,
-        step: float = 1.0,
-        custom_availability: HaCustomAvailabilityConfig | None = None,
+            self,
+            topic: str,
+            name: str,
+            enabled: bool = True,
+            entity_category: str | None = None,
+            device_class: str | None = None,
+            state_class: str | None = None,
+            unit_of_measurement: str | None = None,
+            icon: str | None = None,
+            value_template: str = "{{ value }}",
+            retain: bool = False,
+            mode: str = "auto",
+            min_value: float = 1.0,
+            max_value: float = 100.0,
+            step: float = 1.0,
+            custom_availability: HaCustomAvailabilityConfig | None = None,
     ) -> str:
         payload = {
             "state_topic": self.__get_vehicle_topic(topic),
@@ -937,18 +946,18 @@ class HomeAssistantDiscovery:
         )
 
     def __publish_text(
-        self,
-        topic: str,
-        name: str,
-        enabled: bool = True,
-        icon: str | None = None,
-        value_template: str = "{{ value }}",
-        command_template: str = "{{ value }}",
-        retain: bool = False,
-        min_value: int | None = None,
-        max_value: int | None = None,
-        pattern: str | None = None,
-        custom_availability: HaCustomAvailabilityConfig | None = None,
+            self,
+            topic: str,
+            name: str,
+            enabled: bool = True,
+            icon: str | None = None,
+            value_template: str = "{{ value }}",
+            command_template: str = "{{ value }}",
+            retain: bool = False,
+            min_value: int | None = None,
+            max_value: int | None = None,
+            pattern: str | None = None,
+            custom_availability: HaCustomAvailabilityConfig | None = None,
     ) -> str:
         payload = {
             "state_topic": self.__get_vehicle_topic(topic),
@@ -972,16 +981,16 @@ class HomeAssistantDiscovery:
         )
 
     def __publish_binary_sensor(
-        self,
-        topic: str,
-        name: str,
-        enabled: bool = True,
-        device_class: str | None = None,
-        value_template: str = "{{ value }}",
-        payload_on: str = "True",
-        payload_off: str = "False",
-        icon: str | None = None,
-        custom_availability: HaCustomAvailabilityConfig | None = None,
+            self,
+            topic: str,
+            name: str,
+            enabled: bool = True,
+            device_class: str | None = None,
+            value_template: str = "{{ value }}",
+            payload_on: str = "True",
+            payload_off: str = "False",
+            icon: str | None = None,
+            custom_availability: HaCustomAvailabilityConfig | None = None,
     ) -> str:
         payload = {
             "state_topic": self.__get_vehicle_topic(topic),
@@ -1000,17 +1009,17 @@ class HomeAssistantDiscovery:
         )
 
     def __publish_select(
-        self,
-        topic: str,
-        name: str,
-        options: list[str],
-        *,
-        entity_category: str | None = None,
-        enabled: bool = True,
-        value_template: str = "{{ value }}",
-        command_template: str = "{{ value }}",
-        icon: str | None = None,
-        custom_availability: HaCustomAvailabilityConfig | None = None,
+            self,
+            topic: str,
+            name: str,
+            options: list[str],
+            *,
+            entity_category: str | None = None,
+            enabled: bool = True,
+            value_template: str = "{{ value }}",
+            command_template: str = "{{ value }}",
+            icon: str | None = None,
+            custom_availability: HaCustomAvailabilityConfig | None = None,
     ) -> str:
         payload = {
             "state_topic": self.__get_vehicle_topic(topic),
@@ -1030,10 +1039,10 @@ class HomeAssistantDiscovery:
         )
 
     def __get_common_attributes(
-        self,
-        unique_id: str,
-        name: str,
-        custom_availability: HaCustomAvailabilityConfig | None = None,
+            self,
+            unique_id: str,
+            name: str,
+            custom_availability: HaCustomAvailabilityConfig | None = None,
     ) -> dict[str, Any]:
         common_attributes = {
             "name": name,
@@ -1089,17 +1098,17 @@ class HomeAssistantDiscovery:
         return self.__get_vehicle_topic(topic) + "/" + mqtt_topics.SET_SUFFIX
 
     def __publish_ha_discovery_message(
-        self,
-        sensor_type: str,
-        sensor_name: str,
-        payload: dict[str, Any],
-        custom_availability: HaCustomAvailabilityConfig | None = None,
+            self,
+            sensor_type: str,
+            sensor_name: str,
+            payload: dict[str, Any],
+            custom_availability: HaCustomAvailabilityConfig | None = None,
     ) -> str:
         vin = self.vin
         unique_id = f"{vin}_{snake_case(sensor_name)}"
         final_payload = (
-            self.__get_common_attributes(unique_id, sensor_name, custom_availability)
-            | payload
+                self.__get_common_attributes(unique_id, sensor_name, custom_availability)
+                | payload
         )
         ha_topic = (
             f"{self.__discovery_prefix}/{sensor_type}/{vin}_mg/{unique_id}/config"
@@ -1111,7 +1120,7 @@ class HomeAssistantDiscovery:
 
     # This de-registers an entity from Home Assistant
     def __unpublish_ha_discovery_message(
-        self, sensor_type: str, sensor_name: str
+            self, sensor_type: str, sensor_name: str
     ) -> None:
         vin = self.vin
         unique_id = f"{vin}_{snake_case(sensor_name)}"
@@ -1264,16 +1273,16 @@ class HomeAssistantDiscovery:
             f"Heated Seat {seat} Level",
             options=["OFF", "LOW", "MEDIUM", "HIGH"],
             value_template="{% set v = value | int %}"
-            "{% if v == 0 %}OFF"
-            "{% elif v == 1 %}LOW"
-            "{% elif v == 2 %}MEDIUM"
-            "{% else %}HIGH"
-            "{% endif %}",
+                           "{% if v == 0 %}OFF"
+                           "{% elif v == 1 %}LOW"
+                           "{% elif v == 2 %}MEDIUM"
+                           "{% else %}HIGH"
+                           "{% endif %}",
             command_template='{% if value == "OFF" %}0'
-            '{% elif value == "LOW" %}1'
-            '{% elif value == "MEDIUM" %}2'
-            "{% else %}3"
-            "{% endif %}",
+                             '{% elif value == "LOW" %}1'
+                             '{% elif value == "MEDIUM" %}2'
+                             "{% else %}3"
+                             "{% endif %}",
             icon="mdi:car-seat-heater",
         )
 
@@ -1298,7 +1307,7 @@ def snake_case(s: str) -> str:
 
 
 def decode_as_utf8(
-    byte_string: str | None | bytes | bytearray, default: str = ""
+        byte_string: str | None | bytes | bytearray, default: str = ""
 ) -> str:
     if byte_string is None:
         return default
