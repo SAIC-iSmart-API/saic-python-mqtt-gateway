@@ -612,8 +612,10 @@ class VehicleState:
         soc_published = False
 
         if charge_status is not None:
-            if (range := charge_status.raw_fuel_range_elec) is not None:
-                electric_range_published = self.__publish_electric_range(range)
+            if (raw_fuel_range_elec := charge_status.raw_fuel_range_elec) is not None:
+                electric_range_published = self.__publish_electric_range(
+                    raw_fuel_range_elec
+                )
 
             if (soc := charge_status.raw_soc) is not None:
                 soc_published = self.__publish_soc(soc / 10.0)

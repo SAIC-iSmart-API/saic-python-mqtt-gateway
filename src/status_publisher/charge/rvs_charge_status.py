@@ -114,40 +114,40 @@ class RvsChargeStatusPublisher(VehicleDataPublisher):
     def get_actual_battery_capacity(
         self, charge_status: RvsChargeStatus
     ) -> tuple[float, float]:
-        real_total_battery_capacity = self._vehicle_info.battery_capacity
-        if real_total_battery_capacity is not None and real_total_battery_capacity <= 0:
+        real_battery_capacity = self._vehicle_info.real_battery_capacity
+        if real_battery_capacity is not None and real_battery_capacity <= 0:
             # Negative or 0 value for real capacity means we don't know that info
-            real_total_battery_capacity = None
+            real_battery_capacity = None
 
-        raw_total_battery_capacity = None
+        raw_battery_capacity = None
         if (
             charge_status.totalBatteryCapacity is not None
             and charge_status.totalBatteryCapacity > 0
         ):
-            raw_total_battery_capacity = charge_status.totalBatteryCapacity / 10.0
+            raw_battery_capacity = charge_status.totalBatteryCapacity / 10.0
 
-        if raw_total_battery_capacity is not None:
-            if real_total_battery_capacity is not None:
+        if raw_battery_capacity is not None:
+            if real_battery_capacity is not None:
                 LOG.debug(
                     "Calculating full battery capacity correction factor based on "
                     "real=%f and raw=%f",
-                    real_total_battery_capacity,
-                    raw_total_battery_capacity,
+                    real_battery_capacity,
+                    raw_battery_capacity,
                 )
                 return (
-                    real_total_battery_capacity,
-                    real_total_battery_capacity / raw_total_battery_capacity,
+                    real_battery_capacity,
+                    real_battery_capacity / raw_battery_capacity,
                 )
             LOG.debug(
                 "Setting real battery capacity to raw battery capacity %f",
-                raw_total_battery_capacity,
+                raw_battery_capacity,
             )
-            return raw_total_battery_capacity, 1.0
-        if real_total_battery_capacity is not None:
+            return raw_battery_capacity, 1.0
+        if real_battery_capacity is not None:
             LOG.debug(
                 "Setting raw battery capacity to real battery capacity %f",
-                real_total_battery_capacity,
+                real_battery_capacity,
             )
-            return real_total_battery_capacity, 1.0
+            return real_battery_capacity, 1.0
         LOG.warning("No battery capacity information available")
         return 0, 1.0

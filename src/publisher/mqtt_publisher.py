@@ -173,7 +173,7 @@ class MqttPublisher(Publisher):
 
     @override
     def is_connected(self) -> bool:
-        return cast(bool, self.client.is_connected)
+        return cast("bool", self.client.is_connected)
 
     @override
     def publish_json(
