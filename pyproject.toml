@@ -1,6 +1,6 @@
 [project]
 name = "saic-python-mqtt-gateway"
-version = "0.9.5"
+version = "0.9.7"
 description = "A service that queries the data from an MG iSMART account and publishes the data over MQTT and to other sources"
 authors = [
     { name = "Giovanni Condello", email = "saic-python-client@nanomad.net" }
