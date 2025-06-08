@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from saic_ismart_client_ng.exceptions import SaicApiException, SaicLogoutException
 
-from handlers.command import MqttCommandHandler
+from handlers.vehicle_command import VehicleCommandHandler
 from integrations import IntegrationException
 from integrations.abrp.api import AbrpApi
 from integrations.home_assistant.discovery import HomeAssistantDiscovery
@@ -66,7 +66,7 @@ class VehicleHandler:
         self.__vehicle_info_publisher = VehicleInfoPublisher(
             self.vin_info, self.publisher, self.vehicle_prefix
         )
-        self.__command_handler = MqttCommandHandler(
+        self.__command_handler = VehicleCommandHandler(
             vehicle_state=vehicle_state,
             saic_api=saicapi,
             relogin_handler=relogin_handler,
