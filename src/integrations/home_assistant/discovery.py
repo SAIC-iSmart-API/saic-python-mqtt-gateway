@@ -86,26 +86,17 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
         self.__publish_climate_sensors()
 
         # Complex sensors
-        self.__publish_scheduled_charging()
         self.__publish_scheduled_battery_heating()
 
         # Switches
-        self._publish_switch(mqtt_topics.DRIVETRAIN_CHARGING, "Charging")
         self._publish_switch(
             mqtt_topics.DRIVETRAIN_BATTERY_HEATING,
             "Battery heating",
             icon="mdi:heat-wave",
         )
         self.__publish_windows_sensors()
-
-        # Locks
         self.__publish_doors_sensors()
-
-        self._publish_lock(
-            mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK,
-            "Charging Cable Lock",
-            icon="mdi:lock",
-        )
+        self.__publish_drivetrain_charging_sensors()
 
         # Target SoC
         self._publish_number(
@@ -189,75 +180,6 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             icon="mdi:battery-charging-70",
         )
 
-        self._publish_sensor(
-            mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME,
-            "Remaining charging time",
-            device_class="duration",
-            state_class="measurement",
-            unit_of_measurement="s",
-        )
-        self._publish_sensor(
-            mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME,
-            "Charging finished",
-            device_class="timestamp",
-            value_template="{{ (now() + timedelta(seconds = value | int)).isoformat() }}",
-            custom_availability=HaCustomAvailabilityConfig(
-                rules=[
-                    self.__system_availability,
-                    self.__vehicle_availability,
-                    HaCustomAvailabilityEntry(
-                        topic=self.__get_vehicle_topic(
-                            mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME
-                        ),
-                        template="{{ 'online' if (value | int) > 0 else 'offline' }}",
-                    ),
-                ]
-            ),
-        )
-        self._publish_sensor(
-            mqtt_topics.DRIVETRAIN_CHARGING_LAST_START,
-            "Last Charge Start Time",
-            device_class="timestamp",
-            icon="mdi:clock-start",
-            value_template="{{ value | int | timestamp_utc }}",
-            custom_availability=HaCustomAvailabilityConfig(
-                rules=[
-                    self.__system_availability,
-                    self.__vehicle_availability,
-                    HaCustomAvailabilityEntry(
-                        topic=self.__get_vehicle_topic(
-                            mqtt_topics.DRIVETRAIN_CHARGING_LAST_START
-                        ),
-                        template="{{ 'online' if (value | int) > 0 else 'offline' }}",
-                    ),
-                ]
-            ),
-        )
-        self._publish_sensor(
-            mqtt_topics.DRIVETRAIN_CHARGING_LAST_END,
-            "Last Charge End Time",
-            device_class="timestamp",
-            icon="mdi:clock-end",
-            value_template="{{ value | int | timestamp_utc }}",
-            custom_availability=HaCustomAvailabilityConfig(
-                rules=[
-                    self.__system_availability,
-                    self.__vehicle_availability,
-                    HaCustomAvailabilityEntry(
-                        topic=self.__get_vehicle_topic(
-                            mqtt_topics.DRIVETRAIN_CHARGING_LAST_END
-                        ),
-                        template="{{ 'online' if (value | int) > 0 else 'offline' }}",
-                    ),
-                ]
-            ),
-        )
-        self._publish_sensor(
-            mqtt_topics.DRIVETRAIN_CHARGING_TYPE,
-            "Charging Mode",
-            enabled=False,
-            entity_category="diagnostic",
-        )
         self._publish_sensor(
             mqtt_topics.BMS_CHARGE_STATUS,
             "BMS Charge Status",
@@ -371,18 +293,6 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             icon="mdi:battery-check",
         )
         self._publish_binary_sensor(
-            mqtt_topics.DRIVETRAIN_CHARGING,
-            "Battery Charging",
-            device_class="battery_charging",
-            icon="mdi:battery-charging",
-        )
-        self._publish_sensor(
-            mqtt_topics.DRIVETRAIN_CHARGING_STOP_REASON,
-            "Battery charging stop reason",
-            icon="mdi:battery-charging",
-            enabled=False,
-        )
-        self._publish_binary_sensor(
             mqtt_topics.DRIVETRAIN_BATTERY_HEATING,
             "Battery heating",
             icon="mdi:heat-wave",
@@ -402,6 +312,96 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
         self.__publish_lights_sensors()
 
         LOG.debug("Completed publishing Home Assistant discovery messages")
+
+    def __publish_drivetrain_charging_sensors(self) -> None:
+        self._publish_switch(mqtt_topics.DRIVETRAIN_CHARGING, "Charging")
+        self._publish_binary_sensor(
+            mqtt_topics.DRIVETRAIN_CHARGING,
+            "Battery Charging",
+            device_class="battery_charging",
+            icon="mdi:battery-charging",
+        )
+        self._publish_sensor(
+            mqtt_topics.DRIVETRAIN_CHARGING_STOP_REASON,
+            "Battery charging stop reason",
+            icon="mdi:battery-charging",
+            enabled=False,
+        )
+        self._publish_sensor(
+            mqtt_topics.DRIVETRAIN_CHARGING_LAST_START,
+            "Last Charge Start Time",
+            device_class="timestamp",
+            icon="mdi:clock-start",
+            value_template="{{ value | int | timestamp_utc }}",
+            custom_availability=HaCustomAvailabilityConfig(
+                rules=[
+                    self.__system_availability,
+                    self.__vehicle_availability,
+                    HaCustomAvailabilityEntry(
+                        topic=self.__get_vehicle_topic(
+                            mqtt_topics.DRIVETRAIN_CHARGING_LAST_START
+                        ),
+                        template="{{ 'online' if (value | int) > 0 else 'offline' }}",
+                    ),
+                ]
+            ),
+        )
+        self._publish_sensor(
+            mqtt_topics.DRIVETRAIN_CHARGING_LAST_END,
+            "Last Charge End Time",
+            device_class="timestamp",
+            icon="mdi:clock-end",
+            value_template="{{ value | int | timestamp_utc }}",
+            custom_availability=HaCustomAvailabilityConfig(
+                rules=[
+                    self.__system_availability,
+                    self.__vehicle_availability,
+                    HaCustomAvailabilityEntry(
+                        topic=self.__get_vehicle_topic(
+                            mqtt_topics.DRIVETRAIN_CHARGING_LAST_END
+                        ),
+                        template="{{ 'online' if (value | int) > 0 else 'offline' }}",
+                    ),
+                ]
+            ),
+        )
+        self._publish_sensor(
+            mqtt_topics.DRIVETRAIN_CHARGING_TYPE,
+            "Charging Mode",
+            enabled=False,
+            entity_category="diagnostic",
+        )
+        self._publish_lock(
+            mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK,
+            "Charging Cable Lock",
+            icon="mdi:lock",
+        )
+        self._publish_sensor(
+            mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME,
+            "Remaining charging time",
+            device_class="duration",
+            state_class="measurement",
+            unit_of_measurement="s",
+        )
+        self._publish_sensor(
+            mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME,
+            "Charging finished",
+            device_class="timestamp",
+            value_template="{{ (now() + timedelta(seconds = value | int)).isoformat() }}",
+            custom_availability=HaCustomAvailabilityConfig(
+                rules=[
+                    self.__system_availability,
+                    self.__vehicle_availability,
+                    HaCustomAvailabilityEntry(
+                        topic=self.__get_vehicle_topic(
+                            mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME
+                        ),
+                        template="{{ 'online' if (value | int) > 0 else 'offline' }}",
+                    ),
+                ]
+            ),
+        )
+        self.__publish_scheduled_charging()
 
     def __publish_location_sensors(self) -> None:
         self.__publish_vehicle_tracker()
