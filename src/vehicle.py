@@ -368,76 +368,64 @@ class VehicleState:
                 LOG.debug(
                     f"Refresh mode is {other}, checking for other vehicle {self.vin} conditions"
                 )
-                last_actual_poll = self.last_successful_refresh
-                if self.last_failed_refresh is not None:
-                    last_actual_poll = max(last_actual_poll, self.last_failed_refresh)
+                return self.__should_do_periodic_refresh()
 
-                # Try refreshing even if we last failed as long as the last_car_activity is newer
-                if self.last_car_activity > last_actual_poll:
-                    LOG.debug(
-                        f"Polling vehicle {self.vin} as last_car_activity is newer than last_actual_poll."
-                        f" {self.last_car_activity} > {last_actual_poll}"
-                    )
-                    return True
-
-                if self.last_failed_refresh is not None:
-                    threshold = datetime.datetime.now() - datetime.timedelta(
-                        seconds=float(self.refresh_period_error)
-                    )
-                    result: bool = self.last_failed_refresh < threshold
-                    LOG.debug(
-                        f"Gateway failed refresh previously. Should refresh: {result}"
-                    )
-                    return result
-
-                if self.is_charging and self.refresh_period_charging > 0:
-                    result = (
-                        self.last_successful_refresh
-                        < datetime.datetime.now()
-                        - datetime.timedelta(
-                            seconds=float(self.refresh_period_charging)
-                        )
-                    )
-                    LOG.debug(f"HV battery is charging. Should refresh: {result}")
-                    return result
-
-                if self.hv_battery_active:
-                    result = (
-                        self.last_successful_refresh
-                        < datetime.datetime.now()
-                        - datetime.timedelta(seconds=float(self.refresh_period_active))
-                    )
-                    LOG.debug(f"HV battery is active. Should refresh: {result}")
-                    return result
-
-                last_shutdown_plus_refresh = (
-                    self.last_car_shutdown
-                    + datetime.timedelta(
-                        seconds=float(self.refresh_period_inactive_grace)
-                    )
-                )
-                if last_shutdown_plus_refresh > datetime.datetime.now():
-                    result = (
-                        self.last_successful_refresh
-                        < datetime.datetime.now()
-                        - datetime.timedelta(
-                            seconds=float(self.refresh_period_after_shutdown)
-                        )
-                    )
-                    LOG.debug(
-                        f"Refresh grace period after shutdown has not passed. Should refresh: {result}"
-                    )
-                    return result
-
-                result = (
-                    self.last_successful_refresh
-                    < datetime.datetime.now()
-                    - datetime.timedelta(seconds=float(self.refresh_period_inactive))
-                )
-                LOG.debug(
-                    f"HV battery is inactive and refresh period after shutdown is over. Should refresh: {result}"
-                )
-                return result
+    def __should_do_periodic_refresh(self) -> bool:
+        last_actual_poll = self.last_successful_refresh
+        if self.last_failed_refresh is not None:
+            last_actual_poll = max(last_actual_poll, self.last_failed_refresh)
+        # Try refreshing even if we last failed as long as the last_car_activity is newer
+        if self.last_car_activity > last_actual_poll:
+            LOG.debug(
+                f"Polling vehicle {self.vin} as last_car_activity is newer than last_actual_poll."
+                f" {self.last_car_activity} > {last_actual_poll}"
+            )
+            return True
+        if self.last_failed_refresh is not None:
+            threshold = datetime.datetime.now() - datetime.timedelta(
+                seconds=float(self.refresh_period_error)
+            )
+            result: bool = self.last_failed_refresh < threshold
+            LOG.debug(f"Gateway failed refresh previously. Should refresh: {result}")
+            return result
+        if self.is_charging and self.refresh_period_charging > 0:
+            result = (
+                self.last_successful_refresh
+                < datetime.datetime.now()
+                - datetime.timedelta(seconds=float(self.refresh_period_charging))
+            )
+            LOG.debug(f"HV battery is charging. Should refresh: {result}")
+            return result
+        if self.hv_battery_active:
+            result = (
+                self.last_successful_refresh
+                < datetime.datetime.now()
+                - datetime.timedelta(seconds=float(self.refresh_period_active))
+            )
+            LOG.debug(f"HV battery is active. Should refresh: {result}")
+            return result
+        last_shutdown_plus_refresh = self.last_car_shutdown + datetime.timedelta(
+            seconds=float(self.refresh_period_inactive_grace)
+        )
+        if last_shutdown_plus_refresh > datetime.datetime.now():
+            result = (
+                self.last_successful_refresh
+                < datetime.datetime.now()
+                - datetime.timedelta(seconds=float(self.refresh_period_after_shutdown))
+            )
+            LOG.debug(
+                f"Refresh grace period after shutdown has not passed. Should refresh: {result}"
+            )
+            return result
+        result = (
+            self.last_successful_refresh
+            < datetime.datetime.now()
+            - datetime.timedelta(seconds=float(self.refresh_period_inactive))
+        )
+        LOG.debug(
+            f"HV battery is inactive and refresh period after shutdown is over. Should refresh: {result}"
+        )
+        return result
 
     def mark_successful_refresh(self) -> None:
         self.last_successful_refresh = datetime.datetime.now()
