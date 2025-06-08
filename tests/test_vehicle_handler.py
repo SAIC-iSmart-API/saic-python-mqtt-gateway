@@ -5,7 +5,22 @@ import unittest
 from unittest.mock import patch
 
 from apscheduler.schedulers.blocking import BlockingScheduler
-from common_mocks import (
+import pytest
+from saic_ismart_client_ng import SaicApi
+from saic_ismart_client_ng.api.vehicle.schema import (
+    VehicleModelConfiguration,
+    VinInfo,
+)
+from saic_ismart_client_ng.model import SaicApiConfiguration
+
+from configuration import Configuration
+from handlers.relogin import ReloginHandler
+from handlers.vehicle import VehicleHandler
+import mqtt_topics
+from vehicle import VehicleState
+from vehicle_info import VehicleInfo
+
+from .common_mocks import (
     BMS_CHARGE_STATUS,
     CLIMATE_EXTERIOR_TEMPERATURE,
     CLIMATE_INTERIOR_TEMPERATURE,
@@ -54,21 +69,7 @@ from common_mocks import (
     get_mock_charge_management_data_resp,
     get_mock_vehicle_status_resp,
 )
-from mocks import MessageCapturingConsolePublisher
-import pytest
-from saic_ismart_client_ng import SaicApi
-from saic_ismart_client_ng.api.vehicle.schema import (
-    VehicleModelConfiguration,
-    VinInfo,
-)
-from saic_ismart_client_ng.model import SaicApiConfiguration
-
-from configuration import Configuration
-from handlers.relogin import ReloginHandler
-from mqtt_gateway import VehicleHandler
-import mqtt_topics
-from vehicle import VehicleState
-from vehicle_info import VehicleInfo
+from .mocks import MessageCapturingConsolePublisher
 
 
 class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
@@ -99,7 +100,7 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
             self.publisher, scheduler, account_prefix, vehicle_info
         )
         mock_relogin_handler = ReloginHandler(
-            relogin_relay=30, api=self.saicapi, scheduler=None
+            relogin_relay=30, api=self.saicapi, scheduler=scheduler
         )
         self.vehicle_handler = VehicleHandler(
             config,

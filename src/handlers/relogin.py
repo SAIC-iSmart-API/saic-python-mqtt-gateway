@@ -4,8 +4,9 @@ from datetime import datetime, timedelta
 import logging
 from typing import TYPE_CHECKING
 
+from apscheduler.schedulers.base import BaseScheduler
+
 if TYPE_CHECKING:
-    from apscheduler.schedulers.asyncio import AsyncIOScheduler
     from saic_ismart_client_ng import SaicApi
 
 LOG = logging.getLogger(__name__)
@@ -14,7 +15,7 @@ JOB_ID = "relogin_task"
 
 class ReloginHandler:
     def __init__(
-        self, *, relogin_relay: int, api: SaicApi, scheduler: AsyncIOScheduler
+        self, *, relogin_relay: int, api: SaicApi, scheduler: BaseScheduler
     ) -> None:
         self.__relogin_relay = relogin_relay
         self.__scheduler = scheduler

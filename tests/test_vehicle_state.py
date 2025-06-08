@@ -4,7 +4,15 @@ from typing import Any
 import unittest
 
 from apscheduler.schedulers.blocking import BlockingScheduler
-from common_mocks import (
+import pytest
+from saic_ismart_client_ng.api.vehicle.schema import VinInfo
+
+from configuration import Configuration
+import mqtt_topics
+from vehicle import VehicleState
+from vehicle_info import VehicleInfo
+
+from .common_mocks import (
     DRIVETRAIN_RANGE_BMS,
     DRIVETRAIN_RANGE_VEHICLE,
     DRIVETRAIN_SOC_BMS,
@@ -13,14 +21,7 @@ from common_mocks import (
     get_mock_charge_management_data_resp,
     get_mock_vehicle_status_resp,
 )
-from mocks import MessageCapturingConsolePublisher
-import pytest
-from saic_ismart_client_ng.api.vehicle.schema import VinInfo
-
-from configuration import Configuration
-import mqtt_topics
-from vehicle import VehicleState
-from vehicle_info import VehicleInfo
+from .mocks import MessageCapturingConsolePublisher
 
 
 class TestVehicleState(unittest.IsolatedAsyncioTestCase):
