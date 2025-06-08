@@ -168,13 +168,15 @@ class ChrgMgmtDataPublisher(VehicleDataPublisher):
             raw_soc=charge_mgmt_data.bmsPackSOCDsp,
         )
 
-    def __publish_charging_schedule(self, charge_mgmt_data: ChrgMgmtData) -> ScheduledCharging | None:
+    def __publish_charging_schedule(
+        self, charge_mgmt_data: ChrgMgmtData
+    ) -> ScheduledCharging | None:
         scheduled_charging: ScheduledCharging | None = None
         if charge_mgmt_data is not None and (
-                charge_mgmt_data.bmsReserStHourDspCmd is not None
-                and charge_mgmt_data.bmsReserStMintueDspCmd is not None
-                and charge_mgmt_data.bmsReserSpHourDspCmd is not None
-                and charge_mgmt_data.bmsReserSpMintueDspCmd is not None
+            charge_mgmt_data.bmsReserStHourDspCmd is not None
+            and charge_mgmt_data.bmsReserStMintueDspCmd is not None
+            and charge_mgmt_data.bmsReserSpHourDspCmd is not None
+            and charge_mgmt_data.bmsReserSpMintueDspCmd is not None
         ):
             try:
                 start_hour = charge_mgmt_data.bmsReserStHourDspCmd
