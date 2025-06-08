@@ -2,14 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import logging
-from typing import TYPE_CHECKING
+from typing import override
+
+from saic_ismart_client_ng.api.vehicle_charging import RvsChargeStatus
 
 import mqtt_topics
 from status_publisher import VehicleDataPublisher
 from utils import int_to_bool, value_in_range
-
-if TYPE_CHECKING:
-    from saic_ismart_client_ng.api.vehicle_charging import RvsChargeStatus
 
 LOG = logging.getLogger(__name__)
 
@@ -20,8 +19,11 @@ class RvsChargeStatusProcessingResult:
     raw_fuel_range_elec: int | None
 
 
-class RvsChargeStatusPublisher(VehicleDataPublisher):
-    def on_rvs_charge_status(
+class RvsChargeStatusPublisher(
+    VehicleDataPublisher[RvsChargeStatus, RvsChargeStatusProcessingResult]
+):
+    @override
+    def publish(
         self, charge_status: RvsChargeStatus
     ) -> RvsChargeStatusProcessingResult:
         self._transform_and_publish(

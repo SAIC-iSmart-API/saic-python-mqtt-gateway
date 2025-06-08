@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import override
+
+from saic_ismart_client_ng.api.vehicle import BasicVehicleStatus
 
 import mqtt_topics
 from status_publisher import VehicleDataPublisher
 from utils import int_to_bool, is_valid_temperature, to_remote_climate, value_in_range
-
-if TYPE_CHECKING:
-    from saic_ismart_client_ng.api.vehicle import BasicVehicleStatus
 
 PRESSURE_TO_BAR_FACTOR = 0.04
 
@@ -24,8 +23,11 @@ class BasicVehicleStatusProcessingResult:
     raw_soc: int | None
 
 
-class BasicVehicleStatusPublisher(VehicleDataPublisher):
-    def on_basic_vehicle_status(
+class BasicVehicleStatusPublisher(
+    VehicleDataPublisher[BasicVehicleStatus, BasicVehicleStatusProcessingResult]
+):
+    @override
+    def publish(
         self, basic_vehicle_status: BasicVehicleStatus
     ) -> BasicVehicleStatusProcessingResult:
         is_engine_running = basic_vehicle_status.is_engine_running

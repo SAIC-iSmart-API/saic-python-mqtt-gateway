@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABCMeta, abstractmethod
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Final, TypeVar
 
@@ -15,13 +16,17 @@ T = TypeVar("T")
 Publishable = TypeVar("Publishable", str, int, float, bool, dict[str, Any], datetime)
 
 
-class VehicleDataPublisher:
+class VehicleDataPublisher[I, O](metaclass=ABCMeta):
     def __init__(
         self, vin: VehicleInfo, publisher: Publisher, mqtt_vehicle_prefix: str
     ) -> None:
         self._vehicle_info: Final[VehicleInfo] = vin
         self.__publisher: Final[Publisher] = publisher
         self.__mqtt_vehicle_prefix: Final[str] = mqtt_vehicle_prefix
+
+    @abstractmethod
+    def publish(self, data: I) -> O:
+        raise NotImplementedError
 
     def _publish(
         self,

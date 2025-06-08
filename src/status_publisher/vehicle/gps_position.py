@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import override
 
 from saic_ismart_client_ng.api.schema import GpsPosition, GpsStatus
 
@@ -14,8 +15,11 @@ class GpsPositionProcessingResult:
     speed: float | None
 
 
-class GpsPositionPublisher(VehicleDataPublisher):
-    def on_gps_position(self, gps_position: GpsPosition) -> GpsPositionProcessingResult:
+class GpsPositionPublisher(
+    VehicleDataPublisher[GpsPosition, GpsPositionProcessingResult]
+):
+    @override
+    def publish(self, gps_position: GpsPosition) -> GpsPositionProcessingResult:
         speed: float | None = None
         if gps_position.gps_status_decoded in [
             GpsStatus.FIX_2D,

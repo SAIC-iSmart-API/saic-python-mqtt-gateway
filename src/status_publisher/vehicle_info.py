@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 import json
 import logging
+from typing import override
 
 import mqtt_topics
 from status_publisher import VehicleDataPublisher
@@ -10,8 +11,9 @@ from status_publisher import VehicleDataPublisher
 LOG = logging.getLogger(__name__)
 
 
-class VehicleInfoPublisher(VehicleDataPublisher):
-    def publish(self) -> None:
+class VehicleInfoPublisher(VehicleDataPublisher[None, None]):
+    @override
+    def publish(self, _message: None = None) -> None:
         LOG.info("Publishing vehicle info to MQTT")
         self._transform_and_publish(
             topic=mqtt_topics.INTERNAL_CONFIGURATION_RAW,

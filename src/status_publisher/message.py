@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
+
+from saic_ismart_client_ng.api.message import MessageEntity
 
 import mqtt_topics
 from status_publisher import VehicleDataPublisher
 
 if TYPE_CHECKING:
-    from saic_ismart_client_ng.api.message import MessageEntity
-
     from publisher.core import Publisher
     from vehicle_info import VehicleInfo
 
@@ -19,14 +19,17 @@ class MessagePublisherProcessingResult:
     processed: bool
 
 
-class MessagePublisher(VehicleDataPublisher):
+class MessagePublisher(
+    VehicleDataPublisher[MessageEntity, MessagePublisherProcessingResult]
+):
     def __init__(
         self, vin: VehicleInfo, publisher: Publisher, mqtt_vehicle_prefix: str
     ) -> None:
         super().__init__(vin, publisher, mqtt_vehicle_prefix)
         self.__last_car_vehicle_message = datetime.min
 
-    def on_message(self, message: MessageEntity) -> MessagePublisherProcessingResult:
+    @override
+    def publish(self, message: MessageEntity) -> MessagePublisherProcessingResult:
         if (
             self.__last_car_vehicle_message == datetime.min
             or message.message_time > self.__last_car_vehicle_message

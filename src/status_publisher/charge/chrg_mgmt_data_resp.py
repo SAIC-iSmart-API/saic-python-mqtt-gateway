@@ -4,6 +4,10 @@ import dataclasses
 import datetime
 from typing import TYPE_CHECKING
 
+from saic_ismart_client_ng.api.vehicle_charging import (
+    ChrgMgmtDataResp,
+)
+
 import mqtt_topics
 from status_publisher import VehicleDataPublisher
 from status_publisher.charge.chrg_mgmt_data import (
@@ -19,7 +23,6 @@ from status_publisher.charge.rvs_charge_status import (
 if TYPE_CHECKING:
     from saic_ismart_client_ng.api.vehicle_charging import (
         ChargeCurrentLimitCode,
-        ChrgMgmtDataResp,
         TargetBatteryCode,
     )
 
@@ -40,7 +43,9 @@ class ChrgMgmtDataRespProcessingResult:
     raw_fuel_range_elec: int | None
 
 
-class ChrgMgmtDataRespPublisher(VehicleDataPublisher):
+class ChrgMgmtDataRespPublisher(
+    VehicleDataPublisher[ChrgMgmtDataResp, ChrgMgmtDataRespProcessingResult]
+):
     def __init__(
         self, vin: VehicleInfo, publisher: Publisher, mqtt_vehicle_prefix: str
     ) -> None:
@@ -52,21 +57,21 @@ class ChrgMgmtDataRespPublisher(VehicleDataPublisher):
             vin, publisher, mqtt_vehicle_prefix
         )
 
-    def on_chrg_mgmt_data_resp(
+    def publish(
         self, chrg_mgmt_data_resp: ChrgMgmtDataResp
     ) -> ChrgMgmtDataRespProcessingResult:
         chrg_mgmt_data = chrg_mgmt_data_resp.chrgMgmtData
         chrg_mgmt_data_result: ChrgMgmtDataProcessingResult | None = None
         if chrg_mgmt_data is not None:
-            chrg_mgmt_data_result = self.__chrg_mgmt_data_publisher.on_chrg_mgmt_data(
+            chrg_mgmt_data_result = self.__chrg_mgmt_data_publisher.publish(
                 chrg_mgmt_data
             )
 
         charge_status = chrg_mgmt_data_resp.rvsChargeStatus
         charge_status_result: RvsChargeStatusProcessingResult | None = None
         if charge_status is not None:
-            charge_status_result = (
-                self.__rvs_charge_status_publisher.on_rvs_charge_status(charge_status)
+            charge_status_result = self.__rvs_charge_status_publisher.publish(
+                charge_status
             )
         else:
             pass

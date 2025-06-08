@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import datetime
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, override
+
+from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 
 from exceptions import MqttGatewayException
 import mqtt_topics
@@ -18,7 +20,7 @@ from status_publisher.vehicle.gps_position import (
 
 if TYPE_CHECKING:
     from saic_ismart_client_ng.api.schema import GpsPosition
-    from saic_ismart_client_ng.api.vehicle import BasicVehicleStatus, VehicleStatusResp
+    from saic_ismart_client_ng.api.vehicle import BasicVehicleStatus
 
     from publisher.core import Publisher
     from vehicle_info import VehicleInfo
@@ -34,7 +36,9 @@ class VehicleStatusRespProcessingResult:
     raw_soc: int | None
 
 
-class VehicleStatusRespPublisher(VehicleDataPublisher):
+class VehicleStatusRespPublisher(
+    VehicleDataPublisher[VehicleStatusResp, VehicleStatusRespProcessingResult]
+):
     def __init__(
         self, vin: VehicleInfo, publisher: Publisher, mqtt_vehicle_prefix: str
     ) -> None:
@@ -46,7 +50,8 @@ class VehicleStatusRespPublisher(VehicleDataPublisher):
             BasicVehicleStatusPublisher(vin, publisher, mqtt_vehicle_prefix)
         )
 
-    def on_vehicle_status_resp(
+    @override
+    def publish(
         self, vehicle_status: VehicleStatusResp
     ) -> VehicleStatusRespProcessingResult:
         vehicle_status_time = datetime.datetime.fromtimestamp(
@@ -70,10 +75,8 @@ class VehicleStatusRespPublisher(VehicleDataPublisher):
     def __on_basic_vehicle_status(
         self, basic_vehicle_status: BasicVehicleStatus, gps_position: GpsPosition | None
     ) -> VehicleStatusRespProcessingResult:
-        basic_vehicle_status_result = (
-            self.__basic_vehicle_status_publisher.on_basic_vehicle_status(
-                basic_vehicle_status
-            )
+        basic_vehicle_status_result = self.__basic_vehicle_status_publisher.publish(
+            basic_vehicle_status
         )
 
         if gps_position:
@@ -98,9 +101,7 @@ class VehicleStatusRespPublisher(VehicleDataPublisher):
         basic_vehicle_status_result: BasicVehicleStatusProcessingResult,
         gps_position: GpsPosition,
     ) -> None:
-        gps_position_result = self.__gps_position_publisher.on_gps_position(
-            gps_position
-        )
+        gps_position_result = self.__gps_position_publisher.publish(gps_position)
         self.__fuse_data(basic_vehicle_status_result, gps_position_result)
 
     def __fuse_data(

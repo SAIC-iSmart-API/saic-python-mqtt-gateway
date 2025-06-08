@@ -266,9 +266,7 @@ class VehicleState:
     def handle_vehicle_status(
         self, vehicle_status: VehicleStatusResp
     ) -> VehicleStatusRespProcessingResult:
-        processing_result = self.__vehicle_response_publisher.on_vehicle_status_resp(
-            vehicle_status
-        )
+        processing_result = self.__vehicle_response_publisher.publish(vehicle_status)
         self.hv_battery_active_from_car = processing_result.hv_battery_active_from_car
         self.__remote_ac_running = processing_result.remote_ac_running
         if processing_result.remote_heated_seats_front_left_level is not None:
@@ -347,7 +345,7 @@ class VehicleState:
         )
 
     def notify_message(self, message: MessageEntity) -> None:
-        result = self.__message_publisher.on_message(message)
+        result = self.__message_publisher.publish(message)
         if result.processed:
             self.notify_car_activity()
 
@@ -488,9 +486,7 @@ class VehicleState:
     def handle_charge_status(
         self, charge_info_resp: ChrgMgmtDataResp
     ) -> ChrgMgmtDataRespProcessingResult:
-        result = self.__charge_response_publisher.on_chrg_mgmt_data_resp(
-            charge_info_resp
-        )
+        result = self.__charge_response_publisher.publish(charge_info_resp)
 
         if result.scheduled_charging is not None:
             self.update_scheduled_charging(

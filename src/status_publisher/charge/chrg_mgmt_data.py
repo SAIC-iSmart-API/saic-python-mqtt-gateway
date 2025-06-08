@@ -4,6 +4,7 @@ import dataclasses
 import datetime
 import logging
 import math
+from typing import override
 
 from saic_ismart_client_ng.api.vehicle_charging import (
     ChargeCurrentLimitCode,
@@ -36,10 +37,11 @@ class ChrgMgmtDataProcessingResult:
     raw_soc: int | None
 
 
-class ChrgMgmtDataPublisher(VehicleDataPublisher):
-    def on_chrg_mgmt_data(
-        self, charge_mgmt_data: ChrgMgmtData
-    ) -> ChrgMgmtDataProcessingResult:
+class ChrgMgmtDataPublisher(
+    VehicleDataPublisher[ChrgMgmtData, ChrgMgmtDataProcessingResult]
+):
+    @override
+    def publish(self, charge_mgmt_data: ChrgMgmtData) -> ChrgMgmtDataProcessingResult:
         is_valid_raw_current = (
             charge_mgmt_data.bmsPackCrntV != 1
             and charge_mgmt_data.bmsPackCrnt is not None
