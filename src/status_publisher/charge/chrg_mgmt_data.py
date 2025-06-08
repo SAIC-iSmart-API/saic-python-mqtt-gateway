@@ -71,34 +71,7 @@ class ChrgMgmtDataPublisher(VehicleDataPublisher):
             transform=lambda x: round(x, 3),
         )
 
-        obc_voltage = charge_mgmt_data.onBdChrgrAltrCrntInptVol
-        obc_current = charge_mgmt_data.onBdChrgrAltrCrntInptCrnt
-        if obc_voltage is not None and obc_current is not None:
-            self._publish(
-                topic=mqtt_topics.OBC_CURRENT,
-                value=round(obc_current / 5.0, 1),
-            )
-            self._publish(
-                topic=mqtt_topics.OBC_VOLTAGE,
-                value=2 * obc_voltage,
-            )
-            self._publish(
-                topic=mqtt_topics.OBC_POWER_SINGLE_PHASE,
-                value=round(2.0 * obc_voltage * obc_current / 5.0, 1),
-            )
-            self._publish(
-                topic=mqtt_topics.OBC_POWER_THREE_PHASE,
-                value=round(math.sqrt(3) * 2 * obc_voltage * obc_current / 15.0, 1),
-            )
-        else:
-            self._publish(
-                topic=mqtt_topics.OBC_CURRENT,
-                value=0.0,
-            )
-            self._publish(
-                topic=mqtt_topics.OBC_VOLTAGE,
-                value=0,
-            )
+        self.__publish_obc_data(charge_mgmt_data)
 
         raw_charge_current_limit = charge_mgmt_data.bmsAltngChrgCrntDspCmd
         charge_current_limit: ChargeCurrentLimitCode | None = None
@@ -150,35 +123,9 @@ class ChrgMgmtDataPublisher(VehicleDataPublisher):
             value=charge_mgmt_data.ccuOffBdChrgrPlugOn,
         )
 
-        scheduled_charging: ScheduledCharging | None = None
-        if charge_mgmt_data is not None and (
-            charge_mgmt_data.bmsReserStHourDspCmd is not None
-            and charge_mgmt_data.bmsReserStMintueDspCmd is not None
-            and charge_mgmt_data.bmsReserSpHourDspCmd is not None
-            and charge_mgmt_data.bmsReserSpMintueDspCmd is not None
-        ):
-            try:
-                start_hour = charge_mgmt_data.bmsReserStHourDspCmd
-                start_minute = charge_mgmt_data.bmsReserStMintueDspCmd
-                start_time = datetime.time(hour=start_hour, minute=start_minute)
-                end_hour = charge_mgmt_data.bmsReserSpHourDspCmd
-                end_minute = charge_mgmt_data.bmsReserSpMintueDspCmd
-                mode = ScheduledChargingMode(charge_mgmt_data.bmsReserCtrlDspCmd)
-                self._publish(
-                    topic=mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE,
-                    value={
-                        "startTime": f"{start_hour:02d}:{start_minute:02d}",
-                        "endTime": f"{end_hour:02d}:{end_minute:02d}",
-                        "mode": mode.name,
-                    },
-                )
-                scheduled_charging = ScheduledCharging(start_time=start_time, mode=mode)
-
-            except ValueError:
-                LOG.exception("Error parsing scheduled charging info")
+        scheduled_charging = self.__publish_charging_schedule(charge_mgmt_data)
 
         # Only publish remaining charging time if the car tells us the value is OK
-        remaining_charging_time: int | None = None
         valid_remaining_time, remaining_charging_time = self._transform_and_publish(
             topic=mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME,
             value=charge_mgmt_data.chrgngRmnngTime,
@@ -220,3 +167,62 @@ class ChrgMgmtDataPublisher(VehicleDataPublisher):
             power=charge_mgmt_data.decoded_power if is_valid_power else None,
             raw_soc=charge_mgmt_data.bmsPackSOCDsp,
         )
+
+    def __publish_charging_schedule(self, charge_mgmt_data: ChrgMgmtData) -> ScheduledCharging | None:
+        scheduled_charging: ScheduledCharging | None = None
+        if charge_mgmt_data is not None and (
+                charge_mgmt_data.bmsReserStHourDspCmd is not None
+                and charge_mgmt_data.bmsReserStMintueDspCmd is not None
+                and charge_mgmt_data.bmsReserSpHourDspCmd is not None
+                and charge_mgmt_data.bmsReserSpMintueDspCmd is not None
+        ):
+            try:
+                start_hour = charge_mgmt_data.bmsReserStHourDspCmd
+                start_minute = charge_mgmt_data.bmsReserStMintueDspCmd
+                start_time = datetime.time(hour=start_hour, minute=start_minute)
+                end_hour = charge_mgmt_data.bmsReserSpHourDspCmd
+                end_minute = charge_mgmt_data.bmsReserSpMintueDspCmd
+                mode = ScheduledChargingMode(charge_mgmt_data.bmsReserCtrlDspCmd)
+                self._publish(
+                    topic=mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE,
+                    value={
+                        "startTime": f"{start_hour:02d}:{start_minute:02d}",
+                        "endTime": f"{end_hour:02d}:{end_minute:02d}",
+                        "mode": mode.name,
+                    },
+                )
+                scheduled_charging = ScheduledCharging(start_time=start_time, mode=mode)
+
+            except ValueError:
+                LOG.exception("Error parsing scheduled charging info")
+        return scheduled_charging
+
+    def __publish_obc_data(self, charge_mgmt_data: ChrgMgmtData) -> None:
+        obc_voltage = charge_mgmt_data.onBdChrgrAltrCrntInptVol
+        obc_current = charge_mgmt_data.onBdChrgrAltrCrntInptCrnt
+        if obc_voltage is not None and obc_current is not None:
+            self._publish(
+                topic=mqtt_topics.OBC_CURRENT,
+                value=round(obc_current / 5.0, 1),
+            )
+            self._publish(
+                topic=mqtt_topics.OBC_VOLTAGE,
+                value=2 * obc_voltage,
+            )
+            self._publish(
+                topic=mqtt_topics.OBC_POWER_SINGLE_PHASE,
+                value=round(2.0 * obc_voltage * obc_current / 5.0, 1),
+            )
+            self._publish(
+                topic=mqtt_topics.OBC_POWER_THREE_PHASE,
+                value=round(math.sqrt(3) * 2 * obc_voltage * obc_current / 15.0, 1),
+            )
+        else:
+            self._publish(
+                topic=mqtt_topics.OBC_CURRENT,
+                value=0.0,
+            )
+            self._publish(
+                topic=mqtt_topics.OBC_VOLTAGE,
+                value=0,
+            )
