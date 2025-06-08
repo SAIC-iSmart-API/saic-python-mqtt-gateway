@@ -51,11 +51,6 @@ jobs:
         run: |
           poetry run mypy
 
-      - name: Lint with pylint
-        run: |
-          poetry run pylint
-        if: success() || failure()
-
       - name: Lint with Ruff
         run: |
           poetry run ruff check . --output-format=github
