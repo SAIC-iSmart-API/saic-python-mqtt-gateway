@@ -4,9 +4,8 @@ from datetime import datetime, timedelta
 import logging
 from typing import TYPE_CHECKING
 
-from apscheduler.schedulers.base import BaseScheduler
-
 if TYPE_CHECKING:
+    from apscheduler.schedulers.base import BaseScheduler
     from saic_ismart_client_ng import SaicApi
 
 LOG = logging.getLogger(__name__)
