@@ -50,7 +50,7 @@ class CommandHandlerBase(metaclass=ABCMeta):
 
 
 class MultiValuedCommandHandler[T](CommandHandlerBase, metaclass=ABCMeta):
-    async def should_refresh(self, action_result: T) -> bool:
+    async def should_refresh(self, _action_result: T) -> bool:
         return True
 
     @abstractmethod
@@ -78,7 +78,7 @@ class BooleanCommandHandler[T](CommandHandlerBase, metaclass=ABCMeta):
     async def handle_false(self) -> T:
         raise NotImplementedError
 
-    async def should_refresh(self, action_result: T) -> bool:
+    async def should_refresh(self, _action_result: T) -> bool:
         return True
 
     @override
