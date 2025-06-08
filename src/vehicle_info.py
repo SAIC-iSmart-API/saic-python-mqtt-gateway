@@ -28,7 +28,7 @@ class VehicleInfo:
         self.model_year: Final[str] = str(vin_info.modelYear or "").strip()
         self.series: Final[str] = str(vin_info.series or "").strip().upper()
         self.color: Final[str] = str(vin_info.colorName or "").strip()
-        self.properties: Final[dict[str, dict[str, str | None]]] = (
+        self.__properties_by_code: Final[dict[str, str | None]] = (
             self.__properties_from_configuration(self.configuration)
         )
         self.__custom_battery_capacity: float | None = custom_battery_capacity
@@ -36,24 +36,15 @@ class VehicleInfo:
     @staticmethod
     def __properties_from_configuration(
         configuration: list[VehicleModelConfiguration],
-    ) -> dict[str, dict[str, str | None]]:
-        properties = {}
+    ) -> dict[str, str | None]:
+        properties: dict[str, str | None] = {}
         for c in configuration:
-            property_name = c.itemName
-            property_code = c.itemCode
-            property_value = c.itemValue
-            if property_name is not None:
-                properties[property_name] = {
-                    "name": property_name,
-                    "code": property_code,
-                    "value": property_value,
-                }
-            if property_code is not None:
-                properties[property_code] = {
-                    "name": property_name,
-                    "code": property_code,
-                    "value": property_value,
-                }
+            if (code := c.itemCode) is not None:
+                normalized_code = str(code).strip().upper()
+                if (value := c.itemValue) is not None:
+                    properties[normalized_code] = str(value).strip().upper()
+                else:
+                    properties[normalized_code] = None
         return properties
 
     def get_ac_temperature_idx(self, remote_ac_temperature: int) -> int:
@@ -73,12 +64,9 @@ class VehicleInfo:
             return 33
         return 28
 
-    def __get_property_value(self, property_name: str) -> str | None:
-        if property_name in self.properties:
-            pdict = self.properties[property_name]
-            if pdict is not None and isinstance(pdict, dict) and "value" in pdict:
-                return pdict["value"]
-        return None
+    def __get_property_by_code(self, property_name: str) -> str | None:
+        normalized_property_name = str(property_name).strip().upper()
+        return self.__properties_by_code.get(normalized_property_name)
 
     @property
     def is_ev(self) -> bool:
@@ -90,15 +78,15 @@ class VehicleInfo:
 
     @property
     def has_sunroof(self) -> bool:
-        return self.__get_property_value("Sunroof") != "0"
+        return self.__get_property_by_code("S35") != "0"
 
     @property
     def has_on_off_heated_seats(self) -> bool:
-        return self.__get_property_value("HeatedSeat") == "2"
+        return self.__get_property_by_code("HeatedSeat") == "2"
 
     @property
     def has_level_heated_seats(self) -> bool:
-        return self.__get_property_value("HeatedSeat") == "1"
+        return self.__get_property_by_code("HeatedSeat") == "1"
 
     @property
     def has_heated_seats(self) -> bool:
@@ -106,7 +94,7 @@ class VehicleInfo:
 
     @property
     def supports_target_soc(self) -> bool:
-        return self.__get_property_value("Battery") == "1"
+        return self.__get_property_by_code("BType") == "1"
 
     @property
     def real_battery_capacity(self) -> float | None:
