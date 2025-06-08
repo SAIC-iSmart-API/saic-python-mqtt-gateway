@@ -383,11 +383,57 @@ class MqttCommandHandler:
                         raise MqttGatewayException(msg)
             case _:
                 # set mode, period (in)-active,...
-                await self.vehicle_state.configure_by_message(
+                await self.__configure_vehicle_state_by_message(
                     topic=topic, payload=payload
                 )
                 return False
         return True
+
+    async def __configure_vehicle_state_by_message(
+        self, *, topic: str, payload: str
+    ) -> None:
+        payload = payload.lower()
+        match topic:
+            case mqtt_topics.REFRESH_MODE_SET:
+                try:
+                    refresh_mode = RefreshMode.get(payload)
+                    self.vehicle_state.set_refresh_mode(
+                        refresh_mode, "MQTT direct set refresh mode command execution"
+                    )
+                except KeyError as e:
+                    msg = f"Unsupported payload {payload}"
+                    raise MqttGatewayException(msg) from e
+            case mqtt_topics.REFRESH_PERIOD_ACTIVE_SET:
+                try:
+                    seconds = int(payload)
+                    self.vehicle_state.set_refresh_period_active(seconds)
+                except ValueError as e:
+                    msg = f"Error setting value for payload {payload}"
+                    raise MqttGatewayException(msg) from e
+            case mqtt_topics.REFRESH_PERIOD_INACTIVE_SET:
+                try:
+                    seconds = int(payload)
+                    self.vehicle_state.set_refresh_period_inactive(seconds)
+                except ValueError as e:
+                    msg = f"Error setting value for paylo d {payload}"
+                    raise MqttGatewayException(msg) from e
+            case mqtt_topics.REFRESH_PERIOD_AFTER_SHUTDOWN_SET:
+                try:
+                    seconds = int(payload)
+                    self.vehicle_state.set_refresh_period_after_shutdown(seconds)
+                except ValueError as e:
+                    msg = f"Error setting value for payload {payload}"
+                    raise MqttGatewayException(msg) from e
+            case mqtt_topics.REFRESH_PERIOD_INACTIVE_GRACE_SET:
+                try:
+                    seconds = int(payload)
+                    self.vehicle_state.set_refresh_period_inactive_grace(seconds)
+                except ValueError as e:
+                    msg = f"Error setting value for payload {payload}"
+                    raise MqttGatewayException(msg) from e
+            case _:
+                msg = f"Unsupported topic {topic}"
+                raise MqttGatewayException(msg)
 
     def __get_command_topics(self, topic: str) -> tuple[str, str]:
         global_topic_removed = topic.removeprefix(self.global_mqtt_topic).removeprefix(

@@ -15,7 +15,6 @@ from saic_ismart_client_ng.api.vehicle_charging import (
     TargetBatteryCode,
 )
 
-from exceptions import MqttGatewayException
 import mqtt_topics
 from status_publisher.charge.chrg_mgmt_data_resp import (
     ChrgMgmtDataRespProcessingResult,
@@ -497,50 +496,6 @@ class VehicleState:
                 RefreshMode.PERIODIC,
                 f"initial gateway startup from an invalid state {self.refresh_mode}",
             )
-
-    async def configure_by_message(self, *, topic: str, payload: str) -> None:
-        payload = payload.lower()
-        match topic:
-            case mqtt_topics.REFRESH_MODE_SET:
-                try:
-                    refresh_mode = RefreshMode.get(payload)
-                    self.set_refresh_mode(
-                        refresh_mode, "MQTT direct set refresh mode command execution"
-                    )
-                except KeyError as e:
-                    msg = f"Unsupported payload {payload}"
-                    raise MqttGatewayException(msg) from e
-            case mqtt_topics.REFRESH_PERIOD_ACTIVE_SET:
-                try:
-                    seconds = int(payload)
-                    self.set_refresh_period_active(seconds)
-                except ValueError as e:
-                    msg = f"Error setting value for payload {payload}"
-                    raise MqttGatewayException(msg) from e
-            case mqtt_topics.REFRESH_PERIOD_INACTIVE_SET:
-                try:
-                    seconds = int(payload)
-                    self.set_refresh_period_inactive(seconds)
-                except ValueError as e:
-                    msg = f"Error setting value for paylo d {payload}"
-                    raise MqttGatewayException(msg) from e
-            case mqtt_topics.REFRESH_PERIOD_AFTER_SHUTDOWN_SET:
-                try:
-                    seconds = int(payload)
-                    self.set_refresh_period_after_shutdown(seconds)
-                except ValueError as e:
-                    msg = f"Error setting value for payload {payload}"
-                    raise MqttGatewayException(msg) from e
-            case mqtt_topics.REFRESH_PERIOD_INACTIVE_GRACE_SET:
-                try:
-                    seconds = int(payload)
-                    self.set_refresh_period_inactive_grace(seconds)
-                except ValueError as e:
-                    msg = f"Error setting value for payload {payload}"
-                    raise MqttGatewayException(msg) from e
-            case _:
-                msg = f"Unsupported topic {topic}"
-                raise MqttGatewayException(msg)
 
     def handle_charge_status(
         self, charge_info_resp: ChrgMgmtDataResp
