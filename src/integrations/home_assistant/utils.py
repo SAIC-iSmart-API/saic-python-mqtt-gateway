@@ -1,15 +1,18 @@
+from __future__ import annotations
+
 import logging
 
 import inflection
 
 LOG = logging.getLogger(__name__)
 
+
 def snake_case(s: str) -> str:
     return inflection.underscore(s.lower()).replace(" ", "_")
 
 
 def decode_as_utf8(
-        byte_string: str | None | bytes | bytearray, default: str = ""
+    byte_string: str | None | bytes | bytearray, default: str = ""
 ) -> str:
     if byte_string is None:
         return default

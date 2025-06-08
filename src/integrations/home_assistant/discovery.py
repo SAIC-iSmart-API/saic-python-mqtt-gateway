@@ -9,13 +9,13 @@ from saic_ismart_client_ng.api.vehicle_charging import (
     ScheduledChargingMode,
 )
 
-import mqtt_topics
 from integrations.home_assistant.availability import (
     HaCustomAvailabilityConfig,
     HaCustomAvailabilityEntry,
 )
 from integrations.home_assistant.base import HomeAssistantDiscoveryBase
 from integrations.home_assistant.utils import decode_as_utf8, snake_case
+import mqtt_topics
 from publisher.mqtt_publisher import MqttPublisher
 from vehicle import RefreshMode, VehicleState
 
@@ -1075,5 +1075,3 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
 
     def __unpublish_heated_seat_switch(self, seat: str) -> None:
         self.__unpublish_ha_discovery_message("switch", f"Heated Seat {seat}")
-
-
