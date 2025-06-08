@@ -1,18 +1,33 @@
 # Change Log
 
+## 0.9.8
+
+### What's Changed
+*  VehicleInfo: Use case-insensitive property codes
+
+## 0.9.7
+
+### What's Changed
+*  Expose "Total Battery Capacity" in HA
+
+## 0.9.6
+
+### What's Changed
+*  Simplify battery capacity decoding
+
 ## 0.9.5
 
-## What's Changed
+### What's Changed
 * Extend ZS EV battery capacity to high trim and long range models by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/339
 
 ## 0.9.4
 
-## What's Changed
+### What's Changed
 * Introduce armv7 support instead of armv6 by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/336
 
 ## 0.9.3
 
-## What's Changed
+### What's Changed
 * Restore phone login by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/334
 
 ## 0.9.2
@@ -46,7 +61,7 @@ This avoids looking for a "charging started" event as soon as the charging is co
 
 ## 0.7.1
 
-## What's changed
+### What's changed
 * #287: Gracefully handle cases where the messages api returns no data by @nanomad in https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/pull/290
 
 ## 0.7.0
