@@ -3,11 +3,12 @@ services:
     image: "saicismartapi/saic-python-mqtt-gateway:latest"
     build:
       context: .
+    restart: always
     container_name: "saic-mqtt-gateway"
     environment:
       - MQTT_URI=${MQTT_BROKER_URI}
       - MQTT_USER=${MQTT_USERNAME}
-      - MQTT_PASSWORD=${MQTT_PWD}
+      - MQTT_PASSWORD=${MQTT_PASSWORD}
       - SAIC_USER=${SAIC_USERNAME}
       - SAIC_PASSWORD=${SAIC_PWD}
     volumes:

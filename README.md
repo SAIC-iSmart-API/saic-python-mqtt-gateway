@@ -145,7 +145,21 @@ from [docker hub](https://hub.docker.com/r/saicismartapi/saic-python-mqtt-gatewa
 $ docker build -t saic-mqtt-gateway .
 ```
 
+#### Use docker compose
+
 There is a [docker compose file](docker-compose.yml) that shows how to set up the service.
+
+First setup the hidden ".env" file in the root directory of the project with your specific data
+
+Test your setup with
+```
+$ docker compose up
+```
+
+Let it run in background (dedicated)
+```
+$ docker compose up -d
+```
 
 ## Commands over MQTT
 
