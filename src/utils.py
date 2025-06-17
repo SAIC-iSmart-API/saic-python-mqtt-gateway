@@ -24,7 +24,7 @@ def value_in_range(
     return min_value <= value <= max_value
 
 
-def is_valid_temperature(value: Numeric) -> bool:
+def is_valid_temperature(value: int) -> bool:
     return value_in_range(value, -127, 127) and value != 87
 
 
