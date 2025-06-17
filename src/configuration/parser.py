@@ -97,9 +97,6 @@ def __parse_mqtt_transport(args: Namespace, config: Configuration) -> None:
             config.mqtt_transport_protocol = TransportProtocol.TLS
             if args.tls_server_cert_path:
                 config.tls_server_cert_path = args.tls_server_cert_path
-            else:
-                msg = f"No server certificate authority file provided for TLS MQTT URI {args.mqtt_uri}"
-                raise SystemExit(msg)
         else:
             msg = f"Invalid MQTT URI scheme: {parse_result.scheme}, use tcp or ws"
             raise SystemExit(msg)
