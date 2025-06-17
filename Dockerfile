@@ -27,4 +27,6 @@ COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 COPY src/ .
 COPY examples/ .
 
+USER 185:185
+
 CMD [ "python", "./main.py"]
