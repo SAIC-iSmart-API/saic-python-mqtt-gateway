@@ -27,4 +27,9 @@ COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 COPY src/ .
 COPY examples/ .
 
+# Add SAIC user and set permissions
+RUN useradd -ms /bin/bash SAIC
+RUN chown -R SAIC:SAIC /usr/src/app
+USER SAIC
+
 CMD [ "python", "./main.py"]
