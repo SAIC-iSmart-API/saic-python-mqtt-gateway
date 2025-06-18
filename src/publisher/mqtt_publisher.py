@@ -52,18 +52,14 @@ class MqttPublisher(Publisher):
                 self.client.set_auth_credentials(username=self.configuration.mqtt_user)
 
         if self.transport_protocol.with_tls:
+            ssl_context = ssl.create_default_context()
             cert_uri = self.configuration.tls_server_cert_path
-            LOG.debug(
-                f"Configuring network encryption and authentication options for MQTT using {cert_uri}"
-            )
             if cert_uri:
-                ssl_context = ssl.create_default_context()
+                LOG.debug(
+                    f"Using custom CA file {cert_uri}"
+                )
                 ssl_context.load_verify_locations(cafile=cert_uri)
                 ssl_context.check_hostname = False
-            else:
-                LOG.debug("Custom certificate chain not provided, using default ssl context")
-                ssl_context = True
-
         else:
             ssl_context = None
         await self.client.connect(
