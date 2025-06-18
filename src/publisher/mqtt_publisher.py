@@ -61,7 +61,7 @@ class MqttPublisher(Publisher):
                 ssl_context.load_verify_locations(cafile=cert_uri)
                 ssl_context.check_hostname = False
             else:
-                LOG.debug(f"Custom certificate chain not provided, using default")
+                LOG.debug("Custom certificate chain not provided, using default ssl context")
                 ssl_context = True
 
         else:
