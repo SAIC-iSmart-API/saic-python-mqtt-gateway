@@ -4,6 +4,7 @@ import argparse
 from argparse import ArgumentParser, Namespace
 from gettext import gettext as _
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, override
 
 if TYPE_CHECKING:
@@ -38,26 +39,56 @@ class ArgumentHelpFormatter(argparse.RawTextHelpFormatter):
                 if action.option_strings or action.nargs in defaulting_nargs:
                     # append default value
                     _help += _("\n(default: %(default)s)")
-            # append environment variable
-            _help += f"\n(environment variable: {action.envvar})"
+            # append environment variables
+            if action.envvar:
+                _help += f"\n(environment variable: {action.envvar})"
+            if action.file_envvar:
+                _help += f"\n(file environment variable: {action.file_envvar})"
         # whitespace from each line
         return "\n".join([m.lstrip() for m in _help.split("\n")])
 
 
 class EnvDefault(argparse.Action):
+    """Argparse action that allows setting a default from environment variable or file."""
+
     def __init__(
         self,
         envvar: str,
         required: bool = True,
+        try_file: bool = False,
         default: str | None = None,
         **kwargs: dict[str, Any],
     ) -> None:
         self.envvar = envvar
-        if os.environ.get(envvar):
-            default = os.environ[envvar]
+        self.file_envvar = f"{envvar}_FILE" if try_file else None
+
+        envvar_value = os.environ.get(self.envvar, None)
+        envvar_file_value = (
+            os.environ.get(self.file_envvar, None) if self.file_envvar else None
+        )
+
+        if envvar_value is not None:
+            # enviroment value takes precedence
+            default = envvar_value
+        elif envvar_file_value:
+            # if the environment variable is not set, check for a file specified by the environment variable with the _FILE suffix
+            default_from_file = self._get_default_from_file(envvar_file_value)
+            if default_from_file:
+                default = default_from_file
+
         if required and default:
+            # If the default is set from environment, it should not be required from command line
             required = False
-        super().__init__(default=default, required=required, **kwargs)
+        super().__init__(required=required, default=default, **kwargs)
+
+    def _get_default_from_file(self, file_path: str) -> str | None:
+        """Get the default value from the file specified by the environment variable."""
+        try:
+            with Path(file_path).open(encoding="utf-8") as f:
+                return f.read().strip()
+        except OSError as e:
+            msg = f"Error reading file {file_path}, specified by environment variable {self.file_envvar}"
+            raise argparse.ArgumentTypeError(msg) from e
 
     @override
     def __call__(

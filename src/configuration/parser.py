@@ -207,6 +207,7 @@ def __add_mqtt_argument_group(
         required=False,
         action=EnvDefault,
         envvar="MQTT_USER",
+        try_file=True,
         type=str,
     )
     mqtt.add_argument(
@@ -216,6 +217,7 @@ def __add_mqtt_argument_group(
         required=False,
         action=EnvDefault,
         envvar="MQTT_PASSWORD",
+        try_file=True,
         type=str,
     )
     mqtt.add_argument(
@@ -289,6 +291,7 @@ def __add_saic_api_argument_group(
         required=True,
         action=EnvDefault,
         envvar="SAIC_USER",
+        try_file=True,
         type=str,
     )
     saic_api.add_argument(
@@ -299,6 +302,7 @@ def __add_saic_api_argument_group(
         required=True,
         action=EnvDefault,
         envvar="SAIC_PASSWORD",
+        try_file=True,
         type=str,
     )
     saic_api.add_argument(
@@ -464,6 +468,7 @@ def __add_abrp_argument_group(
         required=False,
         action=EnvDefault,
         envvar="ABRP_API_KEY",
+        try_file=True,
         type=str,
     )
     abrp_integration.add_argument(
@@ -475,6 +480,7 @@ def __add_abrp_argument_group(
         required=False,
         action=EnvDefault,
         envvar="ABRP_USER_TOKEN",
+        try_file=True,
         type=str,
     )
     abrp_integration.add_argument(
