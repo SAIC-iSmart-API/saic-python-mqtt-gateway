@@ -92,8 +92,6 @@ def __parse_mqtt_transport(args: Namespace, config: Configuration) -> None:
         parse_result = urllib.parse.urlparse(args.mqtt_uri)
         if parse_result.scheme == "tcp":
             config.mqtt_transport_protocol = TransportProtocol.TCP
-        elif parse_result.scheme == "ws":
-            config.mqtt_transport_protocol = TransportProtocol.WS
         elif parse_result.scheme == "tls":
             config.mqtt_transport_protocol = TransportProtocol.TLS
             if args.tls_server_cert_path:

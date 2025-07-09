@@ -13,7 +13,6 @@ class TransportProtocol(Enum):
         self.with_tls = with_tls
 
     TCP = "tcp", False
-    WS = "websockets", False
     TLS = "tcp", True
 
 

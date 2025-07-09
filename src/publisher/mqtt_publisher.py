@@ -30,7 +30,6 @@ class MqttPublisher(Publisher):
 
         mqtt_client = gmqtt.Client(
             client_id=str(self.publisher_id),
-            transport=self.transport_protocol.transport_mechanism,
             will_message=gmqtt.Message(
                 topic=self.get_topic(mqtt_topics.INTERNAL_LWT, False),
                 payload="offline",
