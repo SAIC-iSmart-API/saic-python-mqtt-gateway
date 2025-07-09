@@ -107,10 +107,10 @@ def __parse_mqtt_transport(args: Namespace, config: Configuration) -> None:
 
         if parse_result.port:
             config.mqtt_port = parse_result.port
-        elif config.mqtt_transport_protocol == TransportProtocol.TCP:
-            config.mqtt_port = 1883
+        elif config.mqtt_transport_protocol == TransportProtocol.TLS:
+            config.mqtt_port = 8883
         else:
-            config.mqtt_port = 9001
+            config.mqtt_port = 1883
         config.mqtt_host = str(parse_result.hostname)
 
 
@@ -183,8 +183,8 @@ def __add_mqtt_argument_group(
         "--mqtt-uri",
         help="""The URI to the MQTT Server.
                 TCP: tcp://mqtt.eclipseprojects.io:1883
-                WebSocket: ws://mqtt.eclipseprojects.io:9001
-                TLS: tls://mqtt.eclipseprojects.io:8883""",
+                TLS: tls://mqtt.eclipseprojects.io:8883
+                Leave empty to disable MQTT.""",
         dest="mqtt_uri",
         required=False,
         action=EnvDefault,
