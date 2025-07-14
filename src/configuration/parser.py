@@ -102,7 +102,7 @@ def __parse_mqtt_transport(args: Namespace, config: Configuration) -> None:
                     args.tls_server_cert_check_hostname
                 )
         else:
-            msg = f"Invalid MQTT URI scheme: {parse_result.scheme}, use tcp or ws"
+            msg = f"Invalid MQTT URI scheme: {parse_result.scheme}, use tls, tcp or ws"
             raise SystemExit(msg)
 
         if parse_result.port:

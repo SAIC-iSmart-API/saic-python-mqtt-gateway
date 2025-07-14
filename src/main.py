@@ -5,8 +5,14 @@ import faulthandler
 import signal
 import sys
 
-from configuration.parser import process_command_line
+from configuration import Configuration, parser
 from mqtt_gateway import MqttGateway
+
+
+async def run(config: Configuration) -> None:
+    mqtt_gateway = MqttGateway(config)
+    await mqtt_gateway.run()
+
 
 if __name__ == "__main__":
     # Keep this at the top!
@@ -18,7 +24,6 @@ if __name__ == "__main__":
     faulthandler.enable(file=sys.stderr, all_threads=True)
     if hasattr(faulthandler, "register") and hasattr(signal, "SIGQUIT"):
         faulthandler.register(signal.SIGQUIT, chain=False)
-    configuration = process_command_line()
+    configuration = parser.process_command_line()
 
-    mqtt_gateway = MqttGateway(configuration)
-    asyncio.run(mqtt_gateway.run(), debug=debug_log_enabled())
+    asyncio.run(run(configuration), debug=debug_log_enabled())
