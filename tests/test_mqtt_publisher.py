@@ -68,7 +68,7 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
         assert self.received_payload == REAR_WINDOW_HEAT_STATE
 
     async def send_message(self, topic: str, payload: Any) -> None:
-        await self.mqtt_client.client.on_message("client", topic, payload, 0, {})
+        await self.mqtt_client._on_message("client", topic, payload, 0, {})
 
     async def on_charging_detected(self, vin: str) -> None:
         pass

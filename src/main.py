@@ -27,4 +27,5 @@ if __name__ == "__main__":
     configuration = process_command_line()
 
     mqtt_gateway = MqttGateway(configuration)
+
     asyncio.run(mqtt_gateway.run(), debug=debug_log_enabled())
