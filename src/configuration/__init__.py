@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from zoneinfo import ZoneInfo
@@ -9,8 +9,11 @@ if TYPE_CHECKING:
     from integrations.openwb.charging_station import ChargingStation
 
 
+Transport = Literal["tcp", "websockets"]
+
+
 class TransportProtocol(Enum):
-    def __init__(self, transport_mechanism: str, with_tls: bool) -> None:
+    def __init__(self, transport_mechanism: Transport, with_tls: bool) -> None:
         self.transport_mechanism = transport_mechanism
         self.with_tls = with_tls
 
