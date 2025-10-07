@@ -114,6 +114,7 @@ class MqttPublisher(Publisher):
         if not self.first_connection:
             await self.__enable_commands()
         self.first_connection = False
+        self.keepalive()
 
     @override
     def enable_commands(self) -> None:
