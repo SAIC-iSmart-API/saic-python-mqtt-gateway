@@ -73,24 +73,33 @@ class MqttPublisher(Publisher):
             ),
         )
         client.pending_calls_threshold = 150
-        self.client = client
         reconnect_interval = 5
         while True:
             try:
-                async with client:
+                LOG.debug(
+                    "Connecting to %s:%s as %s",
+                    self.host,
+                    self.port,
+                    self.publisher_id,
+                )
+                async with client as client_context:
+                    self.client = client_context
                     self.__connected.set()
                     await self.__on_connect()
-                    async for message in client.messages:
+                    async for message in client_context.messages:
                         await self._on_message(
-                            client,
+                            client_context,
                             str(message.topic),
                             message.payload,
                             message.qos,
                             message.properties,
                         )
-            except aiomqtt.MqttError as e:
-                LOG.error(
-                    f"Connection to MQTT broker lost; Reconnecting in {reconnect_interval} seconds ...: {e}"
+            except aiomqtt.MqttError:
+                LOG.warning(
+                    "Connection to %s:%s lost; Reconnecting in %d seconds ...",
+                    self.host,
+                    self.port,
+                    reconnect_interval,
                 )
                 await asyncio.sleep(reconnect_interval)
             except asyncio.exceptions.CancelledError:
@@ -98,7 +107,6 @@ class MqttPublisher(Publisher):
                 raise
             finally:
                 self.__connected.clear()
-                self.client = None
                 LOG.info("MQTT client disconnected")
 
     @override
@@ -123,7 +131,7 @@ class MqttPublisher(Publisher):
 
     async def __enable_commands(self) -> None:
         if not self.__connected.is_set() or not self.client:
-            LOG.error("MQTT client is not connected")
+            LOG.error("Failed to enable commands: MQTT client is not connected")
             return
         try:
             LOG.info("Subscribing to MQTT command topics")
@@ -213,18 +221,15 @@ class MqttPublisher(Publisher):
                 )
 
     def __publish(self, topic: str, payload: Any) -> None:
-        if not (self.client and self.is_connected()):
-            LOG.error("MQTT client is not connected")
-            return
+        LOG.debug("Publishing to MQTT topic %s with payload %s", topic, payload)
         loop = asyncio.get_running_loop()
         asyncio.run_coroutine_threadsafe(
             self.__async_publish(topic, payload, retain=True), loop
         )
-        LOG.debug(f"Publishing to MQTT topic {topic} with payload {payload}")
 
     async def __async_publish(self, topic: str, payload: Any, retain: bool) -> None:
         if not (self.client and self.is_connected()):
-            LOG.error("MQTT client is not connected")
+            LOG.error("Failed to publish: MQTT client is not connected")
             return
         try:
             await self.client.publish(topic, payload, retain)
