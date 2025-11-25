@@ -70,6 +70,7 @@ class MqttPublisher(Publisher):
                 topic=self.get_topic(mqtt_topics.INTERNAL_LWT, False),
                 payload="offline",
                 retain=True,
+                qos=1,
             ),
         )
         client.pending_calls_threshold = 150
@@ -220,19 +221,23 @@ class MqttPublisher(Publisher):
                     vin=vin, topic=topic, payload=payload
                 )
 
-    def __publish(self, topic: str, payload: Any) -> None:
+    def __publish(
+        self, topic: str, payload: Any, retain: bool = False, qos: int = 0
+    ) -> None:
         LOG.debug("Publishing to MQTT topic %s with payload %s", topic, payload)
         loop = asyncio.get_running_loop()
         asyncio.run_coroutine_threadsafe(
-            self.__async_publish(topic, payload, retain=True), loop
+            self.__async_publish(topic, payload, retain=retain, qos=qos), loop
         )
 
-    async def __async_publish(self, topic: str, payload: Any, retain: bool) -> None:
+    async def __async_publish(
+        self, topic: str, payload: Any, retain: bool, qos: int
+    ) -> None:
         if not (self.client and self.is_connected()):
             LOG.error("Failed to publish: MQTT client is not connected")
             return
         try:
-            await self.client.publish(topic, payload, retain)
+            await self.client.publish(topic, payload, retain=retain, qos=qos)
         except aiomqtt.MqttError as e:
             LOG.error(
                 f"Failed to publish to MQTT topic {topic} with payload {payload}: {e}"
@@ -244,30 +249,76 @@ class MqttPublisher(Publisher):
 
     @override
     def publish_json(
-        self, key: str, data: dict[str, Any], no_prefix: bool = False
+        self,
+        key: str,
+        data: dict[str, Any],
+        no_prefix: bool = False,
+        retain: bool = False,
+        qos: int = 0,
     ) -> None:
         payload = self.dict_to_anonymized_json(data)
-        self.__publish(topic=self.get_topic(key, no_prefix), payload=payload)
+        self.__publish(
+            topic=self.get_topic(key, no_prefix),
+            payload=payload,
+            retain=retain,
+            qos=qos,
+        )
 
     @override
-    def publish_str(self, key: str, value: str, no_prefix: bool = False) -> None:
-        self.__publish(topic=self.get_topic(key, no_prefix), payload=value)
+    def publish_str(
+        self,
+        key: str,
+        value: str,
+        no_prefix: bool = False,
+        retain: bool = False,
+        qos: int = 0,
+    ) -> None:
+        self.__publish(
+            topic=self.get_topic(key, no_prefix), payload=value, retain=retain, qos=qos
+        )
 
     @override
-    def publish_int(self, key: str, value: int, no_prefix: bool = False) -> None:
-        self.__publish(topic=self.get_topic(key, no_prefix), payload=value)
+    def publish_int(
+        self,
+        key: str,
+        value: int,
+        no_prefix: bool = False,
+        retain: bool = False,
+        qos: int = 0,
+    ) -> None:
+        self.__publish(
+            topic=self.get_topic(key, no_prefix), payload=value, retain=retain, qos=qos
+        )
 
     @override
-    def publish_bool(self, key: str, value: bool, no_prefix: bool = False) -> None:
-        self.__publish(topic=self.get_topic(key, no_prefix), payload=value)
+    def publish_bool(
+        self,
+        key: str,
+        value: bool,
+        no_prefix: bool = False,
+        retain: bool = False,
+        qos: int = 0,
+    ) -> None:
+        self.__publish(
+            topic=self.get_topic(key, no_prefix), payload=value, retain=retain, qos=qos
+        )
 
     @override
-    def publish_float(self, key: str, value: float, no_prefix: bool = False) -> None:
-        self.__publish(topic=self.get_topic(key, no_prefix), payload=value)
+    def publish_float(
+        self,
+        key: str,
+        value: float,
+        no_prefix: bool = False,
+        retain: bool = False,
+        qos: int = 0,
+    ) -> None:
+        self.__publish(
+            topic=self.get_topic(key, no_prefix), payload=value, retain=retain, qos=qos
+        )
 
     @override
-    def clear_topic(self, key: str, no_prefix: bool = False) -> None:
-        self.__publish(topic=self.get_topic(key, no_prefix), payload=None)
+    def clear_topic(self, key: str, no_prefix: bool = False, qos: int = 0) -> None:
+        self.__publish(topic=self.get_topic(key, no_prefix), payload=None, qos=qos)
 
     def get_vin_from_topic(self, topic: str) -> str:
         global_topic_removed = topic[len(self.configuration.mqtt_topic) + 1 :]
