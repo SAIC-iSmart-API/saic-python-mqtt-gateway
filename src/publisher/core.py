@@ -100,32 +100,52 @@ class Publisher(ABC):
         key: str,
         data: dict[str, Any],
         no_prefix: bool = False,
-        *,
-        retain: bool = True,
+        retain: bool = False,
+        qos: int = 0,
     ) -> None:
         raise NotImplementedError
 
     @abstractmethod
     def publish_str(
-        self, key: str, value: str, no_prefix: bool = False, *, retain: bool = True
+        self,
+        key: str,
+        value: str,
+        no_prefix: bool = False,
+        retain: bool = False,
+        qos: int = 0,
     ) -> None:
         raise NotImplementedError
 
     @abstractmethod
     def publish_int(
-        self, key: str, value: int, no_prefix: bool = False, *, retain: bool = True
+        self,
+        key: str,
+        value: int,
+        no_prefix: bool = False,
+        retain: bool = False,
+        qos: int = 0,
     ) -> None:
         raise NotImplementedError
 
     @abstractmethod
     def publish_bool(
-        self, key: str, value: bool, no_prefix: bool = False, *, retain: bool = True
+        self,
+        key: str,
+        value: bool,
+        no_prefix: bool = False,
+        retain: bool = False,
+        qos: int = 0,
     ) -> None:
         raise NotImplementedError
 
     @abstractmethod
     def publish_float(
-        self, key: str, value: float, no_prefix: bool = False, *, retain: bool = True
+        self,
+        key: str,
+        value: float,
+        no_prefix: bool = False,
+        retain: bool = False,
+        qos: int = 0,
     ) -> None:
         raise NotImplementedError
 
@@ -173,7 +193,7 @@ class Publisher(ABC):
             raise TypeError(msg)
 
     @abstractmethod
-    def clear_topic(self, key: str, no_prefix: bool = False) -> None:
+    def clear_topic(self, key: str, no_prefix: bool = False, qos: int = 0) -> None:
         raise NotImplementedError
 
     def get_mqtt_account_prefix(self) -> str:
@@ -249,7 +269,9 @@ class Publisher(ABC):
         return data
 
     def keepalive(self) -> None:
-        self.publish_str(mqtt_topics.INTERNAL_LWT, "online", False)
+        self.publish_str(
+            mqtt_topics.INTERNAL_LWT, "online", no_prefix=False, retain=True, qos=1
+        )
 
     @staticmethod
     def anonymize_str(value: str) -> str:
