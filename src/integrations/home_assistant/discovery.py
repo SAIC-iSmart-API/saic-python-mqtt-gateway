@@ -457,14 +457,12 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
         self._publish_sensor(
             mqtt_topics.CCU_ONBOARD_PLUG_STATUS,
             "CCU Onboard Plug Status",
-            state_class="measurement",
             entity_category="diagnostic",
             enabled=False,
         )
         self._publish_sensor(
             mqtt_topics.CCU_OFFBOARD_PLUG_STATUS,
             "CCU Offboard Plug Status",
-            state_class="measurement",
             entity_category="diagnostic",
             enabled=False,
         )
