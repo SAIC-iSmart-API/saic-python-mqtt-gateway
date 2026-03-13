@@ -7,3 +7,7 @@ class MqttGatewayException(Exception):
 
     def __str__(self) -> str:
         return self.message
+
+
+class VehicleStatusDriftException(MqttGatewayException):
+    """Raised when the vehicle status timestamp has drifted too far from the current time."""

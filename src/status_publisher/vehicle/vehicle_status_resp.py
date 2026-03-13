@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Final, override
 
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 
-from exceptions import MqttGatewayException
+from exceptions import MqttGatewayException, VehicleStatusDriftException
 import mqtt_topics
 from status_publisher import VehicleDataPublisher
 from status_publisher.vehicle.basic_vehicle_status import (
@@ -24,6 +24,9 @@ if TYPE_CHECKING:
 
     from publisher.core import Publisher
     from vehicle_info import VehicleInfo
+
+
+_INVALID_TIMESTAMPS: Final = frozenset({0, 2147483647})
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -54,15 +57,20 @@ class VehicleStatusRespPublisher(
     def publish(
         self, vehicle_status: VehicleStatusResp
     ) -> VehicleStatusRespProcessingResult:
+        status_time = vehicle_status.statusTime
+        if status_time is None or status_time in _INVALID_TIMESTAMPS:
+            msg = f"Vehicle status has invalid timestamp: {status_time}"
+            raise VehicleStatusDriftException(msg)
+
         vehicle_status_time = datetime.datetime.fromtimestamp(
-            vehicle_status.statusTime or 0, tz=datetime.UTC
+            status_time, tz=datetime.UTC
         )
         now_time = datetime.datetime.now(tz=datetime.UTC)
         vehicle_status_drift = abs(now_time - vehicle_status_time)
 
         if vehicle_status_drift > datetime.timedelta(minutes=15):
             msg = f"Vehicle status time drifted more than 15 minutes from current time: {vehicle_status_drift}. Server reported {vehicle_status_time}"
-            raise MqttGatewayException(msg)
+            raise VehicleStatusDriftException(msg)
 
         basic_vehicle_status = vehicle_status.basicVehicleStatus
         if basic_vehicle_status:

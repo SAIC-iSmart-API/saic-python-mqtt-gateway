@@ -18,6 +18,7 @@ from saic_ismart_client_ng.api.vehicle_charging.schema import (
 )
 
 from configuration import Configuration
+from exceptions import VehicleStatusDriftException
 import mqtt_topics
 from vehicle import RefreshMode, VehicleState
 from vehicle_info import VehicleInfo
@@ -255,6 +256,30 @@ class TestVehicleState(unittest.IsolatedAsyncioTestCase):
         result = json.loads(self.publisher.map[topic])
         assert result["startTime"] == "08:00"
         assert result["mode"] == "on"
+
+    def test_handle_vehicle_status_rejects_none_timestamp(self) -> None:
+        resp = get_mock_vehicle_status_resp()
+        resp.statusTime = None
+        with pytest.raises(VehicleStatusDriftException, match="invalid timestamp"):
+            self.vehicle_state.handle_vehicle_status(resp)
+
+    def test_handle_vehicle_status_rejects_zero_timestamp(self) -> None:
+        resp = get_mock_vehicle_status_resp()
+        resp.statusTime = 0
+        with pytest.raises(VehicleStatusDriftException, match="invalid timestamp"):
+            self.vehicle_state.handle_vehicle_status(resp)
+
+    def test_handle_vehicle_status_rejects_max_int32_timestamp(self) -> None:
+        resp = get_mock_vehicle_status_resp()
+        resp.statusTime = 2147483647
+        with pytest.raises(VehicleStatusDriftException, match="invalid timestamp"):
+            self.vehicle_state.handle_vehicle_status(resp)
+
+    def test_handle_vehicle_status_rejects_drifted_timestamp(self) -> None:
+        resp = get_mock_vehicle_status_resp()
+        resp.statusTime = 1000000000  # 2001-09-09, well outside 15 min window
+        with pytest.raises(VehicleStatusDriftException, match="drifted more than 15 minutes"):
+            self.vehicle_state.handle_vehicle_status(resp)
 
     @staticmethod
     def get_topic(sub_topic: str) -> str:

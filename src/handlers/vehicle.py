@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from saic_ismart_client_ng.exceptions import SaicApiException, SaicLogoutException
 
+from exceptions import VehicleStatusDriftException
 from handlers.vehicle_command import VehicleCommandHandler
 from integrations import IntegrationException
 from integrations.abrp.api import AbrpApi
@@ -169,6 +170,12 @@ class VehicleHandler:
                     self.vehicle_state.mark_failed_refresh()
                     LOG.exception(
                         "handle_vehicle loop failed during SAIC API call", exc_info=e
+                    )
+                except VehicleStatusDriftException as e:
+                    self.vehicle_state.mark_failed_refresh()
+                    LOG.error(
+                        "Skipping vehicle status update: %s",
+                        e,
                     )
                 except IntegrationException as ae:
                     LOG.exception(
