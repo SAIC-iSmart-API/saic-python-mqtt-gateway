@@ -150,12 +150,25 @@ If the charging station can report the total imported energy (for example, the `
 
 ### From Command-line
 
-To run the service from the command line you need to have Python version 3.12 or later.
-Launch the MQTT gateway with the mandatory parametersn and, optionally, the url to the MQTT broker.
+You need Python 3.12 or later and [Poetry](https://python-poetry.org/docs/#installation) 2.0 or later.
 
+These steps mirror what the [Dockerfile](Dockerfile) does:
+
+```bash
+# 1. Install dependencies (production only, no dev tools)
+$ poetry install --no-root --without dev
+
+# 2. Run the gateway
+$ poetry run python src/main.py -u <saic-user> -p <saic-pwd>
 ```
-$ python ./mqtt_gateway.py -m tcp://my-broker-host:1883 -u <saic-user> -p <saic-pwd>
-```
+
+You can optionally specify an MQTT broker with `-m tcp://my-broker-host:1883`.
+
+You can also use a `.env` file in the current working directory to provide configuration
+via environment variables instead of command-line parameters. See the [Configuration](#configuration)
+section for available environment variables.
+
+For development setup, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### In a docker container
 
