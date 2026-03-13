@@ -2,13 +2,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import logging
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from saic_ismart_client_ng.api.vehicle_charging import RvsChargeStatus
 
 import mqtt_topics
 from status_publisher import VehicleDataPublisher
 from utils import int_to_bool, value_in_range
+
+if TYPE_CHECKING:
+    from publisher.core import Publisher
+    from vehicle_info import VehicleInfo
 
 LOG = logging.getLogger(__name__)
 
@@ -22,6 +26,27 @@ class RvsChargeStatusProcessingResult:
 class RvsChargeStatusPublisher(
     VehicleDataPublisher[RvsChargeStatus, RvsChargeStatusProcessingResult]
 ):
+    def __init__(
+        self, vin: VehicleInfo, publisher: Publisher, mqtt_vehicle_prefix: str
+    ) -> None:
+        super().__init__(vin, publisher, mqtt_vehicle_prefix)
+        self._last_total_mileage_raw: int | None = None
+
+    def update_total_mileage(self, raw_mileage: int) -> None:
+        self._last_total_mileage_raw = raw_mileage
+
+    def _is_valid_partial_mileage(self, raw_value: int) -> bool:
+        if not value_in_range(raw_value, 0, 65535):
+            return False
+        if self._last_total_mileage_raw is not None and raw_value > self._last_total_mileage_raw:
+            LOG.warning(
+                "Partial mileage %d exceeds total mileage %d, skipping",
+                raw_value,
+                self._last_total_mileage_raw,
+            )
+            return False
+        return True
+
     @override
     def publish(
         self, charge_status: RvsChargeStatus
@@ -29,14 +54,14 @@ class RvsChargeStatusPublisher(
         self._transform_and_publish(
             topic=mqtt_topics.DRIVETRAIN_MILEAGE_OF_DAY,
             value=charge_status.mileageOfDay,
-            validator=lambda x: value_in_range(x, 0, 65535),
+            validator=self._is_valid_partial_mileage,
             transform=lambda x: x / 10.0,
         )
 
         self._transform_and_publish(
             topic=mqtt_topics.DRIVETRAIN_MILEAGE_SINCE_LAST_CHARGE,
             value=charge_status.mileageSinceLastCharge,
-            validator=lambda x: value_in_range(x, 0, 65535),
+            validator=self._is_valid_partial_mileage,
             transform=lambda x: x / 10.0,
         )
 

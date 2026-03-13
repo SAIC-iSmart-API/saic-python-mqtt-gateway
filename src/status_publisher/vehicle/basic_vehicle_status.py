@@ -21,6 +21,7 @@ class BasicVehicleStatusProcessingResult:
     is_parked: bool
     fuel_rage_elec: int | None
     raw_soc: int | None
+    raw_mileage: int | None
 
 
 class BasicVehicleStatusPublisher(
@@ -236,6 +237,7 @@ class BasicVehicleStatusPublisher(
             remote_heated_seats_front_right_level=front_right_seat_level,
             fuel_rage_elec=basic_vehicle_status.fuelRangeElec,
             raw_soc=basic_vehicle_status.extendedData1,
+            raw_mileage=basic_vehicle_status.mileage if is_valid_mileage else None,
         )
 
     def __publish_tyre(self, raw_value: int | None, topic: str) -> None:

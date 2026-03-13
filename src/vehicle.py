@@ -282,6 +282,10 @@ class VehicleState:
             self.__remote_heated_seats_front_right_level = (
                 processing_result.remote_heated_seats_front_right_level
             )
+        if processing_result.raw_mileage is not None:
+            self.__charge_response_publisher.update_total_mileage(
+                processing_result.raw_mileage
+            )
         return processing_result
 
     @property

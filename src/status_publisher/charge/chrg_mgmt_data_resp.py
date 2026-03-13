@@ -57,6 +57,9 @@ class ChrgMgmtDataRespPublisher(
             vin, publisher, mqtt_vehicle_prefix
         )
 
+    def update_total_mileage(self, raw_mileage: int) -> None:
+        self.__rvs_charge_status_publisher.update_total_mileage(raw_mileage)
+
     def publish(
         self, chrg_mgmt_data_resp: ChrgMgmtDataResp
     ) -> ChrgMgmtDataRespProcessingResult:

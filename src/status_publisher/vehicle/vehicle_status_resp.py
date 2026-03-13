@@ -37,6 +37,7 @@ class VehicleStatusRespProcessingResult:
     remote_heated_seats_front_left_level: int | None
     fuel_range_elec: int | None
     raw_soc: int | None
+    raw_mileage: int | None
 
 
 class VehicleStatusRespPublisher(
@@ -102,6 +103,7 @@ class VehicleStatusRespPublisher(
             remote_heated_seats_front_right_level=basic_vehicle_status_result.remote_heated_seats_front_right_level,
             raw_soc=basic_vehicle_status_result.raw_soc,
             fuel_range_elec=basic_vehicle_status_result.fuel_rage_elec,
+            raw_mileage=basic_vehicle_status_result.raw_mileage,
         )
 
     def __on_gps_position(

@@ -24,6 +24,8 @@ from vehicle import RefreshMode, VehicleState
 from vehicle_info import VehicleInfo
 
 from .common_mocks import (
+    DRIVETRAIN_MILEAGE,
+    DRIVETRAIN_MILEAGE_OF_DAY,
     DRIVETRAIN_RANGE_BMS,
     DRIVETRAIN_RANGE_VEHICLE,
     DRIVETRAIN_SOC_BMS,
@@ -280,6 +282,59 @@ class TestVehicleState(unittest.IsolatedAsyncioTestCase):
         resp.statusTime = 1000000000  # 2001-09-09, well outside 15 min window
         with pytest.raises(VehicleStatusDriftException, match="drifted more than 15 minutes"):
             self.vehicle_state.handle_vehicle_status(resp)
+
+    def test_mileage_of_day_published_when_valid(self) -> None:
+        """Mileage of day is published when it does not exceed total mileage."""
+        vehicle_status_resp = get_mock_vehicle_status_resp()
+        self.vehicle_state.handle_vehicle_status(vehicle_status_resp)
+        chrg_mgmt_data_resp = get_mock_charge_management_data_resp()
+        self.vehicle_state.handle_charge_status(chrg_mgmt_data_resp)
+
+        self.assert_mqtt_topic(
+            self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE_OF_DAY),
+            DRIVETRAIN_MILEAGE_OF_DAY,
+        )
+
+    def test_mileage_of_day_skipped_when_exceeds_total(self) -> None:
+        """Mileage of day should not be published when it exceeds total mileage."""
+        vehicle_status_resp = get_mock_vehicle_status_resp()
+        self.vehicle_state.handle_vehicle_status(vehicle_status_resp)
+
+        chrg_mgmt_data_resp = get_mock_charge_management_data_resp()
+        # Set mileageOfDay raw value higher than total mileage raw value
+        assert chrg_mgmt_data_resp.rvsChargeStatus is not None
+        chrg_mgmt_data_resp.rvsChargeStatus.mileageOfDay = (DRIVETRAIN_MILEAGE + 100) * 10
+        self.vehicle_state.handle_charge_status(chrg_mgmt_data_resp)
+
+        assert (
+            self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE_OF_DAY)
+            not in self.publisher.map
+        )
+
+    def test_mileage_since_last_charge_skipped_when_exceeds_total(self) -> None:
+        """Mileage since last charge should not be published when it exceeds total mileage."""
+        vehicle_status_resp = get_mock_vehicle_status_resp()
+        self.vehicle_state.handle_vehicle_status(vehicle_status_resp)
+
+        chrg_mgmt_data_resp = get_mock_charge_management_data_resp()
+        assert chrg_mgmt_data_resp.rvsChargeStatus is not None
+        chrg_mgmt_data_resp.rvsChargeStatus.mileageSinceLastCharge = (DRIVETRAIN_MILEAGE + 100) * 10
+        self.vehicle_state.handle_charge_status(chrg_mgmt_data_resp)
+
+        assert (
+            self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE_SINCE_LAST_CHARGE)
+            not in self.publisher.map
+        )
+
+    def test_mileage_of_day_published_when_no_vehicle_status_yet(self) -> None:
+        """When vehicle status has never been fetched, partial mileage should still be published."""
+        chrg_mgmt_data_resp = get_mock_charge_management_data_resp()
+        self.vehicle_state.handle_charge_status(chrg_mgmt_data_resp)
+
+        self.assert_mqtt_topic(
+            self.get_topic(mqtt_topics.DRIVETRAIN_MILEAGE_OF_DAY),
+            DRIVETRAIN_MILEAGE_OF_DAY,
+        )
 
     @staticmethod
     def get_topic(sub_topic: str) -> str:
