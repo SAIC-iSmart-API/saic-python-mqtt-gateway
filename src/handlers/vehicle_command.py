@@ -63,10 +63,20 @@ class VehicleCommandHandler:
         command: str,
         result_topic: str,
         detail: str,
-        exc: Exception,
+        exc: Exception | None = None,
     ) -> None:
-        self.publisher.publish_str(result_topic, f"Failed: {detail}")
-        LOG.exception("Command %s failed: %s", command, detail, exc_info=exc)
+        if exc is not None:
+            LOG.exception("Command %s failed: %s", command, detail, exc_info=exc)
+        else:
+            LOG.error("Command %s failed: %s", command, detail)
+        try:
+            self.publisher.publish_str(result_topic, f"Failed: {detail}")
+        except Exception:
+            LOG.warning(
+                "Failed to publish failure result for command %s",
+                command,
+                exc_info=True,
+            )
         try:
             error_topic = self.vehicle_state.get_topic(mqtt_topics.COMMAND_ERROR)
             event_payload: dict[str, Any] = {
@@ -91,7 +101,6 @@ class VehicleCommandHandler:
                 command=analyzed_topic.command_no_vin,
                 result_topic=analyzed_topic.response_no_global,
                 detail=msg,
-                exc=ValueError(msg),
             )
         else:
             await self.__execute_mqtt_command_handler(
@@ -159,7 +168,10 @@ class VehicleCommandHandler:
             )
         except Exception as e:
             self.__report_command_failure(
-                command=topic, result_topic=result_topic, detail=str(e), exc=e
+                command=topic,
+                result_topic=result_topic,
+                detail="unexpected error",
+                exc=e,
             )
 
     def __get_command_topics(self, topic: str) -> _MqttCommandTopic:
