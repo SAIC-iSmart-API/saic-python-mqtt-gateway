@@ -179,4 +179,7 @@ TYRES_FRONT_RIGHT_PRESSURE = TYRES + "/frontRightPressure"
 TYRES_REAR_LEFT_PRESSURE = TYRES + "/rearLeftPressure"
 TYRES_REAR_RIGHT_PRESSURE = TYRES + "/rearRightPressure"
 
+COMMAND = "command"
+COMMAND_ERROR = COMMAND + "/error"
+
 VEHICLES = "vehicles"

@@ -327,6 +327,15 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
         )
         self.__publish_lights_sensors()
 
+        # Command error event
+        self._publish_event(
+            mqtt_topics.COMMAND_ERROR,
+            "Command error",
+            ["command_error"],
+            entity_category="diagnostic",
+            icon="mdi:alert-circle",
+        )
+
         LOG.debug("Completed publishing Home Assistant discovery messages")
 
     def __publish_drivetrain_charging_sensors(self) -> None:
