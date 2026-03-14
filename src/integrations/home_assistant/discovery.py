@@ -451,15 +451,30 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
         )
 
     def __publish_windows_sensors(self) -> None:
-        self._publish_switch(mqtt_topics.WINDOWS_DRIVER, "Window driver")
-        self._publish_switch(mqtt_topics.WINDOWS_PASSENGER, "Window passenger")
-        self._publish_switch(mqtt_topics.WINDOWS_REAR_LEFT, "Window rear left")
-        self._publish_switch(mqtt_topics.WINDOWS_REAR_RIGHT, "Window rear right")
+        self.__unpublish_ha_discovery_message("switch", "Window driver")
+        self.__unpublish_ha_discovery_message("switch", "Window passenger")
+        self.__unpublish_ha_discovery_message("switch", "Window rear left")
+        self.__unpublish_ha_discovery_message("switch", "Window rear right")
+        self.__unpublish_ha_discovery_message("switch", "Sun roof")
+        self._publish_binary_sensor(
+            mqtt_topics.WINDOWS_DRIVER, "Window driver", device_class="window"
+        )
+        self._publish_binary_sensor(
+            mqtt_topics.WINDOWS_PASSENGER, "Window passenger", device_class="window"
+        )
+        self._publish_binary_sensor(
+            mqtt_topics.WINDOWS_REAR_LEFT,
+            "Window rear left",
+            device_class="window",
+        )
+        self._publish_binary_sensor(
+            mqtt_topics.WINDOWS_REAR_RIGHT,
+            "Window rear right",
+            device_class="window",
+        )
         if self.__vin_info.has_sunroof:
-            self._publish_switch(mqtt_topics.WINDOWS_SUN_ROOF, "Sun roof")
             self._publish_binary_sensor(mqtt_topics.WINDOWS_SUN_ROOF, "Sun roof")
         else:
-            self.__unpublish_ha_discovery_message("switch", "Sun roof")
             self.__unpublish_ha_discovery_message("binary_sensor", "Sun roof")
 
     def __publish_ccu_sensors(self) -> None:
