@@ -5,289 +5,237 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from saic_ismart_client_ng.exceptions import SaicApiException, SaicLogoutException
 
-from exceptions import MqttGatewayException
-from handlers.command.base import RESULT_REFRESH_AND_CLEAR
 from handlers.vehicle_command import VehicleCommandHandler
 import mqtt_topics
 
 MQTT_TOPIC = "saic"
 VIN = "vin_test_000000000"
 VEHICLE_PREFIX = f"vehicles/{VIN}"
+CHARGING_SET_TOPIC = f"{MQTT_TOPIC}/{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_CHARGING_SET}"
+CHARGING_RESULT_TOPIC = (
+    f"{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_CHARGING}/{mqtt_topics.RESULT_SUFFIX}"
+)
+COMMAND_ERROR_TOPIC = f"{VEHICLE_PREFIX}/{mqtt_topics.COMMAND_ERROR}"
 
 
-def _make_handler(
+def _build(
     *,
-    vehicle_state: MagicMock | None = None,
     saic_api: AsyncMock | None = None,
     relogin_handler: AsyncMock | None = None,
-) -> VehicleCommandHandler:
-    if vehicle_state is None:
-        vehicle_state = MagicMock()
-        vehicle_state.publisher = MagicMock()
-        vehicle_state.get_topic.side_effect = lambda t: f"{VEHICLE_PREFIX}/{t}"
-    if saic_api is None:
-        saic_api = AsyncMock()
-    if relogin_handler is None:
-        relogin_handler = AsyncMock()
-    return VehicleCommandHandler(
-        vehicle_state=vehicle_state,
-        saic_api=saic_api,
-        relogin_handler=relogin_handler,
-        mqtt_topic=MQTT_TOPIC,
-        vehicle_prefix=VEHICLE_PREFIX,
+) -> tuple[VehicleCommandHandler, MagicMock]:
+    """Build a VehicleCommandHandler with a MagicMock publisher.
+
+    Returns (handler, mock_publisher) so callers can assert on mock_publisher
+    without going through the typed Publisher interface.
+    """
+    mock_publisher = MagicMock()
+    vehicle_state = MagicMock()
+    vehicle_state.publisher = mock_publisher
+    vehicle_state.vin = VIN
+    vehicle_state.get_topic.side_effect = lambda t: f"{VEHICLE_PREFIX}/{t}"
+    return (
+        VehicleCommandHandler(
+            vehicle_state=vehicle_state,
+            saic_api=saic_api or AsyncMock(),
+            relogin_handler=relogin_handler or AsyncMock(),
+            mqtt_topic=MQTT_TOPIC,
+            vehicle_prefix=VEHICLE_PREFIX,
+        ),
+        mock_publisher,
     )
 
 
-def _command_topic(command_topic_suffix: str) -> str:
-    return f"{MQTT_TOPIC}/{VEHICLE_PREFIX}/{command_topic_suffix}"
-
-
-def _result_topic(command_topic_suffix: str) -> str:
-    base = command_topic_suffix.removesuffix(mqtt_topics.SET_SUFFIX).removesuffix("/")
-    return f"{VEHICLE_PREFIX}/{base}/{mqtt_topics.RESULT_SUFFIX}"
-
-
-class TestVehicleCommandSuccess(unittest.IsolatedAsyncioTestCase):
+class TestSuccessPath(unittest.IsolatedAsyncioTestCase):
     async def test_successful_command_publishes_success(self) -> None:
-        handler = _make_handler()
-        topic = _command_topic(mqtt_topics.DRIVETRAIN_CHARGING_SET)
-        result_topic = _result_topic(mqtt_topics.DRIVETRAIN_CHARGING_SET)
+        handler, pub = _build()
 
-        await handler.handle_mqtt_command(topic=topic, payload="true")
+        await handler.handle_mqtt_command(topic=CHARGING_SET_TOPIC, payload="true")
 
-        handler.publisher.publish_str.assert_any_call(result_topic, "Success")
-        handler.publisher.publish_json.assert_not_called()
+        pub.publish_str.assert_any_call(CHARGING_RESULT_TOPIC, "Success")
+        pub.publish_json.assert_not_called()
 
 
-class TestVehicleCommandNoHandler(unittest.IsolatedAsyncioTestCase):
-    async def test_no_handler_publishes_error_event(self) -> None:
-        handler = _make_handler()
-        topic = _command_topic("nonexistent/topic/set")
-        result_topic = _result_topic("nonexistent/topic/set")
+class TestNoHandlerFound(unittest.IsolatedAsyncioTestCase):
+    async def test_publishes_error_event(self) -> None:
+        handler, pub = _build()
+        bad_topic = f"{MQTT_TOPIC}/{VEHICLE_PREFIX}/nonexistent/topic/set"
+        result_topic = f"{VEHICLE_PREFIX}/nonexistent/topic/{mqtt_topics.RESULT_SUFFIX}"
 
-        await handler.handle_mqtt_command(topic=topic, payload="test")
+        await handler.handle_mqtt_command(topic=bad_topic, payload="test")
 
-        handler.publisher.publish_str.assert_called_once_with(
+        pub.publish_str.assert_any_call(
             result_topic,
             "Failed: No handler found for command topic nonexistent/topic/set",
         )
-        handler.publisher.publish_json.assert_called_once()
-        event_payload = handler.publisher.publish_json.call_args[0][1]
-        assert event_payload["event_type"] == "command_error"
-        assert event_payload["command"] == "nonexistent/topic/set"
+        pub.publish_json.assert_called_once()
+        event = pub.publish_json.call_args[0][1]
+        assert event["event_type"] == "command_error"
+        assert event["command"] == "nonexistent/topic/set"
 
-    async def test_no_handler_does_not_log_traceback(self) -> None:
-        handler = _make_handler()
-        topic = _command_topic("nonexistent/topic/set")
+    async def test_does_not_log_traceback(self) -> None:
+        handler, _ = _build()
+        bad_topic = f"{MQTT_TOPIC}/{VEHICLE_PREFIX}/nonexistent/topic/set"
 
         with patch("handlers.vehicle_command.LOG") as mock_log:
-            await handler.handle_mqtt_command(topic=topic, payload="test")
+            await handler.handle_mqtt_command(topic=bad_topic, payload="test")
             mock_log.error.assert_called_once()
             mock_log.exception.assert_not_called()
 
 
-class TestVehicleCommandMqttGatewayException(unittest.IsolatedAsyncioTestCase):
-    async def test_mqtt_gateway_exception_publishes_error_event(self) -> None:
-        handler = _make_handler()
-        topic = _command_topic(mqtt_topics.DRIVETRAIN_CHARGING_SET)
-        result_topic = _result_topic(mqtt_topics.DRIVETRAIN_CHARGING_SET)
+class TestMqttGatewayException(unittest.IsolatedAsyncioTestCase):
+    async def test_publishes_error_event(self) -> None:
+        """An invalid payload triggers MqttGatewayException from payload conversion."""
+        handler, pub = _build()
 
-        cmd_handler = handler._VehicleCommandHandler__command_handlers[
-            mqtt_topics.DRIVETRAIN_CHARGING_SET
+        await handler.handle_mqtt_command(
+            topic=CHARGING_SET_TOPIC, payload="not_a_boolean"
+        )
+
+        pub.publish_str.assert_any_call(
+            CHARGING_RESULT_TOPIC,
+            "Failed: Unsupported payload not_a_boolean for command "
+            "DrivetrainChargingCommand",
+        )
+        pub.publish_json.assert_called_once()
+        event = pub.publish_json.call_args[0][1]
+        assert event["event_type"] == "command_error"
+        assert "Unsupported payload" in event["detail"]
+
+
+class TestSaicApiException(unittest.IsolatedAsyncioTestCase):
+    async def test_publishes_error_event(self) -> None:
+        saic_api = AsyncMock()
+        saic_api.control_charging.side_effect = SaicApiException(
+            "operation too frequent", return_code=8
+        )
+        handler, pub = _build(saic_api=saic_api)
+
+        await handler.handle_mqtt_command(topic=CHARGING_SET_TOPIC, payload="true")
+
+        pub.publish_str.assert_any_call(
+            CHARGING_RESULT_TOPIC,
+            "Failed: return code: 8, message: operation too frequent",
+        )
+        pub.publish_json.assert_called_once()
+        event = pub.publish_json.call_args[0][1]
+        assert event["event_type"] == "command_error"
+        assert "operation too frequent" in event["detail"]
+
+
+class TestUnexpectedException(unittest.IsolatedAsyncioTestCase):
+    async def test_uses_safe_detail(self) -> None:
+        saic_api = AsyncMock()
+        saic_api.control_charging.side_effect = RuntimeError("secret internal detail")
+        handler, pub = _build(saic_api=saic_api)
+
+        await handler.handle_mqtt_command(topic=CHARGING_SET_TOPIC, payload="true")
+
+        pub.publish_str.assert_any_call(
+            CHARGING_RESULT_TOPIC, "Failed: unexpected error"
+        )
+        event = pub.publish_json.call_args[0][1]
+        assert event["detail"] == "unexpected error"
+        assert "secret" not in event["detail"]
+
+
+class TestSaicLogoutException(unittest.IsolatedAsyncioTestCase):
+    async def test_relogin_success_retries_command(self) -> None:
+        saic_api = AsyncMock()
+        saic_api.control_charging.side_effect = [
+            SaicLogoutException("logged out"),
+            None,
         ]
-        cmd_handler.handle = AsyncMock(
-            side_effect=MqttGatewayException("test error")
+        handler, pub = _build(saic_api=saic_api)
+
+        await handler.handle_mqtt_command(topic=CHARGING_SET_TOPIC, payload="true")
+
+        relogin = handler.relogin_handler
+        assert isinstance(relogin, AsyncMock)
+        relogin.force_login.assert_awaited_once()
+        assert saic_api.control_charging.await_count == 2
+        pub.publish_str.assert_any_call(CHARGING_RESULT_TOPIC, "Success")
+        pub.publish_json.assert_not_called()
+
+    async def test_relogin_failure_publishes_error_event(self) -> None:
+        saic_api = AsyncMock()
+        saic_api.control_charging.side_effect = SaicLogoutException("logged out")
+        relogin = AsyncMock()
+        relogin.force_login.side_effect = Exception("login failed")
+        handler, pub = _build(saic_api=saic_api, relogin_handler=relogin)
+
+        await handler.handle_mqtt_command(topic=CHARGING_SET_TOPIC, payload="true")
+
+        pub.publish_str.assert_any_call(
+            CHARGING_RESULT_TOPIC, "Failed: relogin failed (login failed)"
         )
+        pub.publish_json.assert_called_once()
+        event = pub.publish_json.call_args[0][1]
+        assert "relogin failed" in event["detail"]
 
-        await handler.handle_mqtt_command(topic=topic, payload="true")
-
-        handler.publisher.publish_str.assert_called_once_with(
-            result_topic, "Failed: test error"
-        )
-        handler.publisher.publish_json.assert_called_once()
-        event_payload = handler.publisher.publish_json.call_args[0][1]
-        assert event_payload["event_type"] == "command_error"
-        assert event_payload["detail"] == "test error"
-
-
-class TestVehicleCommandSaicApiException(unittest.IsolatedAsyncioTestCase):
-    async def test_saic_api_exception_publishes_error_event(self) -> None:
-        handler = _make_handler()
-        topic = _command_topic(mqtt_topics.DRIVETRAIN_CHARGING_SET)
-        result_topic = _result_topic(mqtt_topics.DRIVETRAIN_CHARGING_SET)
-
-        cmd_handler = handler._VehicleCommandHandler__command_handlers[
-            mqtt_topics.DRIVETRAIN_CHARGING_SET
+    async def test_retry_failure_publishes_error_event(self) -> None:
+        saic_api = AsyncMock()
+        saic_api.control_charging.side_effect = [
+            SaicLogoutException("logged out"),
+            RuntimeError("retry boom"),
         ]
-        cmd_handler.handle = AsyncMock(
-            side_effect=SaicApiException("api error", return_code=8)
+        handler, pub = _build(saic_api=saic_api)
+
+        await handler.handle_mqtt_command(topic=CHARGING_SET_TOPIC, payload="true")
+
+        pub.publish_str.assert_any_call(
+            CHARGING_RESULT_TOPIC, "Failed: retry boom"
         )
-
-        await handler.handle_mqtt_command(topic=topic, payload="true")
-
-        handler.publisher.publish_str.assert_called_once_with(
-            result_topic, "Failed: return code: 8, message: api error"
-        )
-        handler.publisher.publish_json.assert_called_once()
-        event_payload = handler.publisher.publish_json.call_args[0][1]
-        assert event_payload["detail"] == "return code: 8, message: api error"
+        pub.publish_json.assert_called_once()
+        event = pub.publish_json.call_args[0][1]
+        assert event["detail"] == "retry boom"
 
 
-class TestVehicleCommandUnexpectedException(unittest.IsolatedAsyncioTestCase):
-    async def test_unexpected_exception_uses_safe_detail(self) -> None:
-        handler = _make_handler()
-        topic = _command_topic(mqtt_topics.DRIVETRAIN_CHARGING_SET)
-        result_topic = _result_topic(mqtt_topics.DRIVETRAIN_CHARGING_SET)
-
-        cmd_handler = handler._VehicleCommandHandler__command_handlers[
-            mqtt_topics.DRIVETRAIN_CHARGING_SET
-        ]
-        cmd_handler.handle = AsyncMock(
-            side_effect=RuntimeError("secret internal detail")
-        )
-
-        await handler.handle_mqtt_command(topic=topic, payload="true")
-
-        handler.publisher.publish_str.assert_called_once_with(
-            result_topic, "Failed: unexpected error"
-        )
-        event_payload = handler.publisher.publish_json.call_args[0][1]
-        assert event_payload["detail"] == "unexpected error"
-        assert "secret" not in event_payload["detail"]
-
-
-class TestVehicleCommandSaicLogoutException(unittest.IsolatedAsyncioTestCase):
-    async def test_logout_relogin_success_retries_command(self) -> None:
-        handler = _make_handler()
-        topic = _command_topic(mqtt_topics.DRIVETRAIN_CHARGING_SET)
-        result_topic = _result_topic(mqtt_topics.DRIVETRAIN_CHARGING_SET)
-
-        cmd_handler = handler._VehicleCommandHandler__command_handlers[
-            mqtt_topics.DRIVETRAIN_CHARGING_SET
-        ]
-        cmd_handler.handle = AsyncMock(
-            side_effect=[SaicLogoutException("logged out"), RESULT_REFRESH_AND_CLEAR]
-        )
-
-        await handler.handle_mqtt_command(topic=topic, payload="true")
-
-        handler.relogin_handler.force_login.assert_awaited_once()
-        assert cmd_handler.handle.await_count == 2
-        handler.publisher.publish_str.assert_any_call(result_topic, "Success")
-        handler.publisher.publish_json.assert_not_called()
-
-    async def test_logout_relogin_failure_publishes_error_event(self) -> None:
-        handler = _make_handler()
-        topic = _command_topic(mqtt_topics.DRIVETRAIN_CHARGING_SET)
-        result_topic = _result_topic(mqtt_topics.DRIVETRAIN_CHARGING_SET)
-
-        cmd_handler = handler._VehicleCommandHandler__command_handlers[
-            mqtt_topics.DRIVETRAIN_CHARGING_SET
-        ]
-        cmd_handler.handle = AsyncMock(side_effect=SaicLogoutException("logged out"))
-        handler.relogin_handler.force_login = AsyncMock(
-            side_effect=Exception("login failed")
-        )
-
-        await handler.handle_mqtt_command(topic=topic, payload="true")
-
-        handler.publisher.publish_str.assert_called_once_with(
-            result_topic, "Failed: relogin failed (login failed)"
-        )
-        handler.publisher.publish_json.assert_called_once()
-        event_payload = handler.publisher.publish_json.call_args[0][1]
-        assert "relogin failed" in event_payload["detail"]
-
-    async def test_logout_retry_failure_publishes_error_event(self) -> None:
-        handler = _make_handler()
-        topic = _command_topic(mqtt_topics.DRIVETRAIN_CHARGING_SET)
-        result_topic = _result_topic(mqtt_topics.DRIVETRAIN_CHARGING_SET)
-
-        cmd_handler = handler._VehicleCommandHandler__command_handlers[
-            mqtt_topics.DRIVETRAIN_CHARGING_SET
-        ]
-        cmd_handler.handle = AsyncMock(
-            side_effect=[SaicLogoutException("logged out"), RuntimeError("retry boom")]
-        )
-
-        await handler.handle_mqtt_command(topic=topic, payload="true")
-
-        handler.publisher.publish_str.assert_called_once_with(
-            result_topic, "Failed: retry boom"
-        )
-        handler.publisher.publish_json.assert_called_once()
-        event_payload = handler.publisher.publish_json.call_args[0][1]
-        assert event_payload["detail"] == "retry boom"
-
-
-class TestReportCommandFailureResilience(unittest.IsolatedAsyncioTestCase):
+class TestReportFailureResilience(unittest.IsolatedAsyncioTestCase):
     async def test_publish_str_failure_does_not_prevent_error_event(self) -> None:
-        handler = _make_handler()
-        topic = _command_topic(mqtt_topics.DRIVETRAIN_CHARGING_SET)
+        saic_api = AsyncMock()
+        saic_api.control_charging.side_effect = SaicApiException("err", return_code=1)
+        handler, pub = _build(saic_api=saic_api)
+        pub.publish_str.side_effect = ConnectionError("broker down")
 
-        cmd_handler = handler._VehicleCommandHandler__command_handlers[
-            mqtt_topics.DRIVETRAIN_CHARGING_SET
-        ]
-        cmd_handler.handle = AsyncMock(
-            side_effect=MqttGatewayException("cmd error")
-        )
-        handler.publisher.publish_str.side_effect = ConnectionError("broker down")
+        await handler.handle_mqtt_command(topic=CHARGING_SET_TOPIC, payload="true")
 
-        await handler.handle_mqtt_command(topic=topic, payload="true")
-
-        handler.publisher.publish_json.assert_called_once()
-        event_payload = handler.publisher.publish_json.call_args[0][1]
-        assert event_payload["detail"] == "cmd error"
+        pub.publish_json.assert_called_once()
+        event = pub.publish_json.call_args[0][1]
+        assert event["event_type"] == "command_error"
 
     async def test_publish_json_failure_does_not_raise(self) -> None:
-        handler = _make_handler()
-        topic = _command_topic(mqtt_topics.DRIVETRAIN_CHARGING_SET)
+        saic_api = AsyncMock()
+        saic_api.control_charging.side_effect = SaicApiException("err", return_code=1)
+        handler, pub = _build(saic_api=saic_api)
+        pub.publish_json.side_effect = ConnectionError("broker down")
 
-        cmd_handler = handler._VehicleCommandHandler__command_handlers[
-            mqtt_topics.DRIVETRAIN_CHARGING_SET
-        ]
-        cmd_handler.handle = AsyncMock(
-            side_effect=MqttGatewayException("cmd error")
+        await handler.handle_mqtt_command(topic=CHARGING_SET_TOPIC, payload="true")
+
+        pub.publish_str.assert_called_once()
+
+
+class TestErrorEventPayload(unittest.IsolatedAsyncioTestCase):
+    async def test_topic_uses_vehicle_prefix(self) -> None:
+        saic_api = AsyncMock()
+        saic_api.control_charging.side_effect = SaicApiException("err", return_code=1)
+        handler, pub = _build(saic_api=saic_api)
+
+        await handler.handle_mqtt_command(topic=CHARGING_SET_TOPIC, payload="true")
+
+        error_topic = pub.publish_json.call_args[0][0]
+        assert error_topic == COMMAND_ERROR_TOPIC
+
+    async def test_payload_structure(self) -> None:
+        saic_api = AsyncMock()
+        saic_api.control_charging.side_effect = SaicApiException(
+            "operation too frequent", return_code=8
         )
-        handler.publisher.publish_json.side_effect = ConnectionError("broker down")
+        handler, pub = _build(saic_api=saic_api)
 
-        await handler.handle_mqtt_command(topic=topic, payload="true")
+        await handler.handle_mqtt_command(topic=CHARGING_SET_TOPIC, payload="true")
 
-        handler.publisher.publish_str.assert_called_once()
-
-
-class TestCommandErrorEventPayload(unittest.IsolatedAsyncioTestCase):
-    async def test_error_event_topic_uses_vehicle_prefix(self) -> None:
-        handler = _make_handler()
-        topic = _command_topic(mqtt_topics.DRIVETRAIN_CHARGING_SET)
-
-        cmd_handler = handler._VehicleCommandHandler__command_handlers[
-            mqtt_topics.DRIVETRAIN_CHARGING_SET
-        ]
-        cmd_handler.handle = AsyncMock(
-            side_effect=MqttGatewayException("some error")
-        )
-
-        await handler.handle_mqtt_command(topic=topic, payload="true")
-
-        error_topic = handler.publisher.publish_json.call_args[0][0]
-        assert error_topic == f"{VEHICLE_PREFIX}/{mqtt_topics.COMMAND_ERROR}"
-
-    async def test_error_event_payload_structure(self) -> None:
-        handler = _make_handler()
-        topic = _command_topic(mqtt_topics.DRIVETRAIN_CHARGING_SET)
-
-        cmd_handler = handler._VehicleCommandHandler__command_handlers[
-            mqtt_topics.DRIVETRAIN_CHARGING_SET
-        ]
-        cmd_handler.handle = AsyncMock(
-            side_effect=SaicApiException("operation too frequent", return_code=8)
-        )
-
-        await handler.handle_mqtt_command(topic=topic, payload="true")
-
-        event_payload = handler.publisher.publish_json.call_args[0][1]
-        assert set(event_payload.keys()) == {"event_type", "command", "detail"}
-        assert event_payload["event_type"] == "command_error"
-        assert event_payload["command"] == mqtt_topics.DRIVETRAIN_CHARGING_SET
-        assert event_payload["detail"] == "return code: 8, message: operation too frequent"
+        event = pub.publish_json.call_args[0][1]
+        assert set(event.keys()) == {"event_type", "command", "detail"}
+        assert event["event_type"] == "command_error"
+        assert event["command"] == mqtt_topics.DRIVETRAIN_CHARGING_SET
+        assert "operation too frequent" in event["detail"]
