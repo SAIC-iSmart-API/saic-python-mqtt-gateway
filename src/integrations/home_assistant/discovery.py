@@ -473,7 +473,9 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             device_class="window",
         )
         if self.__vin_info.has_sunroof:
-            self._publish_binary_sensor(mqtt_topics.WINDOWS_SUN_ROOF, "Sun roof")
+            self._publish_binary_sensor(
+                mqtt_topics.WINDOWS_SUN_ROOF, "Sun roof", device_class="window"
+            )
         else:
             self.__unpublish_ha_discovery_message("binary_sensor", "Sun roof")
 

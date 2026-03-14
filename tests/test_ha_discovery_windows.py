@@ -17,6 +17,13 @@ from vehicle_info import VehicleInfo
 from .common_mocks import VIN
 from .mocks import MessageCapturingConsolePublisher
 
+WINDOW_NAMES = [
+    "window_driver",
+    "window_passenger",
+    "window_rear_left",
+    "window_rear_right",
+]
+
 
 class TestHaDiscoveryWindows(unittest.TestCase):
     """Test that window entities are published as binary_sensors, not switches."""
@@ -54,68 +61,58 @@ class TestHaDiscoveryWindows(unittest.TestCase):
         discovery = HomeAssistantDiscovery(vehicle_state, vehicle_info, config)
         return discovery, publisher
 
-    def _discovery_topics(self, publisher: MessageCapturingConsolePublisher) -> set[str]:
-        return set(publisher.map.keys())
-
     def test_windows_published_as_binary_sensors(self) -> None:
         discovery, publisher = self._make_discovery()
         discovery.publish_ha_discovery_messages()
 
-        topics = self._discovery_topics(publisher)
-        window_names = [
-            "window_driver",
-            "window_passenger",
-            "window_rear_left",
-            "window_rear_right",
-        ]
-        for name in window_names:
+        for name in WINDOW_NAMES:
             binary_sensor_topic = (
                 f"homeassistant/binary_sensor/{VIN}_mg/{VIN}_{name}/config"
             )
-            assert binary_sensor_topic in topics, (
+            assert binary_sensor_topic in publisher.map, (
                 f"Expected binary_sensor discovery for {name}"
             )
-            # Verify the payload has no command_topic (read-only)
             payload = json.loads(publisher.map[binary_sensor_topic])
             assert "command_topic" not in payload
             assert payload["device_class"] == "window"
 
-    def test_windows_not_published_as_switches(self) -> None:
+    def test_old_window_switches_are_unpublished(self) -> None:
         discovery, publisher = self._make_discovery()
         discovery.publish_ha_discovery_messages()
 
-        topics = self._discovery_topics(publisher)
-        window_names = [
-            "window_driver",
-            "window_passenger",
-            "window_rear_left",
-            "window_rear_right",
-        ]
-        for name in window_names:
+        for name in WINDOW_NAMES:
             switch_topic = f"homeassistant/switch/{VIN}_mg/{VIN}_{name}/config"
-            if switch_topic in topics:
-                # Should be an empty unpublish message
-                assert publisher.map[switch_topic] == "", (
-                    f"Switch for {name} should be unpublished (empty payload)"
-                )
+            assert switch_topic in publisher.map, (
+                f"Expected unpublish message for switch {name}"
+            )
+            assert publisher.map[switch_topic] == "", (
+                f"Switch for {name} should be unpublished (empty payload)"
+            )
+        # Sunroof switch is also always unpublished
+        sunroof_switch = f"homeassistant/switch/{VIN}_mg/{VIN}_sun_roof/config"
+        assert sunroof_switch in publisher.map
+        assert publisher.map[sunroof_switch] == ""
 
     def test_sunroof_published_as_binary_sensor_when_supported(self) -> None:
         discovery, publisher = self._make_discovery(has_sunroof=True)
         discovery.publish_ha_discovery_messages()
 
-        topics = self._discovery_topics(publisher)
         sunroof_topic = (
             f"homeassistant/binary_sensor/{VIN}_mg/{VIN}_sun_roof/config"
         )
-        assert sunroof_topic in topics
+        assert sunroof_topic in publisher.map
+        payload = json.loads(publisher.map[sunroof_topic])
+        assert "command_topic" not in payload
+        assert payload["device_class"] == "window"
 
     def test_sunroof_unpublished_when_not_supported(self) -> None:
         discovery, publisher = self._make_discovery(has_sunroof=False)
         discovery.publish_ha_discovery_messages()
 
-        topics = self._discovery_topics(publisher)
         sunroof_binary = (
             f"homeassistant/binary_sensor/{VIN}_mg/{VIN}_sun_roof/config"
         )
-        if sunroof_binary in topics:
-            assert publisher.map[sunroof_binary] == ""
+        assert sunroof_binary in publisher.map, (
+            "Expected unpublish message for binary_sensor Sun roof"
+        )
+        assert publisher.map[sunroof_binary] == ""
