@@ -11,7 +11,7 @@ from saic_ismart_client_ng.api.vehicle.schema import (
 
 from configuration import Configuration
 from integrations.home_assistant.discovery import HomeAssistantDiscovery
-from vehicle import VehicleState
+from vehicle import RefreshMode, VehicleState
 from vehicle_info import VehicleInfo
 
 from .common_mocks import VIN
@@ -57,7 +57,7 @@ class TestHaDiscoveryWindows(unittest.TestCase):
         vehicle_state.refresh_period_inactive = 120
         vehicle_state.refresh_period_after_shutdown = 60
         vehicle_state.refresh_period_inactive_grace = 600
-        vehicle_state.refresh_mode = "periodic"
+        vehicle_state.refresh_mode = RefreshMode.PERIODIC
         discovery = HomeAssistantDiscovery(vehicle_state, vehicle_info, config)
         return discovery, publisher
 
