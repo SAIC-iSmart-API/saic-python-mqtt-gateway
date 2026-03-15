@@ -499,6 +499,32 @@ class TestVehicleState(unittest.IsolatedAsyncioTestCase):
         phase_topic = self.get_topic(mqtt_topics.REFRESH_POLLING_PHASE)
         assert self.publisher.publish_count.get(phase_topic, 0) == 1
 
+    def test_polling_phase_republished_after_transition_back(self) -> None:
+        """A->B->A transition must publish all three phases (not suppress the return to A)."""
+        self.vehicle_state.configure_missing()
+        # Start with OFF (phase A)
+        self.vehicle_state.set_refresh_mode(RefreshMode.OFF, "test")
+        self.publisher.map.clear()
+        self.publisher.publish_count.clear()
+
+        # Phase A: OFF
+        self.vehicle_state.should_refresh()
+        phase_topic = self.get_topic(mqtt_topics.REFRESH_POLLING_PHASE)
+        assert self.publisher.map[phase_topic] == PollingPhase.OFF.value
+        assert self.publisher.publish_count[phase_topic] == 1
+
+        # Phase B: FORCE (one-shot, reverts to PERIODIC)
+        self.vehicle_state.set_refresh_mode(RefreshMode.FORCE, "test")
+        self.vehicle_state.should_refresh()
+        assert self.publisher.map[phase_topic] == PollingPhase.FORCE.value
+        assert self.publisher.publish_count[phase_topic] == 2
+
+        # Phase A again: back to OFF
+        self.vehicle_state.set_refresh_mode(RefreshMode.OFF, "test")
+        self.vehicle_state.should_refresh()
+        assert self.publisher.map[phase_topic] == PollingPhase.OFF.value
+        assert self.publisher.publish_count[phase_topic] == 3
+
     @staticmethod
     def get_topic(sub_topic: str) -> str:
         return f"/vehicles/{VIN}/{sub_topic}"
