@@ -486,6 +486,19 @@ class TestVehicleState(unittest.IsolatedAsyncioTestCase):
             PollingPhase.AFTER_SHUTDOWN.value,
         )
 
+    def test_polling_phase_not_republished_when_unchanged(self) -> None:
+        """Calling should_refresh() twice with the same state should only publish the phase once."""
+        self.vehicle_state.configure_missing()
+        self.vehicle_state.set_refresh_mode(RefreshMode.OFF, "test")
+        self.publisher.map.clear()
+        self.publisher.publish_count.clear()
+
+        self.vehicle_state.should_refresh()
+        self.vehicle_state.should_refresh()
+
+        phase_topic = self.get_topic(mqtt_topics.REFRESH_POLLING_PHASE)
+        assert self.publisher.publish_count.get(phase_topic, 0) == 1
+
     @staticmethod
     def get_topic(sub_topic: str) -> str:
         return f"/vehicles/{VIN}/{sub_topic}"

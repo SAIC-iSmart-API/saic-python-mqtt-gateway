@@ -130,6 +130,7 @@ class VehicleState:
         self.charge_polling_min_percent = charge_polling_min_percent
         self.refresh_mode = RefreshMode.OFF
         self.previous_refresh_mode = RefreshMode.OFF
+        self.__polling_phase: PollingPhase | None = None
         self.__remote_ac_temp: int | None = None
         self.__remote_ac_running: bool = False
         self.__remote_heated_seats_front_left_level: int = 0
@@ -710,6 +711,9 @@ class VehicleState:
         return f"{self.mqtt_vin_prefix}/{sub_topic}"
 
     def __publish_polling_phase(self, phase: PollingPhase) -> None:
+        if self.__polling_phase == phase:
+            return
+        self.__polling_phase = phase
         self.publisher.publish_str(
             self.get_topic(mqtt_topics.REFRESH_POLLING_PHASE), phase.value
         )
