@@ -31,7 +31,7 @@ class RefreshModeCommand(PayloadConvertingCommandHandler[RefreshMode]):
     async def handle(
         self, payload: str, *, retained: bool = False
     ) -> CommandProcessingResult:
-        if len(payload.strip()) == 0:
+        if len(payload.strip()) == 0 and not self.supports_empty_payload:
             return RESULT_DO_NOTHING
         try:
             refresh_mode = self.convert_payload(payload)

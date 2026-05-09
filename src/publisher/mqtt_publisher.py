@@ -151,7 +151,7 @@ class MqttPublisher(Publisher):
                 payload = payload.decode("utf-8")
             else:
                 payload = str(payload)
-            retained = bool(_properties.get("retain", 0)) if _properties else False
+            retained = bool(_properties.get("retain", 0))
             await self.__on_message_real(
                 topic=topic, payload=payload, retained=retained
             )

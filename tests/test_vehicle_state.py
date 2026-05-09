@@ -192,9 +192,9 @@ class TestVehicleState(unittest.IsolatedAsyncioTestCase):
             self.get_topic(mqtt_topics.CLIMATE_REMOTE_TEMPERATURE)
             not in self.publisher.map
         )
-        # refresh_mode defaults to RefreshMode.OFF (never None), so it IS always published
+        # refresh_mode defaults to RefreshMode.PERIODIC (never None), so it IS always published
         self.assert_mqtt_topic(
-            self.get_topic(mqtt_topics.REFRESH_MODE), RefreshMode.OFF.value
+            self.get_topic(mqtt_topics.REFRESH_MODE), RefreshMode.PERIODIC.value
         )
 
     def test_configure_missing_skips_when_retained_value_present(self) -> None:
@@ -218,6 +218,11 @@ class TestVehicleState(unittest.IsolatedAsyncioTestCase):
         assert self.vehicle_state.refresh_period_inactive == 86400
         assert self.vehicle_state.refresh_period_after_shutdown == 120
         assert self.vehicle_state.refresh_period_inactive_grace == 600
+
+    def test_configure_missing_preserves_retained_off_refresh_mode(self) -> None:
+        self.vehicle_state.set_refresh_mode(RefreshMode.OFF, "retained replay")
+        self.vehicle_state.configure_missing()
+        assert self.vehicle_state.refresh_mode == RefreshMode.OFF
 
     def test_republish_command_states_includes_api_values(self) -> None:
         self.vehicle_state.configure_missing()

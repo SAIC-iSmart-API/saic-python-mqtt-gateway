@@ -71,8 +71,10 @@ ONE_SHOT_REFRESH_MODES: Final[frozenset[RefreshMode]] = frozenset(
 )
 
 #: Refresh modes that are not valid at startup and must be replaced with PERIODIC.
+#: Only one-shot modes are coerced; OFF is a legitimate persistent user choice
+#: (restored from retained `/set` on reconnect) and must be preserved.
 INVALID_STARTUP_REFRESH_MODES: Final[frozenset[RefreshMode]] = frozenset(
-    {RefreshMode.OFF, RefreshMode.FORCE, RefreshMode.CHARGING_DETECTION}
+    {RefreshMode.FORCE, RefreshMode.CHARGING_DETECTION}
 )
 
 
@@ -108,13 +110,21 @@ class VehicleState:
         )
         self.vehicle: Final[VehicleInfo] = vin_info
         self.mqtt_vin_prefix = account_prefix
-        self.last_car_activity: datetime.datetime = datetime.datetime.min.replace(tzinfo=datetime.UTC)
-        self.last_successful_refresh: datetime.datetime = datetime.datetime.min.replace(tzinfo=datetime.UTC)
+        self.last_car_activity: datetime.datetime = datetime.datetime.min.replace(
+            tzinfo=datetime.UTC
+        )
+        self.last_successful_refresh: datetime.datetime = datetime.datetime.min.replace(
+            tzinfo=datetime.UTC
+        )
         self.__last_failed_refresh: datetime.datetime | None = None
         self.__failed_refresh_counter = 0
         self.__refresh_period_error = 30
-        self.last_car_shutdown: datetime.datetime = datetime.datetime.now(tz=datetime.UTC)
-        self.last_car_vehicle_message: datetime.datetime = datetime.datetime.min.replace(tzinfo=datetime.UTC)
+        self.last_car_shutdown: datetime.datetime = datetime.datetime.now(
+            tz=datetime.UTC
+        )
+        self.last_car_vehicle_message: datetime.datetime = (
+            datetime.datetime.min.replace(tzinfo=datetime.UTC)
+        )
         # treat high voltage battery as active, if we don't have any other information
         self.__hv_battery_active = True
         self.__hv_battery_active_from_car = True
@@ -128,8 +138,8 @@ class VehicleState:
         self.charge_current_limit: ChargeCurrentLimitCode | None = None
         self.refresh_period_charging = 0
         self.charge_polling_min_percent = charge_polling_min_percent
-        self.refresh_mode = RefreshMode.OFF
-        self.previous_refresh_mode = RefreshMode.OFF
+        self.refresh_mode = RefreshMode.PERIODIC
+        self.previous_refresh_mode = RefreshMode.PERIODIC
         self.__polling_phase: PollingPhase | None = None
         self.__remote_ac_temp: int | None = None
         self.__remote_ac_running: bool = False
@@ -243,7 +253,11 @@ class VehicleState:
             tz = self.__user_timezone
             if self.refresh_period_inactive_grace > 0:
                 # Add a grace period to the start time, so that the car is not woken up too early
-                now = datetime.datetime.now(tz=tz) if tz else datetime.datetime.now().astimezone()
+                now = (
+                    datetime.datetime.now(tz=tz)
+                    if tz
+                    else datetime.datetime.now().astimezone()
+                )
                 dt = now.replace(
                     hour=start_time.hour,
                     minute=start_time.minute,
@@ -426,20 +440,16 @@ class VehicleState:
             self.__publish_polling_phase(PollingPhase.ERROR_RECOVERY)
             return result
         if self.is_charging and self.refresh_period_charging > 0:
-            result = (
-                self.last_successful_refresh
-                < datetime.datetime.now(tz=datetime.UTC)
-                - datetime.timedelta(seconds=float(self.refresh_period_charging))
-            )
+            result = self.last_successful_refresh < datetime.datetime.now(
+                tz=datetime.UTC
+            ) - datetime.timedelta(seconds=float(self.refresh_period_charging))
             LOG.debug(f"HV battery is charging. Should refresh: {result}")
             self.__publish_polling_phase(PollingPhase.CHARGING)
             return result
         if self.hv_battery_active:
-            result = (
-                self.last_successful_refresh
-                < datetime.datetime.now(tz=datetime.UTC)
-                - datetime.timedelta(seconds=float(self.refresh_period_active))
-            )
+            result = self.last_successful_refresh < datetime.datetime.now(
+                tz=datetime.UTC
+            ) - datetime.timedelta(seconds=float(self.refresh_period_active))
             LOG.debug(f"HV battery is active. Should refresh: {result}")
             self.__publish_polling_phase(PollingPhase.ACTIVE)
             return result
@@ -447,21 +457,17 @@ class VehicleState:
             seconds=float(self.refresh_period_inactive_grace)
         )
         if last_shutdown_plus_refresh > datetime.datetime.now(tz=datetime.UTC):
-            result = (
-                self.last_successful_refresh
-                < datetime.datetime.now(tz=datetime.UTC)
-                - datetime.timedelta(seconds=float(self.refresh_period_after_shutdown))
-            )
+            result = self.last_successful_refresh < datetime.datetime.now(
+                tz=datetime.UTC
+            ) - datetime.timedelta(seconds=float(self.refresh_period_after_shutdown))
             LOG.debug(
                 f"Refresh grace period after shutdown has not passed. Should refresh: {result}"
             )
             self.__publish_polling_phase(PollingPhase.AFTER_SHUTDOWN)
             return result
-        result = (
-            self.last_successful_refresh
-            < datetime.datetime.now(tz=datetime.UTC)
-            - datetime.timedelta(seconds=float(self.refresh_period_inactive))
-        )
+        result = self.last_successful_refresh < datetime.datetime.now(
+            tz=datetime.UTC
+        ) - datetime.timedelta(seconds=float(self.refresh_period_inactive))
         LOG.debug(
             f"HV battery is inactive and refresh period after shutdown is over. Should refresh: {result}"
         )
