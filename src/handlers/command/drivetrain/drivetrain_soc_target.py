@@ -22,6 +22,24 @@ class DrivetrainSoCTargetCommand(PayloadConvertingCommandHandler[TargetBatteryCo
     def topic(cls) -> str:
         return mqtt_topics.DRIVETRAIN_SOC_TARGET_SET
 
+    @property
+    @override
+    def state_topic(self) -> str:
+        return mqtt_topics.DRIVETRAIN_SOC_TARGET
+
+    @property
+    @override
+    def current_state(self) -> int | None:
+        target = self.vehicle_state.target_soc
+        return None if target is None else target.percentage
+
+    @override
+    def expected_state(self, raw_payload: str) -> int | None:
+        try:
+            return self.convert_payload(raw_payload).percentage
+        except (ValueError, KeyError):
+            return None
+
     @staticmethod
     @override
     def convert_payload(payload: str) -> TargetBatteryCode:

@@ -42,6 +42,35 @@ class DrivetrainBatteryHeatingScheduleCommand(
     def topic(cls) -> str:
         return mqtt_topics.DRIVETRAIN_BATTERY_HEATING_SCHEDULE_SET
 
+    @property
+    @override
+    def state_topic(self) -> str:
+        return mqtt_topics.DRIVETRAIN_BATTERY_HEATING_SCHEDULE
+
+    @property
+    @override
+    def current_state(self) -> dict[str, Any] | None:
+        start_time = self.vehicle_state.scheduled_battery_heating_start
+        if start_time is None:
+            return None
+        return {
+            "startTime": start_time.strftime("%H:%M"),
+            "mode": "on"
+            if self.vehicle_state.scheduled_battery_heating_enabled
+            else "off",
+        }
+
+    @override
+    def expected_state(self, raw_payload: str) -> dict[str, Any] | None:
+        try:
+            parsed = self.convert_payload(raw_payload)
+        except (ValueError, KeyError, json.JSONDecodeError):
+            return None
+        return {
+            "startTime": parsed.start_time.strftime("%H:%M"),
+            "mode": "on" if parsed.enable else "off",
+        }
+
     @staticmethod
     @override
     def convert_payload(payload: str) -> BatteryHeatingScheduleCommandPayload:

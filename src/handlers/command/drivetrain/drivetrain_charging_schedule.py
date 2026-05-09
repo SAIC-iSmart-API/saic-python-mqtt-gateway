@@ -15,6 +15,7 @@ from handlers.command.base import (
     PayloadConvertingCommandHandler,
 )
 import mqtt_topics
+from status_publisher.charge.chrg_mgmt_data import ScheduledCharging
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -45,6 +46,35 @@ class DrivetrainChargingScheduleCommand(
     def topic(cls) -> str:
         return mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE_SET
 
+    @property
+    @override
+    def state_topic(self) -> str:
+        return mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE
+
+    @property
+    @override
+    def current_state(self) -> dict[str, Any] | None:
+        schedule = self.vehicle_state.scheduled_charging
+        if schedule is None:
+            return None
+        return {
+            "startTime": schedule.start_time.strftime("%H:%M"),
+            "endTime": schedule.end_time.strftime("%H:%M"),
+            "mode": schedule.mode.name,
+        }
+
+    @override
+    def expected_state(self, raw_payload: str) -> dict[str, Any] | None:
+        try:
+            parsed = self.convert_payload(raw_payload)
+        except (ValueError, KeyError, json.JSONDecodeError):
+            return None
+        return {
+            "startTime": parsed.start_time.strftime("%H:%M"),
+            "endTime": parsed.end_time.strftime("%H:%M"),
+            "mode": parsed.mode.name,
+        }
+
     @staticmethod
     @override
     def convert_payload(payload: str) -> ChargingScheduleCommandPayload:
@@ -71,5 +101,11 @@ class DrivetrainChargingScheduleCommand(
             end_time=payload.end_time,
             mode=payload.mode,
         )
-        self.vehicle_state.update_scheduled_charging(payload.start_time, payload.mode)
+        self.vehicle_state.update_scheduled_charging(
+            ScheduledCharging(
+                start_time=payload.start_time,
+                end_time=payload.end_time,
+                mode=payload.mode,
+            )
+        )
         return RESULT_REFRESH_ONLY
