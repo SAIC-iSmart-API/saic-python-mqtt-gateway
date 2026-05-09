@@ -12,6 +12,13 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 
+type PublishedValue = bool | int | float | str
+"""Closed union of value types accepted by Publisher.publish_{bool,int,float,str}.
+
+Use this when a caller needs to forward a value to one of those methods but
+doesn't statically know which arm of the union it is.
+"""
+
 
 class MqttCommandListener(ABC):
     @abstractmethod
@@ -107,6 +114,22 @@ class Publisher(ABC):
         self, key: str, value: float, no_prefix: bool = False, *, retain: bool = True
     ) -> None:
         raise NotImplementedError
+
+    def publish(self, key: str, value: PublishedValue, no_prefix: bool = False) -> None:
+        """Dispatch to the appropriate typed publish_* based on value type.
+
+        For callers that hold a `PublishedValue` without statically knowing
+        which arm of the union it is.
+        """
+        # bool must precede int: isinstance(True, int) is True in Python.
+        if isinstance(value, bool):
+            self.publish_bool(key, value, no_prefix)
+        elif isinstance(value, int):
+            self.publish_int(key, value, no_prefix)
+        elif isinstance(value, float):
+            self.publish_float(key, value, no_prefix)
+        else:
+            self.publish_str(key, value, no_prefix)
 
     @abstractmethod
     def clear_topic(self, key: str, no_prefix: bool = False) -> None:
