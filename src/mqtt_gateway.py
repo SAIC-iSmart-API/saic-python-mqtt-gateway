@@ -255,7 +255,9 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
 
     def __create_vehicle_handler(self, vin_info: VinInfo) -> VehicleHandler:
         vin = vin_info.vin
-        total_battery_capacity = self.configuration.battery_capacity_map.get(vin, None) if vin else None
+        total_battery_capacity = (
+            self.configuration.battery_capacity_map.get(vin, None) if vin else None
+        )
         info = VehicleInfo(vin_info, total_battery_capacity)
         account_prefix = f"{self.configuration.saic_user}/{mqtt_topics.VEHICLES}/{vin}"
         vehicle_state = VehicleState(
@@ -356,11 +358,18 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
 
     @override
     async def on_mqtt_command_received(
-        self, *, vin: str, topic: str, payload: str
+        self, *, vin: str, topic: str, payload: str, retained: bool = False
     ) -> None:
         vehicle_handler = self.get_vehicle_handler(vin)
         if vehicle_handler:
-            await vehicle_handler.handle_mqtt_command(topic=topic, payload=payload)
+            await vehicle_handler.handle_mqtt_command(
+                topic=topic, payload=payload, retained=retained
+            )
+        elif retained:
+            LOG.info(
+                f"Retained command for unknown vin {vin} received on {topic};"
+                f" handler not yet registered, dropping replay"
+            )
         else:
             LOG.debug(f"Command for unknown vin {vin} received")
 

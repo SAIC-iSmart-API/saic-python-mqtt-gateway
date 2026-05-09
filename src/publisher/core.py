@@ -16,7 +16,7 @@ T = TypeVar("T")
 class MqttCommandListener(ABC):
     @abstractmethod
     async def on_mqtt_command_received(
-        self, *, vin: str, topic: str, payload: str
+        self, *, vin: str, topic: str, payload: str, retained: bool = False
     ) -> None:
         raise NotImplementedError("Should have implemented this")
 
@@ -187,7 +187,9 @@ class Publisher(ABC):
     def anonymize_device_id(self, device_id: str) -> str:
         elements = device_id.split("###", maxsplit=1)
         if len(elements) == 2:
-            return f"{self.anonymize_str(elements[0])}###{self.anonymize_str(elements[1])}"
+            return (
+                f"{self.anonymize_str(elements[0])}###{self.anonymize_str(elements[1])}"
+            )
         return self.anonymize_str(device_id)
 
     @staticmethod

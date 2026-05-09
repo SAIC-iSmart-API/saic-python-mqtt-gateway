@@ -241,10 +241,9 @@ class VehicleHandler:
         )
 
     def __should_complete_configuration(self, start_time: datetime.datetime) -> bool:
-        return (
-            not self.vehicle_state.is_complete()
-            and datetime.datetime.now(tz=datetime.UTC) > start_time + datetime.timedelta(seconds=10)
-        )
+        return not self.vehicle_state.is_complete() and datetime.datetime.now(
+            tz=datetime.UTC
+        ) > start_time + datetime.timedelta(seconds=10)
 
     def __refresh_openwb(
         self,
@@ -334,8 +333,12 @@ class VehicleHandler:
         )
         return scheduled_battery_heating_status
 
-    async def handle_mqtt_command(self, *, topic: str, payload: str) -> None:
-        await self.__command_handler.handle_mqtt_command(topic=topic, payload=payload)
+    async def handle_mqtt_command(
+        self, *, topic: str, payload: str, retained: bool = False
+    ) -> None:
+        await self.__command_handler.handle_mqtt_command(
+            topic=topic, payload=payload, retained=retained
+        )
 
     def __setup_ha_discovery(
         self, vehicle_state: VehicleState, vin_info: VehicleInfo, config: Configuration
@@ -343,7 +346,6 @@ class VehicleHandler:
         if self.configuration.ha_discovery_enabled:
             return HomeAssistantDiscovery(vehicle_state, vin_info, config)
         return None
-
 
     def handle_charging_station_energy_imported(
         self, imported_energy_wh: float

@@ -167,6 +167,7 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             mode="box",
             min_value=0.0,
             step=0.001,
+            retain=True,
         )
 
         self._publish_sensor(
@@ -640,6 +641,7 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             value_template="{{ value }}",
             command_template="{{ value }}",
             icon="mdi:refresh",
+            retain=True,
             custom_availability=self.__system_availability_config,
         )
         self._publish_number(
@@ -651,6 +653,7 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             min_value=30,
             max_value=60 * 60,
             step=1,
+            retain=True,
             custom_availability=self.__system_availability_config,
         )
         self._publish_number(
@@ -662,6 +665,7 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             min_value=1 * 60 * 60,
             max_value=5 * 24 * 60 * 60,
             step=1,
+            retain=True,
             custom_availability=self.__system_availability_config,
         )
         self._publish_number(
@@ -673,6 +677,7 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             min_value=30,
             max_value=12 * 60 * 60,
             step=1,
+            retain=True,
             custom_availability=self.__system_availability_config,
         )
         self._publish_number(
@@ -684,6 +689,7 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             min_value=30,
             max_value=12 * 60 * 60,
             step=1,
+            retain=True,
             custom_availability=self.__system_availability_config,
         )
         self._publish_sensor(

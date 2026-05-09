@@ -1,5 +1,21 @@
 # Change Log
 
+## Unreleased
+
+### Fixed
+
+* Persist user-set HA gateway entities across gateway restarts by retaining
+  their `/set` commands on the MQTT broker (refresh mode, all four refresh
+  periods, and total battery capacity). On reconnect the existing command-
+  dispatch path replays the retained value before `configure_missing()` would
+  apply config defaults. A retained one-shot refresh mode (`force`,
+  `charging_detection`) is dropped on replay so a single-shot poll does not
+  fire on every restart.
+
+  Note: on first upgrade only entities you change *after* the upgrade become
+  persistent. Existing retained STATE values on the broker are not converted
+  into retained `/set` commands.
+
 ## 0.11.0
 
 ### Added

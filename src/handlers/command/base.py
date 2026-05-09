@@ -50,7 +50,9 @@ class CommandHandlerBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    async def handle(self, payload: str) -> CommandProcessingResult:
+    async def handle(
+        self, payload: str, *, retained: bool = False
+    ) -> CommandProcessingResult:
         raise NotImplementedError
 
     @property
@@ -84,7 +86,12 @@ class MultiValuedCommandHandler[T](CommandHandlerBase, metaclass=ABCMeta):
         return False
 
     @override
-    async def handle(self, payload: str) -> CommandProcessingResult:
+    async def handle(
+        self,
+        payload: str,
+        *,
+        retained: bool = False,
+    ) -> CommandProcessingResult:
         normalized_payload = payload.strip().lower()
 
         if len(normalized_payload) == 0 and not self.supports_empty_payload:
@@ -113,7 +120,12 @@ class BooleanCommandHandler[T](CommandHandlerBase, metaclass=ABCMeta):
         pass
 
     @override
-    async def handle(self, payload: str) -> CommandProcessingResult:
+    async def handle(
+        self,
+        payload: str,
+        *,
+        retained: bool = False,
+    ) -> CommandProcessingResult:
         normalized_payload = payload.strip().lower()
 
         if len(normalized_payload) == 0:
@@ -145,7 +157,12 @@ class PayloadConvertingCommandHandler[T](CommandHandlerBase, metaclass=ABCMeta):
         return False
 
     @override
-    async def handle(self, payload: str) -> CommandProcessingResult:
+    async def handle(
+        self,
+        payload: str,
+        *,
+        retained: bool = False,
+    ) -> CommandProcessingResult:
         if len(payload.strip()) == 0 and not self.supports_empty_payload:
             return RESULT_DO_NOTHING
 

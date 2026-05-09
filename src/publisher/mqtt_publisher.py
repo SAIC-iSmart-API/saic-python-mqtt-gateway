@@ -151,11 +151,16 @@ class MqttPublisher(Publisher):
                 payload = payload.decode("utf-8")
             else:
                 payload = str(payload)
-            await self.__on_message_real(topic=topic, payload=payload)
+            retained = bool(_properties.get("retain", 0)) if _properties else False
+            await self.__on_message_real(
+                topic=topic, payload=payload, retained=retained
+            )
         except Exception as e:
             LOG.exception(f"Error while processing MQTT message: {e}")
 
-    async def __on_message_real(self, *, topic: str, payload: str) -> None:
+    async def __on_message_real(
+        self, *, topic: str, payload: str, retained: bool
+    ) -> None:
         if topic in self.vin_by_charge_state_topic:
             LOG.debug(f"Received message over topic {topic} with payload {payload}")
             vin = self.vin_by_charge_state_topic[topic]
@@ -194,7 +199,7 @@ class MqttPublisher(Publisher):
             vin = self.get_vin_from_topic(topic)
             if self.command_listener is not None:
                 await self.command_listener.on_mqtt_command_received(
-                    vin=vin, topic=topic, payload=payload
+                    vin=vin, topic=topic, payload=payload, retained=retained
                 )
 
     async def __handle_imported_energy(self, topic: str, payload: str) -> None:

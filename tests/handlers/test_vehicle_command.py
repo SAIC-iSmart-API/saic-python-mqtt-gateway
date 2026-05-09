@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import cast
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -7,11 +8,14 @@ from saic_ismart_client_ng.exceptions import SaicApiException, SaicLogoutExcepti
 
 from handlers.vehicle_command import VehicleCommandHandler
 import mqtt_topics
+from vehicle import RefreshMode
 
 MQTT_TOPIC = "saic"
 VIN = "vin_test_000000000"
 VEHICLE_PREFIX = f"vehicles/{VIN}"
-CHARGING_SET_TOPIC = f"{MQTT_TOPIC}/{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_CHARGING_SET}"
+CHARGING_SET_TOPIC = (
+    f"{MQTT_TOPIC}/{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_CHARGING_SET}"
+)
 CHARGING_RESULT_TOPIC = (
     f"{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_CHARGING}/{mqtt_topics.RESULT_SUFFIX}"
 )
@@ -182,9 +186,7 @@ class TestSaicLogoutException(unittest.IsolatedAsyncioTestCase):
 
         await handler.handle_mqtt_command(topic=CHARGING_SET_TOPIC, payload="true")
 
-        pub.publish_str.assert_any_call(
-            CHARGING_RESULT_TOPIC, "Failed: retry boom"
-        )
+        pub.publish_str.assert_any_call(CHARGING_RESULT_TOPIC, "Failed: retry boom")
         pub.publish_json.assert_called_once()
         event = pub.publish_json.call_args[0][1]
         assert event["detail"] == "retry boom"
@@ -239,3 +241,113 @@ class TestErrorEventPayload(unittest.IsolatedAsyncioTestCase):
         assert event["event_type"] == "command_error"
         assert event["command"] == mqtt_topics.DRIVETRAIN_CHARGING_SET
         assert "operation too frequent" in event["detail"]
+
+
+REFRESH_MODE_SET_TOPIC = f"{MQTT_TOPIC}/{VEHICLE_PREFIX}/{mqtt_topics.REFRESH_MODE_SET}"
+REFRESH_MODE_RESULT_TOPIC = (
+    f"{VEHICLE_PREFIX}/{mqtt_topics.REFRESH_MODE}/{mqtt_topics.RESULT_SUFFIX}"
+)
+TOTAL_BATTERY_CAPACITY_SET_TOPIC = (
+    f"{MQTT_TOPIC}/{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_TOTAL_BATTERY_CAPACITY_SET}"
+)
+TOTAL_BATTERY_CAPACITY_RESULT_TOPIC = (
+    f"{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_TOTAL_BATTERY_CAPACITY}"
+    f"/{mqtt_topics.RESULT_SUFFIX}"
+)
+
+
+class TestRetainedReplay(unittest.IsolatedAsyncioTestCase):
+    """Behavior for retained `/set` commands replayed on broker reconnect.
+
+    Idempotent values (refresh periods, OFF/PERIODIC mode, battery capacity)
+    must seed in-memory state. One-shot refresh modes (FORCE /
+    CHARGING_DETECTION) must be dropped to avoid looping a poll on every
+    gateway restart.
+    """
+
+    async def test_retained_force_refresh_mode_dropped(self) -> None:
+        handler, pub = _build()
+        vehicle_state = cast("MagicMock", handler.vehicle_state)
+
+        await handler.handle_mqtt_command(
+            topic=REFRESH_MODE_SET_TOPIC, payload="force", retained=True
+        )
+
+        vehicle_state.set_refresh_mode.assert_not_called()
+        pub.publish_str.assert_any_call(REFRESH_MODE_RESULT_TOPIC, "Success")
+
+    async def test_retained_charging_detection_refresh_mode_dropped(self) -> None:
+        handler, pub = _build()
+        vehicle_state = cast("MagicMock", handler.vehicle_state)
+
+        await handler.handle_mqtt_command(
+            topic=REFRESH_MODE_SET_TOPIC,
+            payload="charging_detection",
+            retained=True,
+        )
+
+        vehicle_state.set_refresh_mode.assert_not_called()
+        pub.publish_str.assert_any_call(REFRESH_MODE_RESULT_TOPIC, "Success")
+
+    async def test_retained_periodic_refresh_mode_applied(self) -> None:
+        handler, _pub = _build()
+        vehicle_state = cast("MagicMock", handler.vehicle_state)
+
+        await handler.handle_mqtt_command(
+            topic=REFRESH_MODE_SET_TOPIC, payload="periodic", retained=True
+        )
+
+        vehicle_state.set_refresh_mode.assert_called_once()
+        mode_arg = vehicle_state.set_refresh_mode.call_args[0][0]
+        assert mode_arg is RefreshMode.PERIODIC
+
+    async def test_retained_off_refresh_mode_applied(self) -> None:
+        handler, _pub = _build()
+        vehicle_state = cast("MagicMock", handler.vehicle_state)
+
+        await handler.handle_mqtt_command(
+            topic=REFRESH_MODE_SET_TOPIC, payload="off", retained=True
+        )
+
+        vehicle_state.set_refresh_mode.assert_called_once()
+        mode_arg = vehicle_state.set_refresh_mode.call_args[0][0]
+        assert mode_arg is RefreshMode.OFF
+
+    async def test_non_retained_force_still_applied(self) -> None:
+        handler, _pub = _build()
+        vehicle_state = cast("MagicMock", handler.vehicle_state)
+
+        await handler.handle_mqtt_command(
+            topic=REFRESH_MODE_SET_TOPIC, payload="force", retained=False
+        )
+
+        vehicle_state.set_refresh_mode.assert_called_once()
+        mode_arg = vehicle_state.set_refresh_mode.call_args[0][0]
+        assert mode_arg is RefreshMode.FORCE
+
+    async def test_retained_battery_capacity_replays_to_vehicle_info(self) -> None:
+        handler, pub = _build()
+        vehicle_state = cast("MagicMock", handler.vehicle_state)
+
+        await handler.handle_mqtt_command(
+            topic=TOTAL_BATTERY_CAPACITY_SET_TOPIC, payload="50.0", retained=True
+        )
+
+        vehicle_state.update_battery_capacity.assert_called_once_with(50.0)
+        pub.publish_str.assert_any_call(TOTAL_BATTERY_CAPACITY_RESULT_TOPIC, "Success")
+
+    async def test_retained_clear_command_skipped(self) -> None:
+        """A retained replay must not delete its own retained command from the broker.
+
+        DrivetrainChargingCommand returns RESULT_REFRESH_AND_CLEAR. When called
+        with retained=True the dispatcher must skip the clear_topic call so the
+        retained intent remains on the broker for the next restart.
+        """
+        handler, pub = _build()
+
+        await handler.handle_mqtt_command(
+            topic=CHARGING_SET_TOPIC, payload="true", retained=True
+        )
+
+        pub.clear_topic.assert_not_called()
+        pub.publish_str.assert_any_call(CHARGING_RESULT_TOPIC, "Success")

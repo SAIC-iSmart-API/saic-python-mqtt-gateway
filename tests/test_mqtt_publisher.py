@@ -24,10 +24,11 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
 
     @override
     async def on_mqtt_command_received(
-        self, *, vin: str, topic: str, payload: str
+        self, *, vin: str, topic: str, payload: str, retained: bool = False
     ) -> None:
         self.received_vin = vin
         self.received_payload = payload.strip().lower()
+        self.received_retained = retained
 
     @override
     def setUp(self) -> None:
@@ -39,6 +40,7 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
         self.mqtt_client.command_listener = self
         self.received_vin = ""
         self.received_payload = ""
+        self.received_retained = False
         self.vehicle_base_topic = (
             f"{self.mqtt_client.configuration.mqtt_topic}/{USER}/vehicles/{VIN}"
         )

@@ -46,14 +46,16 @@ class HomeAssistantDiscoveryBase(metaclass=abc.ABCMeta):
         enabled: bool = True,
         value_template: str = "{{ value }}",
         command_template: str = "{{ value }}",
+        retain: bool = False,
         icon: str | None = None,
         custom_availability: HaCustomAvailabilityConfig | None = None,
     ) -> str:
-        payload = {
+        payload: dict[str, Any] = {
             "state_topic": self._get_state_topic(topic),
             "command_topic": self._get_command_topic(topic),
             "value_template": value_template,
             "command_template": command_template,
+            "retain": str(retain).lower(),
             "options": options,
             "enabled_by_default": enabled,
         }
