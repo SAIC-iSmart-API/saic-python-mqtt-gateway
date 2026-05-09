@@ -1,0 +1,43 @@
+ci:
+  autofix_prs: false
+  skip:
+    # These steps run in the CI workflow already. Keep in sync.
+    - mypy
+
+default_language_version:
+  python: python3.13
+
+repos:
+  - repo: https://github.com/python-poetry/poetry
+    rev: '2.1.3'
+    hooks:
+      - id: poetry-check
+      - id: poetry-lock
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.0
+    hooks:
+      - id: ruff
+        args:
+          - --fix
+          - --unsafe-fixes
+      - id: ruff-format
+  - repo: local
+    hooks:
+      - id: mypy
+        name: Check with mypy
+        entry: poetry run mypy
+        language: system
+        types:
+          - python
+        require_serial: true
+      - id: pytest
+        name: Run pytest
+        entry: poetry run pytest tests
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-added-large-files
