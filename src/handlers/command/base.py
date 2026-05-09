@@ -45,6 +45,19 @@ class CommandHandlerBase(metaclass=ABCMeta):
         return cls.__name__
 
     @classmethod
+    def is_replayable_when_retained(cls) -> bool:
+        """Whether the dispatcher may invoke this handler with retained=True.
+
+        Default False: action-bearing commands (charging start/stop, locks,
+        climate, FORCE refresh, etc.) would re-fire on every gateway restart
+        if their `/set` topic was retained on the broker, so the dispatcher
+        drops the replay before the handler runs. Override to True only on
+        idempotent value-bearing handlers whose HA discovery payload also
+        declares `retain: true`.
+        """
+        return False
+
+    @classmethod
     @abstractmethod
     def topic(cls) -> str:
         raise NotImplementedError

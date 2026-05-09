@@ -18,6 +18,12 @@ LOG = logging.getLogger(__name__)
 class RefreshModeCommand(PayloadConvertingCommandHandler[RefreshMode]):
     @classmethod
     @override
+    def is_replayable_when_retained(cls) -> bool:
+        # OFF / PERIODIC are persistent user choices; one-shots dropped in handle().
+        return True
+
+    @classmethod
+    @override
     def topic(cls) -> str:
         return mqtt_topics.REFRESH_MODE_SET
 

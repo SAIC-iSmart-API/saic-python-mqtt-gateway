@@ -336,18 +336,23 @@ class TestRetainedReplay(unittest.IsolatedAsyncioTestCase):
         vehicle_state.update_battery_capacity.assert_called_once_with(50.0)
         pub.publish_str.assert_any_call(TOTAL_BATTERY_CAPACITY_RESULT_TOPIC, "Success")
 
-    async def test_retained_clear_command_skipped(self) -> None:
-        """A retained replay must not delete its own retained command from the broker.
+    async def test_retained_action_command_dropped_at_dispatcher(self) -> None:
+        """Retained `/set` for an action-bearing command is dropped at the dispatcher.
 
-        DrivetrainChargingCommand returns RESULT_REFRESH_AND_CLEAR. When called
-        with retained=True the dispatcher must skip the clear_topic call so the
-        retained intent remains on the broker for the next restart.
+        DrivetrainChargingCommand has not opted in via
+        is_replayable_when_retained(). A retained replay of `charging/set` (e.g.
+        from a non-HA client that mistakenly retained the topic) must NOT
+        invoke the handler — otherwise the SAIC charging API call would re-fire
+        on every gateway restart.
         """
-        handler, pub = _build()
+        saic_api = AsyncMock()
+        handler, pub = _build(saic_api=saic_api)
 
         await handler.handle_mqtt_command(
             topic=CHARGING_SET_TOPIC, payload="true", retained=True
         )
 
+        # Handler never ran: no API call, no Success/result publish, no clear_topic
+        saic_api.control_charging.assert_not_called()
+        pub.publish_str.assert_not_called()
         pub.clear_topic.assert_not_called()
-        pub.publish_str.assert_any_call(CHARGING_RESULT_TOPIC, "Success")

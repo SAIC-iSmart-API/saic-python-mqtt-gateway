@@ -13,6 +13,11 @@ import mqtt_topics
 class RefreshPeriodActiveCommand(IntCommandHandler):
     @classmethod
     @override
+    def is_replayable_when_retained(cls) -> bool:
+        return True
+
+    @classmethod
+    @override
     def topic(cls) -> str:
         return mqtt_topics.REFRESH_PERIOD_ACTIVE_SET
 
@@ -23,6 +28,11 @@ class RefreshPeriodActiveCommand(IntCommandHandler):
 
 
 class RefreshPeriodInactiveCommand(IntCommandHandler):
+    @classmethod
+    @override
+    def is_replayable_when_retained(cls) -> bool:
+        return True
+
     @classmethod
     @override
     def topic(cls) -> str:
@@ -37,6 +47,11 @@ class RefreshPeriodInactiveCommand(IntCommandHandler):
 class RefreshPeriodInactiveGraceCommand(IntCommandHandler):
     @classmethod
     @override
+    def is_replayable_when_retained(cls) -> bool:
+        return True
+
+    @classmethod
+    @override
     def topic(cls) -> str:
         return mqtt_topics.REFRESH_PERIOD_INACTIVE_GRACE_SET
 
@@ -47,6 +62,11 @@ class RefreshPeriodInactiveGraceCommand(IntCommandHandler):
 
 
 class RefreshPeriodAfterShutdownCommand(IntCommandHandler):
+    @classmethod
+    @override
+    def is_replayable_when_retained(cls) -> bool:
+        return True
+
     @classmethod
     @override
     def topic(cls) -> str:

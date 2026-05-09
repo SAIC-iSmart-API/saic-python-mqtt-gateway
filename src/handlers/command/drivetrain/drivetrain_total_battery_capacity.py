@@ -16,6 +16,11 @@ LOG = logging.getLogger(__name__)
 class DrivetrainTotalBatteryCapacitySetCommand(FloatCommandHandler):
     @classmethod
     @override
+    def is_replayable_when_retained(cls) -> bool:
+        return True
+
+    @classmethod
+    @override
     def topic(cls) -> str:
         return mqtt_topics.DRIVETRAIN_TOTAL_BATTERY_CAPACITY_SET
 

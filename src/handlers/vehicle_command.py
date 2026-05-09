@@ -123,6 +123,19 @@ class VehicleCommandHandler:
         topic_no_global = analyzed_topic.command_no_global
         result_topic = analyzed_topic.response_no_global
 
+        if retained and not handler.is_replayable_when_retained():
+            # A retained `/set` for an action-bearing command would re-fire the
+            # action on every gateway restart. Drop it before invoking the
+            # handler. Only handlers that explicitly opt in via
+            # ``replayable_when_retained = True`` see retained replays.
+            LOG.warning(
+                "Dropping retained replay for non-replayable command %s on %s; "
+                "this command should not have been published with retain=true",
+                handler.name(),
+                topic,
+            )
+            return
+
         try:
             execution_result = await handler.handle(payload, retained=retained)
             self.publisher.publish_str(result_topic, "Success")
