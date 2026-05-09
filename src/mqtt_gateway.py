@@ -366,7 +366,7 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
                 topic=topic, payload=payload, retained=retained
             )
         elif retained:
-            LOG.info(
+            LOG.warning(
                 f"Retained command for unknown vin {vin} received on {topic};"
                 f" handler not yet registered, dropping replay"
             )
