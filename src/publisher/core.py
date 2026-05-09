@@ -1,22 +1,26 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 import json
 import re
 from typing import TYPE_CHECKING, Any, TypeVar
 
 import mqtt_topics
+from utils import datetime_to_str
 
 if TYPE_CHECKING:
     from configuration import Configuration
 
 T = TypeVar("T")
 
-type PublishedValue = bool | int | float | str
-"""Closed union of value types accepted by Publisher.publish_{bool,int,float,str}.
+type Publishable = bool | int | float | str | dict[str, Any] | datetime
+"""Closed union of value types this gateway knows how to publish to MQTT.
 
-Use this when a caller needs to forward a value to one of those methods but
-doesn't statically know which arm of the union it is.
+Mirrors the typed `publish_*` methods on :class:`Publisher` plus the `dict`
+shape handled by `publish_json`, and `datetime`, which is stringified via
+:func:`utils.datetime_to_str`. Use it at signature boundaries when a caller
+holds "something publishable" without statically knowing which arm.
 """
 
 
@@ -115,11 +119,19 @@ class Publisher(ABC):
     ) -> None:
         raise NotImplementedError
 
-    def publish(self, key: str, value: PublishedValue, no_prefix: bool = False) -> None:
+    def publish(
+        self,
+        key: str,
+        value: Publishable,
+        no_prefix: bool = False,
+        *,
+        retain: bool = True,
+    ) -> None:
         """Dispatch to the appropriate typed publish_* based on value type.
 
-        For callers that hold a `PublishedValue` without statically knowing
-        which arm of the union it is.
+        For callers that hold a `Publishable` without statically knowing
+        which arm of the union it is. `retain` is only consulted for the
+        `dict` case (forwarded to :meth:`publish_json`); other arms ignore it.
         """
         # bool must precede int: isinstance(True, int) is True in Python.
         if isinstance(value, bool):
@@ -128,8 +140,17 @@ class Publisher(ABC):
             self.publish_int(key, value, no_prefix)
         elif isinstance(value, float):
             self.publish_float(key, value, no_prefix)
-        else:
+        elif isinstance(value, str):
             self.publish_str(key, value, no_prefix)
+        elif isinstance(value, dict):
+            self.publish_json(key, value, no_prefix, retain=retain)
+        elif isinstance(value, datetime):
+            self.publish_str(key, datetime_to_str(value), no_prefix)
+        else:
+            # Defensive: type system rules this out, but `Any` callers can sneak
+            # an unsupported runtime type through; raise rather than silently no-op.
+            msg = f"Unsupported value type: {type(value).__name__}"  # type: ignore[unreachable]
+            raise TypeError(msg)
 
     @abstractmethod
     def clear_topic(self, key: str, no_prefix: bool = False) -> None:

@@ -2,9 +2,11 @@
 
 `Publisher.publish` is a single non-abstract method on the ABC that dispatches
 based on the runtime type of `value` to the corresponding typed
-`publish_{bool,int,float,str}` method. The tests below exercise that dispatch
-directly on every concrete `Publisher` subclass shipped by the project, plus a
-minimal in-test subclass that locks the contract at the ABC level.
+`publish_{bool,int,float,str,json}` method, with `datetime` stringified via
+:func:`utils.datetime_to_str` and routed through `publish_str`. The tests below
+exercise that dispatch directly on every concrete `Publisher` subclass shipped
+by the project, plus a minimal in-test subclass that locks the contract at the
+ABC level.
 
 The critical regression these tests guard against: `bool` is a subclass of
 `int` in Python, so `isinstance(True, int)` is `True`. The dispatch must check
@@ -14,16 +16,18 @@ The critical regression these tests guard against: `bool` is a subclass of
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, override
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from configuration import Configuration, TransportProtocol
-from publisher.core import PublishedValue, Publisher
+from publisher.core import Publishable, Publisher
 from publisher.log_publisher import ConsolePublisher
 from publisher.mqtt_publisher import MqttPublisher
 from tests.mocks import MessageCapturingConsolePublisher
+from utils import datetime_to_str
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -51,8 +55,9 @@ PUBLISHER_FACTORIES: list[tuple[str, Callable[[], Publisher]]] = [
 ]
 
 
-# (label, value, expected typed-method name)
-DISPATCH_CASES: list[tuple[str, PublishedValue, str]] = [
+# (label, value, expected typed-method name) for arms where the value is
+# forwarded to the typed method unchanged.
+PASSTHROUGH_CASES: list[tuple[str, Publishable, str]] = [
     ("bool_true", True, "publish_bool"),
     ("bool_false", False, "publish_bool"),
     ("int_value", 5, "publish_int"),
@@ -61,7 +66,13 @@ DISPATCH_CASES: list[tuple[str, PublishedValue, str]] = [
     ("str_value", "hi", "publish_str"),
 ]
 
-TYPED_METHODS = ("publish_bool", "publish_int", "publish_float", "publish_str")
+TYPED_METHODS = (
+    "publish_bool",
+    "publish_int",
+    "publish_float",
+    "publish_str",
+    "publish_json",
+)
 
 
 @pytest.mark.parametrize(
@@ -71,14 +82,14 @@ TYPED_METHODS = ("publish_bool", "publish_int", "publish_float", "publish_str")
 )
 @pytest.mark.parametrize(
     ("case_label", "value", "expected_method"),
-    DISPATCH_CASES,
-    ids=[label for label, _, _ in DISPATCH_CASES],
+    PASSTHROUGH_CASES,
+    ids=[label for label, _, _ in PASSTHROUGH_CASES],
 )
 def test_publish_dispatches_to_correct_typed_method(
     publisher_label: str,
     factory: Callable[[], Publisher],
     case_label: str,
-    value: PublishedValue,
+    value: Publishable,
     expected_method: str,
 ) -> None:
     del publisher_label, case_label  # only used as test ids
@@ -88,12 +99,14 @@ def test_publish_dispatches_to_correct_typed_method(
         patch.object(publisher, "publish_int") as m_int,
         patch.object(publisher, "publish_float") as m_float,
         patch.object(publisher, "publish_str") as m_str,
+        patch.object(publisher, "publish_json") as m_json,
     ):
         spies = {
             "publish_bool": m_bool,
             "publish_int": m_int,
             "publish_float": m_float,
             "publish_str": m_str,
+            "publish_json": m_json,
         }
         publisher.publish(KEY, value)
 
@@ -101,6 +114,42 @@ def test_publish_dispatches_to_correct_typed_method(
         for name in TYPED_METHODS:
             if name != expected_method:
                 spies[name].assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("publisher_label", "factory"),
+    PUBLISHER_FACTORIES,
+    ids=[label for label, _ in PUBLISHER_FACTORIES],
+)
+def test_publish_dict_routes_to_publish_json_with_retain(
+    publisher_label: str,
+    factory: Callable[[], Publisher],
+) -> None:
+    """`dict` values dispatch to `publish_json`, forwarding `retain`."""
+    del publisher_label
+    publisher = factory()
+    payload: dict[str, Any] = {"a": 1, "b": "two"}
+    with patch.object(publisher, "publish_json") as m_json:
+        publisher.publish(KEY, payload, retain=False)
+        m_json.assert_called_once_with(KEY, payload, False, retain=False)
+
+
+@pytest.mark.parametrize(
+    ("publisher_label", "factory"),
+    PUBLISHER_FACTORIES,
+    ids=[label for label, _ in PUBLISHER_FACTORIES],
+)
+def test_publish_datetime_routes_to_publish_str_stringified(
+    publisher_label: str,
+    factory: Callable[[], Publisher],
+) -> None:
+    """`datetime` values are stringified via `datetime_to_str` and routed to `publish_str`."""
+    del publisher_label
+    publisher = factory()
+    when = datetime(2026, 5, 9, 12, 34, 56, tzinfo=UTC)
+    with patch.object(publisher, "publish_str") as m_str:
+        publisher.publish(KEY, when)
+        m_str.assert_called_once_with(KEY, datetime_to_str(when), False)
 
 
 @pytest.mark.parametrize(
@@ -162,6 +211,22 @@ def test_publish_int_does_not_route_to_bool(
         publisher.publish(KEY, 5)
         m_int.assert_called_once_with(KEY, 5, False)
         m_bool.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("publisher_label", "factory"),
+    PUBLISHER_FACTORIES,
+    ids=[label for label, _ in PUBLISHER_FACTORIES],
+)
+def test_publish_unsupported_type_raises(
+    publisher_label: str,
+    factory: Callable[[], Publisher],
+) -> None:
+    """Unsupported runtime types raise rather than silently no-op."""
+    del publisher_label
+    publisher = factory()
+    with pytest.raises(TypeError, match="Unsupported value type"):
+        publisher.publish(KEY, b"bytes-not-supported")  # type: ignore[arg-type]
 
 
 class _MinimalPublisher(Publisher):
@@ -226,12 +291,12 @@ class _MinimalPublisher(Publisher):
 
 @pytest.mark.parametrize(
     ("case_label", "value", "expected_method"),
-    DISPATCH_CASES,
-    ids=[label for label, _, _ in DISPATCH_CASES],
+    PASSTHROUGH_CASES,
+    ids=[label for label, _, _ in PASSTHROUGH_CASES],
 )
 def test_abc_level_publish_dispatch(
     case_label: str,
-    value: PublishedValue,
+    value: Publishable,
     expected_method: str,
 ) -> None:
     del case_label
@@ -242,8 +307,23 @@ def test_abc_level_publish_dispatch(
         "publish_int": publisher.publish_int,  # type: ignore[dict-item]
         "publish_float": publisher.publish_float,  # type: ignore[dict-item]
         "publish_str": publisher.publish_str,  # type: ignore[dict-item]
+        "publish_json": publisher.publish_json,  # type: ignore[dict-item]
     }
     spies[expected_method].assert_called_once_with(KEY, value, False)
     for name in TYPED_METHODS:
         if name != expected_method:
             spies[name].assert_not_called()
+
+
+def test_abc_level_publish_dict_with_retain() -> None:
+    publisher = _MinimalPublisher(_make_configuration())
+    payload: dict[str, Any] = {"x": 1}
+    publisher.publish(KEY, payload, retain=False)
+    publisher.publish_json.assert_called_once_with(KEY, payload, False, retain=False)  # type: ignore[attr-defined]
+
+
+def test_abc_level_publish_datetime_routes_to_str() -> None:
+    publisher = _MinimalPublisher(_make_configuration())
+    when = datetime(2026, 5, 9, 12, 34, 56, tzinfo=UTC)
+    publisher.publish(KEY, when)
+    publisher.publish_str.assert_called_once_with(KEY, datetime_to_str(when), False)  # type: ignore[attr-defined]

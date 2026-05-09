@@ -4,7 +4,7 @@ import datetime
 from enum import Enum, unique
 import logging
 import math
-from typing import TYPE_CHECKING, Any, Final, TypeVar
+from typing import TYPE_CHECKING, Final
 
 from apscheduler.triggers.cron import CronTrigger
 from saic_ismart_client_ng.api.vehicle_charging import (
@@ -17,6 +17,7 @@ from saic_ismart_client_ng.api.vehicle_charging import (
 
 from extractors import extract_electric_range, extract_soc
 import mqtt_topics
+from publisher.core import Publishable
 from status_publisher.charge.chrg_mgmt_data_resp import (
     ChrgMgmtDataRespProcessingResult,
     ChrgMgmtDataRespPublisher,
@@ -41,11 +42,6 @@ if TYPE_CHECKING:
 
     from publisher.core import Publisher
     from vehicle_info import VehicleInfo
-
-    T = TypeVar("T")
-    Publishable = TypeVar(
-        "Publishable", str, int, float, bool, dict[str, Any], datetime.datetime
-    )
 
 DEFAULT_AC_TEMP = 22
 PRESSURE_TO_BAR_FACTOR = 0.04
@@ -806,41 +802,19 @@ class VehicleState:
     def is_remote_ac_running(self) -> bool:
         return self.__remote_ac_running
 
-    def __publish(
+    def __publish[V: Publishable](
         self,
         *,
         topic: str,
-        value: Publishable | None,
-        validator: Callable[[Publishable], bool] = lambda _: True,
+        value: V | None,
+        validator: Callable[[V], bool] = lambda _: True,
         no_prefix: bool = False,
-    ) -> tuple[bool, Publishable | None]:
+    ) -> tuple[bool, V | None]:
         if value is None or not validator(value):
             return False, None
         actual_topic = topic if no_prefix else self.get_topic(topic)
-        published = self.__publish_directly(topic=actual_topic, value=value)
-        return published, value
-
-    def __publish_directly(self, *, topic: str, value: Publishable) -> bool:
-        published = False
-        if isinstance(value, bool):
-            self.publisher.publish_bool(topic, value)
-            published = True
-        elif isinstance(value, int):
-            self.publisher.publish_int(topic, value)
-            published = True
-        elif isinstance(value, float):
-            self.publisher.publish_float(topic, value)
-            published = True
-        elif isinstance(value, str):
-            self.publisher.publish_str(topic, value)
-            published = True
-        elif isinstance(value, dict):
-            self.publisher.publish_json(topic, value)
-            published = True
-        elif isinstance(value, datetime.datetime):
-            self.publisher.publish_str(topic, datetime_to_str(value))
-            published = True
-        return published
+        self.publisher.publish(actual_topic, value)
+        return True, value
 
     @property
     def vin(self) -> str:

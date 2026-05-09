@@ -1,19 +1,15 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from datetime import datetime
-from typing import TYPE_CHECKING, Any, Final, TypeVar
+from typing import TYPE_CHECKING, Final
 
-from utils import datetime_to_str
+from publisher.core import Publishable
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from publisher.core import Publisher
     from vehicle_info import VehicleInfo
-
-T = TypeVar("T")
-Publishable = TypeVar("Publishable", str, int, float, bool, dict[str, Any], datetime)
 
 
 class VehicleDataPublisher[I, O](metaclass=ABCMeta):
@@ -28,65 +24,37 @@ class VehicleDataPublisher[I, O](metaclass=ABCMeta):
     def publish(self, data: I) -> O:
         raise NotImplementedError
 
-    def _publish(
+    def _publish[V: Publishable](
         self,
         *,
         topic: str,
-        value: Publishable | None,
-        validator: Callable[[Publishable], bool] = lambda _: True,
+        value: V | None,
+        validator: Callable[[V], bool] = lambda _: True,
         no_prefix: bool = False,
         retain: bool = True,
-    ) -> tuple[bool, Publishable | None]:
+    ) -> tuple[bool, V | None]:
         if value is None or not validator(value):
             return False, None
         actual_topic = topic if no_prefix else self.__get_topic(topic)
-        published = self._publish_directly(
-            topic=actual_topic, value=value, retain=retain
-        )
-        return published, value
+        self.__publisher.publish(actual_topic, value, retain=retain)
+        return True, value
 
-    def _transform_and_publish(
+    def _transform_and_publish[T, V: Publishable](
         self,
         *,
         topic: str,
         value: T | None,
         validator: Callable[[T], bool] = lambda _: True,
-        transform: Callable[[T], Publishable],
+        transform: Callable[[T], V],
         no_prefix: bool = False,
         retain: bool = True,
-    ) -> tuple[bool, Publishable | None]:
+    ) -> tuple[bool, V | None]:
         if value is None or not validator(value):
             return False, None
         actual_topic = topic if no_prefix else self.__get_topic(topic)
         transformed_value = transform(value)
-        published = self._publish_directly(
-            topic=actual_topic, value=transformed_value, retain=retain
-        )
-        return published, transformed_value
-
-    def _publish_directly(
-        self, *, topic: str, value: Publishable, retain: bool = True
-    ) -> bool:
-        published = False
-        if isinstance(value, bool):
-            self.__publisher.publish_bool(topic, value)
-            published = True
-        elif isinstance(value, int):
-            self.__publisher.publish_int(topic, value)
-            published = True
-        elif isinstance(value, float):
-            self.__publisher.publish_float(topic, value)
-            published = True
-        elif isinstance(value, str):
-            self.__publisher.publish_str(topic, value)
-            published = True
-        elif isinstance(value, dict):
-            self.__publisher.publish_json(topic, value, retain=retain)
-            published = True
-        elif isinstance(value, datetime):
-            self.__publisher.publish_str(topic, datetime_to_str(value))
-            published = True
-        return published
+        self.__publisher.publish(actual_topic, transformed_value, retain=retain)
+        return True, transformed_value
 
     def __get_topic(self, sub_topic: str) -> str:
         return f"{self.__mqtt_vehicle_prefix}/{sub_topic}"

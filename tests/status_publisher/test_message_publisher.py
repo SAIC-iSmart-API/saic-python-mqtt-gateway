@@ -156,14 +156,20 @@ class TestMessageEventPayload(unittest.TestCase):
 class TestMessageEventResilience(unittest.TestCase):
     def test_event_publish_failure_does_not_break_processing(self) -> None:
         publisher, capturing = _make_publisher()
-        original_publish = publisher._publish_directly
+        original_publish = capturing.publish
 
-        def failing_publish(**kwargs: Any) -> bool:
-            if mqtt_topics.EVENTS_VEHICLE_MESSAGE in kwargs["topic"]:
+        def failing_publish(
+            key: str,
+            value: Any,
+            no_prefix: bool = False,
+            *,
+            retain: bool = True,
+        ) -> None:
+            if mqtt_topics.EVENTS_VEHICLE_MESSAGE in key:
                 raise RuntimeError("MQTT down")
-            return original_publish(**kwargs)
+            original_publish(key, value, no_prefix, retain=retain)
 
-        with patch.object(publisher, "_publish_directly", side_effect=failing_publish):
+        with patch.object(capturing, "publish", side_effect=failing_publish):
             result = publisher.publish(_make_message())
 
         assert result.processed is True
