@@ -18,7 +18,7 @@ class MessageCapturingConsolePublisher(ConsolePublisher):
         self.publish_count: dict[str, int] = {}
 
     @override
-    def internal_publish(self, key: str, value: Any) -> None:
+    def internal_publish(self, key: str, value: Any, *, retain: bool = True) -> None:
         self.map[key] = value
         self.publish_count[key] = self.publish_count.get(key, 0) + 1
-        LOG.debug(f"{key}: {value}")
+        LOG.debug(f"{key}: {value} (retain={retain})")

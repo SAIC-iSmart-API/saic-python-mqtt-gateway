@@ -31,41 +31,36 @@ class ConsolePublisher(Publisher):
         *,
         retain: bool = True,
     ) -> None:
-        del retain  # console output has no retention semantics
         anonymized_json = self.dict_to_anonymized_json(data)
-        self.internal_publish(key, anonymized_json)
+        self.internal_publish(key, anonymized_json, retain=retain)
 
     @override
     def publish_str(
         self, key: str, value: str, no_prefix: bool = False, *, retain: bool = True
     ) -> None:
-        del retain
-        self.internal_publish(key, value)
+        self.internal_publish(key, value, retain=retain)
 
     @override
     def publish_int(
         self, key: str, value: int, no_prefix: bool = False, *, retain: bool = True
     ) -> None:
-        del retain
-        self.internal_publish(key, value)
+        self.internal_publish(key, value, retain=retain)
 
     @override
     def publish_bool(
         self, key: str, value: bool, no_prefix: bool = False, *, retain: bool = True
     ) -> None:
-        del retain
-        self.internal_publish(key, value)
+        self.internal_publish(key, value, retain=retain)
 
     @override
     def publish_float(
         self, key: str, value: float, no_prefix: bool = False, *, retain: bool = True
     ) -> None:
-        del retain
-        self.internal_publish(key, value)
+        self.internal_publish(key, value, retain=retain)
 
     @override
     def clear_topic(self, key: str, no_prefix: bool = False) -> None:
         self.internal_publish(key, None)
 
-    def internal_publish(self, key: str, value: Any) -> None:
-        LOG.debug(f"{key}: {value}")
+    def internal_publish(self, key: str, value: Any, *, retain: bool = True) -> None:
+        LOG.debug(f"{key}: {value} (retain={retain})")
