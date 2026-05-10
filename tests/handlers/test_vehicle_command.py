@@ -254,6 +254,9 @@ TOTAL_BATTERY_CAPACITY_RESULT_TOPIC = (
     f"{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_TOTAL_BATTERY_CAPACITY}"
     f"/{mqtt_topics.RESULT_SUFFIX}"
 )
+TOTAL_BATTERY_CAPACITY_STATE_TOPIC = (
+    f"{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_TOTAL_BATTERY_CAPACITY}"
+)
 
 
 class TestRetainedReplay(unittest.IsolatedAsyncioTestCase):
@@ -328,13 +331,43 @@ class TestRetainedReplay(unittest.IsolatedAsyncioTestCase):
     async def test_retained_battery_capacity_replays_to_vehicle_info(self) -> None:
         handler, pub = _build()
         vehicle_state = cast("MagicMock", handler.vehicle_state)
+        vehicle_state.vehicle.real_battery_capacity = 50.0
 
         await handler.handle_mqtt_command(
             topic=TOTAL_BATTERY_CAPACITY_SET_TOPIC, payload="50.0", retained=True
         )
 
         vehicle_state.update_battery_capacity.assert_called_once_with(50.0)
+        pub.publish_float.assert_any_call(TOTAL_BATTERY_CAPACITY_STATE_TOPIC, 50.0)
         pub.publish_str.assert_any_call(TOTAL_BATTERY_CAPACITY_RESULT_TOPIC, "Success")
+
+    async def test_battery_capacity_zero_payload_publishes_model_default(self) -> None:
+        """Payload `0` clears the override; the per-model default is republished."""
+        handler, pub = _build()
+        vehicle_state = cast("MagicMock", handler.vehicle_state)
+        # update_battery_capacity(0) clears the override; real_battery_capacity then
+        # falls back to the per-model default (e.g. 64 kWh for an MG4 NMC).
+        vehicle_state.vehicle.real_battery_capacity = 64.0
+
+        await handler.handle_mqtt_command(
+            topic=TOTAL_BATTERY_CAPACITY_SET_TOPIC, payload="0", retained=False
+        )
+
+        vehicle_state.update_battery_capacity.assert_called_once_with(0.0)
+        pub.publish_float.assert_any_call(TOTAL_BATTERY_CAPACITY_STATE_TOPIC, 64.0)
+
+    async def test_battery_capacity_skips_publish_when_no_default(self) -> None:
+        """When `real_battery_capacity` returns None (unknown model), skip the publish."""
+        handler, pub = _build()
+        vehicle_state = cast("MagicMock", handler.vehicle_state)
+        vehicle_state.vehicle.real_battery_capacity = None
+
+        await handler.handle_mqtt_command(
+            topic=TOTAL_BATTERY_CAPACITY_SET_TOPIC, payload="0", retained=False
+        )
+
+        vehicle_state.update_battery_capacity.assert_called_once_with(0.0)
+        pub.publish_float.assert_not_called()
 
     async def test_retained_action_command_dropped_at_dispatcher(self) -> None:
         """Retained `/set` for an action-bearing command is dropped at the dispatcher.
