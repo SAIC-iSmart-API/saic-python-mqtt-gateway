@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any, override
 
-from publisher.core import Publishable, Publisher
+from publisher.core import Publisher, WirePayload
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(level="DEBUG")
@@ -63,6 +63,6 @@ class ConsolePublisher(Publisher):
         self.internal_publish(key, None)
 
     def internal_publish(
-        self, key: str, value: Publishable | None, *, retain: bool = True
+        self, key: str, value: WirePayload | None, *, retain: bool = True
     ) -> None:
         LOG.debug(f"{key}: {value} (retain={retain})")

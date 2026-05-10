@@ -23,6 +23,16 @@ shape handled by `publish_json`, and `datetime`, which is stringified via
 holds "something publishable" without statically knowing which arm.
 """
 
+type WirePayload = bool | int | float | str
+"""Primitive subset of :data:`Publishable` that reaches the transport layer.
+
+After the typed `publish_*` methods do their work (`publish_json` serializes
+dicts to JSON strings, `publish_datetime` stringifies via
+:func:`utils.datetime_to_str`), only these scalar arms cross the
+publisher/transport boundary. Use `WirePayload | None` for wire-level helpers
+where `None` means "clear the retained message."
+"""
+
 
 class MqttCommandListener(ABC):
     @abstractmethod

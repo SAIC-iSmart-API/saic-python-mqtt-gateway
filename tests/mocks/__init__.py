@@ -7,7 +7,7 @@ from publisher.log_publisher import ConsolePublisher
 
 if TYPE_CHECKING:
     from configuration import Configuration
-    from publisher.core import Publishable
+    from publisher.core import WirePayload
 
 LOG = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class MessageCapturingConsolePublisher(ConsolePublisher):
 
     @override
     def internal_publish(
-        self, key: str, value: Publishable | None, *, retain: bool = True
+        self, key: str, value: WirePayload | None, *, retain: bool = True
     ) -> None:
         self.map[key] = value
         self.publish_count[key] = self.publish_count.get(key, 0) + 1
