@@ -13,6 +13,7 @@ from publisher.core import Publisher
 if TYPE_CHECKING:
     from configuration import Configuration
     from integrations.openwb.charging_station import ChargingStation
+    from publisher.core import Publishable
 
 LOG = logging.getLogger(__name__)
 
@@ -226,7 +227,9 @@ class MqttPublisher(Publisher):
                 vin, imported_energy_wh
             )
 
-    def __publish(self, topic: str, payload: Any, *, retain: bool = True) -> None:
+    def __publish(
+        self, topic: str, payload: Publishable | None, *, retain: bool = True
+    ) -> None:
         self.client.publish(topic, payload, retain=retain)
 
     @override
