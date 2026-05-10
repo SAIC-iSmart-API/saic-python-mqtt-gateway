@@ -83,20 +83,27 @@ class DrivetrainBatteryHeatingScheduleCommand(
     ) -> CommandProcessingResult:
         start_time = payload.start_time
         should_enable = payload.enable
-        changed = self.vehicle_state.update_scheduled_battery_heating(
-            start_time, should_enable
-        )
-        if changed:
-            if should_enable:
-                LOG.info(f"Setting battery heating schedule to {start_time}")
-                await self.saic_api.enable_schedule_battery_heating(
-                    self.vin,
-                    start_time=start_time,
-                    tz=self.vehicle_state.user_timezone,
-                )
-            else:
-                LOG.info("Disabling battery heating schedule")
-                await self.saic_api.disable_schedule_battery_heating(self.vin)
-        else:
+        # Mutate in-memory state only after the SAIC call succeeds: otherwise
+        # an API failure leaves the gateway holding the failed-new value, so
+        # the next eager-echo `current_state` would be wrong on rollback.
+        if (
+            self.vehicle_state.scheduled_battery_heating_start == start_time
+            and self.vehicle_state.scheduled_battery_heating_enabled == should_enable
+        ):
+            # No state change: skip the canonical-schedule republish that
+            # `update_scheduled_battery_heating` would do as a side effect.
+            # The eager echo already stamped the broker so it stays consistent.
             LOG.info("Battery heating schedule not changed")
+            return RESULT_REFRESH_ONLY
+        if should_enable:
+            LOG.info(f"Setting battery heating schedule to {start_time}")
+            await self.saic_api.enable_schedule_battery_heating(
+                self.vin,
+                start_time=start_time,
+                tz=self.vehicle_state.user_timezone,
+            )
+        else:
+            LOG.info("Disabling battery heating schedule")
+            await self.saic_api.disable_schedule_battery_heating(self.vin)
+        self.vehicle_state.update_scheduled_battery_heating(start_time, should_enable)
         return RESULT_REFRESH_ONLY

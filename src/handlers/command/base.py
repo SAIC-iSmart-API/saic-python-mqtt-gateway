@@ -72,7 +72,7 @@ class CommandHandlerBase(metaclass=ABCMeta):
     # `state_topic` to return a non-None topic, in which case the dispatcher
     # will publish `expected_state(payload)` to that topic on receipt and
     # republish `current_state` if the SAIC call later fails. See
-    # `vehicle_command.VehicleCommandHandler.__execute_mqtt_command_handler`.
+    # `VehicleCommandHandler` in `handlers/vehicle_command.py`.
 
     @property
     def state_topic(self) -> str | None:

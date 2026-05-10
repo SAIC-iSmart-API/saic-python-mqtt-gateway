@@ -8,6 +8,7 @@ from saic_ismart_client_ng.exceptions import SaicApiException, SaicLogoutExcepti
 
 from exceptions import MqttGatewayException
 from handlers.command import ALL_COMMAND_HANDLERS, CommandHandlerBase
+from handlers.command.base import RESULT_DO_NOTHING
 import mqtt_topics
 from vehicle import RefreshMode
 
@@ -129,8 +130,21 @@ class VehicleCommandHandler:
         payload: str,
         analyzed_topic: _MqttCommandTopic,
         retained: bool,
+        eager_echo_published: bool = False,
+        rollback_state: Callable[[], None] | None = None,
     ) -> None:
         execution_result = await handler.handle(payload, retained=retained)
+        # If the handler short-circuited via RESULT_DO_NOTHING (e.g. unsupported
+        # vehicle capability) after we eagerly echoed, the broker still holds
+        # the requested-but-unapplied value. Roll it back so the slider snaps
+        # to the actual on-vehicle state.
+        if execution_result == RESULT_DO_NOTHING and eager_echo_published:
+            LOG.warning(
+                "Handler %s returned RESULT_DO_NOTHING after eager echo; rolling back",
+                handler.name(),
+            )
+            if rollback_state is not None:
+                rollback_state()
         self.publisher.publish_str(analyzed_topic.response_no_global, "Success")
         if execution_result.force_refresh:
             self.vehicle_state.set_refresh_mode(
@@ -184,6 +198,8 @@ class VehicleCommandHandler:
                 payload=payload,
                 analyzed_topic=analyzed_topic,
                 retained=retained,
+                eager_echo_published=published,
+                rollback_state=rollback_state,
             )
         except MqttGatewayException as e:
             rollback_state()
@@ -196,6 +212,7 @@ class VehicleCommandHandler:
                 payload=payload,
                 analyzed_topic=analyzed_topic,
                 retained=retained,
+                eager_echo_published=published,
                 rollback_state=rollback_state,
             )
         except SaicApiException as se:
@@ -219,6 +236,7 @@ class VehicleCommandHandler:
         payload: str,
         analyzed_topic: _MqttCommandTopic,
         retained: bool,
+        eager_echo_published: bool,
         rollback_state: Callable[[], None],
     ) -> None:
         topic = analyzed_topic.command_no_vin
@@ -241,6 +259,8 @@ class VehicleCommandHandler:
                 payload=payload,
                 analyzed_topic=analyzed_topic,
                 retained=retained,
+                eager_echo_published=eager_echo_published,
+                rollback_state=rollback_state,
             )
         except Exception as retry_err:
             rollback_state()

@@ -22,6 +22,7 @@ class DrivetrainChargeCurrentLimitCommand(
     PayloadConvertingCommandHandler[ChargeCurrentLimitCode]
 ):
     @classmethod
+    @override
     def topic(cls) -> str:
         return mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT_SET
 

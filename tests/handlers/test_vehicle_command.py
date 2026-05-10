@@ -34,6 +34,9 @@ SOC_TARGET_SET_TOPIC = (
     f"{MQTT_TOPIC}/{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_SOC_TARGET_SET}"
 )
 SOC_TARGET_STATE_TOPIC = f"{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_SOC_TARGET}"
+SOC_TARGET_RESULT_TOPIC = (
+    f"{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_SOC_TARGET}/{mqtt_topics.RESULT_SUFFIX}"
+)
 CHARGECURRENT_SET_TOPIC = (
     f"{MQTT_TOPIC}/{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT_SET}"
 )
@@ -461,9 +464,6 @@ class TestEagerStatePublishOtherEntities(unittest.IsolatedAsyncioTestCase):
         state.scheduled_battery_heating_start = datetime.time(6, 30)
         state.scheduled_battery_heating_enabled = True
         state.user_timezone = None
-        # The handler short-circuits via update_scheduled_battery_heating; force
-        # it to report a real change so the SAIC call (and thus rollback) fires.
-        state.update_scheduled_battery_heating.return_value = True
         handler, pub = _build(saic_api=saic_api, vehicle_state=state)
 
         payload = json.dumps({"startTime": "08:00", "mode": "ON"})
@@ -480,6 +480,114 @@ class TestEagerStatePublishOtherEntities(unittest.IsolatedAsyncioTestCase):
             {"startTime": "08:00", "mode": "on"},
             {"startTime": "06:30", "mode": "on"},
         ]
+        # The fix moves the in-memory mutation to after API success. With the
+        # API call failing, update_scheduled_battery_heating must NOT have run
+        # — otherwise the gateway holds the failed-new value and the next
+        # eager-echo's `current_state` would be wrong.
+        state.update_scheduled_battery_heating.assert_not_called()
+
+
+class TestEagerStateEdgeCases(unittest.IsolatedAsyncioTestCase):
+    """Edge cases around the eager-echo path that aren't tied to a single entity."""
+
+    async def test_result_do_nothing_rolls_back_eager_echo(self) -> None:
+        # Vehicle without target-SoC support: the SoC handler returns
+        # RESULT_DO_NOTHING after we've already echoed the requested value.
+        # Without the fix the slider would stick on the unsupported value.
+        vin_info = VinInfo()
+        vin_info.vin = VIN
+        vin_info.vehicleModelConfiguration = []
+        state = MagicMock()
+        state.vehicle = VehicleInfo(vin_info, None)
+        state.target_soc = TargetBatteryCode.P_80
+        handler, pub = _build(vehicle_state=state)
+
+        await handler.handle_mqtt_command(topic=SOC_TARGET_SET_TOPIC, payload="90")
+
+        state_publishes = [
+            call.args[1]
+            for call in pub.publish.call_args_list
+            if call.args[0] == SOC_TARGET_STATE_TOPIC
+        ]
+        assert state_publishes == [90, 80]
+
+    async def test_logout_retry_success_preserves_eager_echo(self) -> None:
+        # First SAIC call hits a logout, retry after relogin succeeds. The
+        # eager-echoed value must remain on the broker (no spurious rollback).
+        saic_api = AsyncMock()
+        saic_api.set_target_battery_soc.side_effect = [
+            SaicLogoutException("logged out"),
+            None,
+        ]
+        state = _make_target_soc_state(current=TargetBatteryCode.P_80)
+        handler, pub = _build(saic_api=saic_api, vehicle_state=state)
+
+        await handler.handle_mqtt_command(topic=SOC_TARGET_SET_TOPIC, payload="90")
+
+        state_publishes = [
+            call.args[1]
+            for call in pub.publish.call_args_list
+            if call.args[0] == SOC_TARGET_STATE_TOPIC
+        ]
+        # Only the eager echo — no rollback on the successful retry.
+        assert state_publishes == [90]
+        assert saic_api.set_target_battery_soc.await_count == 2
+        pub.publish_str.assert_any_call(SOC_TARGET_RESULT_TOPIC, "Success")
+
+    async def test_broker_failure_during_rollback_does_not_crash(self) -> None:
+        # The broker drops while we try to roll back the eager echo. The
+        # dispatcher must still attempt the rollback and publish the failure
+        # to the result topic, not propagate the publish exception.
+        saic_api = AsyncMock()
+        saic_api.set_target_battery_soc.side_effect = SaicApiException(
+            "rejected", return_code=4
+        )
+        state = _make_target_soc_state(current=TargetBatteryCode.P_80)
+        handler, pub = _build(saic_api=saic_api, vehicle_state=state)
+        # First publish is the eager echo (succeeds), second is the rollback
+        # (broker is now down).
+        pub.publish.side_effect = [None, ConnectionError("broker down")]
+
+        await handler.handle_mqtt_command(topic=SOC_TARGET_SET_TOPIC, payload="90")
+
+        # Both publish calls to the state topic must fire: the rollback was
+        # attempted even though the broker raised on it.
+        state_publishes = [
+            call.args
+            for call in pub.publish.call_args_list
+            if call.args[0] == SOC_TARGET_STATE_TOPIC
+        ]
+        assert len(state_publishes) == 2
+        # And the dispatcher kept going to publish the failure result.
+        result_calls = [
+            call.args
+            for call in pub.publish_str.call_args_list
+            if call.args[0] == SOC_TARGET_RESULT_TOPIC
+        ]
+        assert any("Failed:" in args[1] for args in result_calls)
+
+    async def test_malformed_charging_schedule_skips_eager_echo(self) -> None:
+        # Bad JSON in the payload: convert_payload (and thus expected_state)
+        # raises and the dispatcher must skip the eager publish entirely.
+        prior = ScheduledCharging(
+            start_time=datetime.time(7, 0),
+            end_time=datetime.time(9, 0),
+            mode=ScheduledChargingMode.DISABLED,
+        )
+        state = _make_target_soc_state(current=TargetBatteryCode.P_80)
+        state.scheduled_charging = prior
+        handler, pub = _build(vehicle_state=state)
+
+        await handler.handle_mqtt_command(
+            topic=CHARGING_SCHEDULE_SET_TOPIC, payload="not json {"
+        )
+
+        state_publishes = [
+            call.args
+            for call in pub.publish.call_args_list
+            if call.args[0] == CHARGING_SCHEDULE_STATE_TOPIC
+        ]
+        assert state_publishes == []
 
 
 class TestErrorEventPayload(unittest.IsolatedAsyncioTestCase):
