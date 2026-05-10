@@ -248,20 +248,36 @@ class MqttPublisher(Publisher):
         )
 
     @override
-    def publish_str(self, key: str, value: str, no_prefix: bool = False) -> None:
-        self.__publish(topic=self.get_topic(key, no_prefix), payload=value)
+    def publish_str(
+        self, key: str, value: str, no_prefix: bool = False, *, retain: bool = True
+    ) -> None:
+        self.__publish(
+            topic=self.get_topic(key, no_prefix), payload=value, retain=retain
+        )
 
     @override
-    def publish_int(self, key: str, value: int, no_prefix: bool = False) -> None:
-        self.__publish(topic=self.get_topic(key, no_prefix), payload=value)
+    def publish_int(
+        self, key: str, value: int, no_prefix: bool = False, *, retain: bool = True
+    ) -> None:
+        self.__publish(
+            topic=self.get_topic(key, no_prefix), payload=value, retain=retain
+        )
 
     @override
-    def publish_bool(self, key: str, value: bool, no_prefix: bool = False) -> None:
-        self.__publish(topic=self.get_topic(key, no_prefix), payload=value)
+    def publish_bool(
+        self, key: str, value: bool, no_prefix: bool = False, *, retain: bool = True
+    ) -> None:
+        self.__publish(
+            topic=self.get_topic(key, no_prefix), payload=value, retain=retain
+        )
 
     @override
-    def publish_float(self, key: str, value: float, no_prefix: bool = False) -> None:
-        self.__publish(topic=self.get_topic(key, no_prefix), payload=value)
+    def publish_float(
+        self, key: str, value: float, no_prefix: bool = False, *, retain: bool = True
+    ) -> None:
+        self.__publish(
+            topic=self.get_topic(key, no_prefix), payload=value, retain=retain
+        )
 
     @override
     def clear_topic(self, key: str, no_prefix: bool = False) -> None:

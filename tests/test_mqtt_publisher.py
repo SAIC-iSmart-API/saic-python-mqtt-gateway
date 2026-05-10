@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, override
 import unittest
+from unittest.mock import patch
 
 from configuration import Configuration, TransportProtocol
 from publisher.core import MqttCommandListener
@@ -98,3 +99,28 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
         self, vin: str, connected: bool
     ) -> None:
         pass
+
+    def test_publish_str_default_is_retained(self) -> None:
+        with patch.object(self.mqtt_client.client, "publish") as m_pub:
+            self.mqtt_client.publish_str("foo", "bar")
+            m_pub.assert_called_once_with("saic/foo", "bar", retain=True)
+
+    def test_publish_str_forwards_retain_false(self) -> None:
+        with patch.object(self.mqtt_client.client, "publish") as m_pub:
+            self.mqtt_client.publish_str("foo", "bar", retain=False)
+            m_pub.assert_called_once_with("saic/foo", "bar", retain=False)
+
+    def test_publish_int_forwards_retain_false(self) -> None:
+        with patch.object(self.mqtt_client.client, "publish") as m_pub:
+            self.mqtt_client.publish_int("foo", 42, retain=False)
+            m_pub.assert_called_once_with("saic/foo", 42, retain=False)
+
+    def test_publish_bool_forwards_retain_false(self) -> None:
+        with patch.object(self.mqtt_client.client, "publish") as m_pub:
+            self.mqtt_client.publish_bool("foo", True, retain=False)
+            m_pub.assert_called_once_with("saic/foo", True, retain=False)
+
+    def test_publish_float_forwards_retain_false(self) -> None:
+        with patch.object(self.mqtt_client.client, "publish") as m_pub:
+            self.mqtt_client.publish_float("foo", 1.5, retain=False)
+            m_pub.assert_called_once_with("saic/foo", 1.5, retain=False)

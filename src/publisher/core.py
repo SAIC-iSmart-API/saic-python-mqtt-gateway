@@ -85,19 +85,27 @@ class Publisher(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def publish_str(self, key: str, value: str, no_prefix: bool = False) -> None:
+    def publish_str(
+        self, key: str, value: str, no_prefix: bool = False, *, retain: bool = True
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def publish_int(self, key: str, value: int, no_prefix: bool = False) -> None:
+    def publish_int(
+        self, key: str, value: int, no_prefix: bool = False, *, retain: bool = True
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def publish_bool(self, key: str, value: bool, no_prefix: bool = False) -> None:
+    def publish_bool(
+        self, key: str, value: bool, no_prefix: bool = False, *, retain: bool = True
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def publish_float(self, key: str, value: float, no_prefix: bool = False) -> None:
+    def publish_float(
+        self, key: str, value: float, no_prefix: bool = False, *, retain: bool = True
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod

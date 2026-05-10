@@ -31,23 +31,36 @@ class ConsolePublisher(Publisher):
         *,
         retain: bool = True,
     ) -> None:
+        del retain  # console output has no retention semantics
         anonymized_json = self.dict_to_anonymized_json(data)
         self.internal_publish(key, anonymized_json)
 
     @override
-    def publish_str(self, key: str, value: str, no_prefix: bool = False) -> None:
+    def publish_str(
+        self, key: str, value: str, no_prefix: bool = False, *, retain: bool = True
+    ) -> None:
+        del retain
         self.internal_publish(key, value)
 
     @override
-    def publish_int(self, key: str, value: int, no_prefix: bool = False) -> None:
+    def publish_int(
+        self, key: str, value: int, no_prefix: bool = False, *, retain: bool = True
+    ) -> None:
+        del retain
         self.internal_publish(key, value)
 
     @override
-    def publish_bool(self, key: str, value: bool, no_prefix: bool = False) -> None:
+    def publish_bool(
+        self, key: str, value: bool, no_prefix: bool = False, *, retain: bool = True
+    ) -> None:
+        del retain
         self.internal_publish(key, value)
 
     @override
-    def publish_float(self, key: str, value: float, no_prefix: bool = False) -> None:
+    def publish_float(
+        self, key: str, value: float, no_prefix: bool = False, *, retain: bool = True
+    ) -> None:
+        del retain
         self.internal_publish(key, value)
 
     @override
