@@ -24,6 +24,14 @@
   persistent. Existing retained STATE values on the broker are not converted
   into retained `/set` commands.
 
+* Republish the effective Total Battery Capacity to its state topic right after
+  the user updates the HA number. The `_set` handler used to only mutate the
+  in-memory override and rely on the next vehicle poll to refresh the shared
+  sensor topic, leaving the HA sensor stuck on the previous (often hardcoded
+  per-model default) value while the number widget already showed the new
+  setting. A payload of `0` re-publishes the per-model default via
+  `real_battery_capacity`.
+
 ## 0.11.0
 
 ### Added
