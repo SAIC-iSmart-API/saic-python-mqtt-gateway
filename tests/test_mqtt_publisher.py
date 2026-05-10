@@ -110,17 +110,53 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
             self.mqtt_client.publish_str("foo", "bar", retain=False)
             m_pub.assert_called_once_with("saic/foo", "bar", retain=False)
 
+    def test_publish_int_default_is_retained(self) -> None:
+        with patch.object(self.mqtt_client.client, "publish") as m_pub:
+            self.mqtt_client.publish_int("foo", 42)
+            m_pub.assert_called_once_with("saic/foo", 42, retain=True)
+
     def test_publish_int_forwards_retain_false(self) -> None:
         with patch.object(self.mqtt_client.client, "publish") as m_pub:
             self.mqtt_client.publish_int("foo", 42, retain=False)
             m_pub.assert_called_once_with("saic/foo", 42, retain=False)
+
+    def test_publish_bool_default_is_retained(self) -> None:
+        with patch.object(self.mqtt_client.client, "publish") as m_pub:
+            self.mqtt_client.publish_bool("foo", True)
+            m_pub.assert_called_once_with("saic/foo", True, retain=True)
 
     def test_publish_bool_forwards_retain_false(self) -> None:
         with patch.object(self.mqtt_client.client, "publish") as m_pub:
             self.mqtt_client.publish_bool("foo", True, retain=False)
             m_pub.assert_called_once_with("saic/foo", True, retain=False)
 
+    def test_publish_float_default_is_retained(self) -> None:
+        with patch.object(self.mqtt_client.client, "publish") as m_pub:
+            self.mqtt_client.publish_float("foo", 1.5)
+            m_pub.assert_called_once_with("saic/foo", 1.5, retain=True)
+
     def test_publish_float_forwards_retain_false(self) -> None:
         with patch.object(self.mqtt_client.client, "publish") as m_pub:
             self.mqtt_client.publish_float("foo", 1.5, retain=False)
             m_pub.assert_called_once_with("saic/foo", 1.5, retain=False)
+
+    def test_publish_json_default_is_retained(self) -> None:
+        with patch.object(self.mqtt_client.client, "publish") as m_pub:
+            self.mqtt_client.publish_json("foo", {"a": 1})
+            m_pub.assert_called_once()
+            args, kwargs = m_pub.call_args
+            assert args[0] == "saic/foo"
+            assert kwargs == {"retain": True}
+
+    def test_publish_json_forwards_retain_false(self) -> None:
+        with patch.object(self.mqtt_client.client, "publish") as m_pub:
+            self.mqtt_client.publish_json("foo", {"a": 1}, retain=False)
+            m_pub.assert_called_once()
+            args, kwargs = m_pub.call_args
+            assert args[0] == "saic/foo"
+            assert kwargs == {"retain": False}
+
+    def test_clear_topic_publishes_none_retained(self) -> None:
+        with patch.object(self.mqtt_client.client, "publish") as m_pub:
+            self.mqtt_client.clear_topic("foo")
+            m_pub.assert_called_once_with("saic/foo", None, retain=True)
