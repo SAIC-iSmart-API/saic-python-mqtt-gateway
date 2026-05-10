@@ -27,7 +27,6 @@ from status_publisher.vehicle.vehicle_status_resp import (
     VehicleStatusRespProcessingResult,
     VehicleStatusRespPublisher,
 )
-from utils import datetime_to_str
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -374,7 +373,7 @@ class VehicleState:
         self.last_car_activity = datetime.datetime.now(tz=datetime.UTC)
         self.__publish(
             topic=mqtt_topics.REFRESH_LAST_ACTIVITY,
-            value=datetime_to_str(self.last_car_activity),
+            value=self.last_car_activity,
         )
 
     def notify_message(self, message: MessageEntity) -> None:
@@ -501,8 +500,8 @@ class VehicleState:
                 )
             )
             self.__failed_refresh_counter = self.__failed_refresh_counter + 1
-            self.publisher.publish_str(
-                self.get_topic(mqtt_topics.REFRESH_LAST_ERROR), datetime_to_str(value)
+            self.publisher.publish_datetime(
+                self.get_topic(mqtt_topics.REFRESH_LAST_ERROR), value
             )
         self.publisher.publish_int(
             self.get_topic(mqtt_topics.REFRESH_PERIOD_ERROR),

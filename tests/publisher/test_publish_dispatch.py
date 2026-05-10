@@ -2,11 +2,11 @@
 
 `Publisher.publish` is a single non-abstract method on the ABC that dispatches
 based on the runtime type of `value` to the corresponding typed
-`publish_{bool,int,float,str,json}` method, with `datetime` stringified via
-:func:`utils.datetime_to_str` and routed through `publish_str`. The tests below
-exercise that dispatch directly on every concrete `Publisher` subclass shipped
-by the project, plus a minimal in-test subclass that locks the contract at the
-ABC level.
+`publish_{bool,int,float,str,datetime,json}` method. `publish_datetime` is itself
+a concrete ABC-level method that stringifies via :func:`utils.datetime_to_str`
+and forwards to `publish_str`. The tests below exercise that dispatch directly
+on every concrete `Publisher` subclass shipped by the project, plus a minimal
+in-test subclass that locks the contract at the ABC level.
 
 The critical regression these tests guard against: `bool` is a subclass of
 `int` in Python, so `isinstance(True, int)` is `True`. The dispatch must check
@@ -64,6 +64,11 @@ PASSTHROUGH_CASES: list[tuple[str, Publishable, str]] = [
     ("int_zero", 0, "publish_int"),
     ("float_value", 5.0, "publish_float"),
     ("str_value", "hi", "publish_str"),
+    (
+        "datetime_value",
+        datetime(2026, 5, 9, 12, 34, 56, tzinfo=UTC),
+        "publish_datetime",
+    ),
 ]
 
 TYPED_METHODS = (
@@ -71,6 +76,7 @@ TYPED_METHODS = (
     "publish_int",
     "publish_float",
     "publish_str",
+    "publish_datetime",
     "publish_json",
 )
 
@@ -99,6 +105,7 @@ def test_publish_dispatches_to_correct_typed_method(
         patch.object(publisher, "publish_int") as m_int,
         patch.object(publisher, "publish_float") as m_float,
         patch.object(publisher, "publish_str") as m_str,
+        patch.object(publisher, "publish_datetime") as m_dt,
         patch.object(publisher, "publish_json") as m_json,
     ):
         spies = {
@@ -106,11 +113,12 @@ def test_publish_dispatches_to_correct_typed_method(
             "publish_int": m_int,
             "publish_float": m_float,
             "publish_str": m_str,
+            "publish_datetime": m_dt,
             "publish_json": m_json,
         }
         publisher.publish(KEY, value)
 
-        spies[expected_method].assert_called_once_with(KEY, value, False)
+        spies[expected_method].assert_called_once_with(KEY, value, False, retain=True)
         for name in TYPED_METHODS:
             if name != expected_method:
                 spies[name].assert_not_called()
@@ -139,17 +147,42 @@ def test_publish_dict_routes_to_publish_json_with_retain(
     PUBLISHER_FACTORIES,
     ids=[label for label, _ in PUBLISHER_FACTORIES],
 )
-def test_publish_datetime_routes_to_publish_str_stringified(
+@pytest.mark.parametrize(
+    ("case_label", "value", "expected_method"),
+    PASSTHROUGH_CASES,
+    ids=[label for label, _, _ in PASSTHROUGH_CASES],
+)
+def test_publish_forwards_retain_false_to_every_arm(
+    publisher_label: str,
+    factory: Callable[[], Publisher],
+    case_label: str,
+    value: Publishable,
+    expected_method: str,
+) -> None:
+    """`retain=False` reaches every typed dispatch target, not just `publish_json`."""
+    del publisher_label, case_label
+    publisher = factory()
+    with patch.object(publisher, expected_method) as m:
+        publisher.publish(KEY, value, retain=False)
+        m.assert_called_once_with(KEY, value, False, retain=False)
+
+
+@pytest.mark.parametrize(
+    ("publisher_label", "factory"),
+    PUBLISHER_FACTORIES,
+    ids=[label for label, _ in PUBLISHER_FACTORIES],
+)
+def test_publish_datetime_stringifies_via_publish_str(
     publisher_label: str,
     factory: Callable[[], Publisher],
 ) -> None:
-    """`datetime` values are stringified via `datetime_to_str` and routed to `publish_str`."""
+    """`publish_datetime` stringifies via `datetime_to_str` and forwards to `publish_str`."""
     del publisher_label
     publisher = factory()
     when = datetime(2026, 5, 9, 12, 34, 56, tzinfo=UTC)
     with patch.object(publisher, "publish_str") as m_str:
-        publisher.publish(KEY, when)
-        m_str.assert_called_once_with(KEY, datetime_to_str(when), False)
+        publisher.publish_datetime(KEY, when)
+        m_str.assert_called_once_with(KEY, datetime_to_str(when), False, retain=True)
 
 
 @pytest.mark.parametrize(
@@ -165,7 +198,7 @@ def test_publish_forwards_no_prefix_flag(
     publisher = factory()
     with patch.object(publisher, "publish_str") as m_str:
         publisher.publish(KEY, "hello", no_prefix=True)
-        m_str.assert_called_once_with(KEY, "hello", True)
+        m_str.assert_called_once_with(KEY, "hello", True, retain=True)
 
 
 @pytest.mark.parametrize(
@@ -189,7 +222,7 @@ def test_publish_true_routes_to_bool_not_int(
         patch.object(publisher, "publish_int") as m_int,
     ):
         publisher.publish(KEY, True)
-        m_bool.assert_called_once_with(KEY, True, False)
+        m_bool.assert_called_once_with(KEY, True, False, retain=True)
         m_int.assert_not_called()
 
 
@@ -209,7 +242,7 @@ def test_publish_int_does_not_route_to_bool(
         patch.object(publisher, "publish_int") as m_int,
     ):
         publisher.publish(KEY, 5)
-        m_int.assert_called_once_with(KEY, 5, False)
+        m_int.assert_called_once_with(KEY, 5, False, retain=True)
         m_bool.assert_not_called()
 
 
@@ -242,6 +275,7 @@ class _MinimalPublisher(Publisher):
         self.publish_int = MagicMock()  # type: ignore[method-assign]
         self.publish_float = MagicMock()  # type: ignore[method-assign]
         self.publish_str = MagicMock()  # type: ignore[method-assign]
+        self.publish_datetime = MagicMock()  # type: ignore[method-assign]
         self.publish_json = MagicMock()  # type: ignore[method-assign]
         self.clear_topic = MagicMock()  # type: ignore[method-assign]
 
@@ -269,19 +303,27 @@ class _MinimalPublisher(Publisher):
         pass
 
     @override
-    def publish_str(self, key: str, value: str, no_prefix: bool = False) -> None:
+    def publish_str(
+        self, key: str, value: str, no_prefix: bool = False, *, retain: bool = True
+    ) -> None:
         pass
 
     @override
-    def publish_int(self, key: str, value: int, no_prefix: bool = False) -> None:
+    def publish_int(
+        self, key: str, value: int, no_prefix: bool = False, *, retain: bool = True
+    ) -> None:
         pass
 
     @override
-    def publish_bool(self, key: str, value: bool, no_prefix: bool = False) -> None:
+    def publish_bool(
+        self, key: str, value: bool, no_prefix: bool = False, *, retain: bool = True
+    ) -> None:
         pass
 
     @override
-    def publish_float(self, key: str, value: float, no_prefix: bool = False) -> None:
+    def publish_float(
+        self, key: str, value: float, no_prefix: bool = False, *, retain: bool = True
+    ) -> None:
         pass
 
     @override
@@ -307,9 +349,10 @@ def test_abc_level_publish_dispatch(
         "publish_int": publisher.publish_int,  # type: ignore[dict-item]
         "publish_float": publisher.publish_float,  # type: ignore[dict-item]
         "publish_str": publisher.publish_str,  # type: ignore[dict-item]
+        "publish_datetime": publisher.publish_datetime,  # type: ignore[dict-item]
         "publish_json": publisher.publish_json,  # type: ignore[dict-item]
     }
-    spies[expected_method].assert_called_once_with(KEY, value, False)
+    spies[expected_method].assert_called_once_with(KEY, value, False, retain=True)
     for name in TYPED_METHODS:
         if name != expected_method:
             spies[name].assert_not_called()
@@ -322,8 +365,8 @@ def test_abc_level_publish_dict_with_retain() -> None:
     publisher.publish_json.assert_called_once_with(KEY, payload, False, retain=False)  # type: ignore[attr-defined]
 
 
-def test_abc_level_publish_datetime_routes_to_str() -> None:
+def test_abc_level_publish_datetime_routes_to_publish_datetime() -> None:
     publisher = _MinimalPublisher(_make_configuration())
     when = datetime(2026, 5, 9, 12, 34, 56, tzinfo=UTC)
     publisher.publish(KEY, when)
-    publisher.publish_str.assert_called_once_with(KEY, datetime_to_str(when), False)  # type: ignore[attr-defined]
+    publisher.publish_datetime.assert_called_once_with(KEY, when, False, retain=True)  # type: ignore[attr-defined]

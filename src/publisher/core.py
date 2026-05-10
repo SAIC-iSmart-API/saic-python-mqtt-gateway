@@ -119,6 +119,17 @@ class Publisher(ABC):
     ) -> None:
         raise NotImplementedError
 
+    def publish_datetime(
+        self,
+        key: str,
+        value: datetime,
+        no_prefix: bool = False,
+        *,
+        retain: bool = True,
+    ) -> None:
+        """Stringify a datetime via :func:`utils.datetime_to_str` and publish."""
+        self.publish_str(key, datetime_to_str(value), no_prefix, retain=retain)
+
     def publish(
         self,
         key: str,
@@ -130,22 +141,21 @@ class Publisher(ABC):
         """Dispatch to the appropriate typed publish_* based on value type.
 
         For callers that hold a `Publishable` without statically knowing
-        which arm of the union it is. `retain` is only consulted for the
-        `dict` case (forwarded to :meth:`publish_json`); other arms ignore it.
+        which arm of the union it is. `retain` is forwarded to every arm.
         """
         # bool must precede int: isinstance(True, int) is True in Python.
         if isinstance(value, bool):
-            self.publish_bool(key, value, no_prefix)
+            self.publish_bool(key, value, no_prefix, retain=retain)
         elif isinstance(value, int):
-            self.publish_int(key, value, no_prefix)
+            self.publish_int(key, value, no_prefix, retain=retain)
         elif isinstance(value, float):
-            self.publish_float(key, value, no_prefix)
+            self.publish_float(key, value, no_prefix, retain=retain)
         elif isinstance(value, str):
-            self.publish_str(key, value, no_prefix)
+            self.publish_str(key, value, no_prefix, retain=retain)
         elif isinstance(value, dict):
             self.publish_json(key, value, no_prefix, retain=retain)
         elif isinstance(value, datetime):
-            self.publish_str(key, datetime_to_str(value), no_prefix)
+            self.publish_datetime(key, value, no_prefix, retain=retain)
         else:
             # Defensive: type system rules this out, but `Any` callers can sneak
             # an unsupported runtime type through; raise rather than silently no-op.
