@@ -15,6 +15,7 @@ from configuration.argparse_extensions import (
     check_bool,
     check_positive,
     check_positive_float,
+    check_timezone,
 )
 from exceptions import MqttGatewayException
 from integrations.openwb.charging_station import ChargingStation
@@ -127,6 +128,8 @@ def __setup_saic_api(args: Namespace, config: Configuration) -> None:
         config.saic_relogin_delay = args.saic_relogin_delay
     if args.saic_read_timeout:
         config.saic_read_timeout = args.saic_read_timeout
+    if args.saic_user_timezone is not None:
+        config.saic_user_timezone = args.saic_user_timezone
 
 
 def __setup_home_assistant(args: Namespace, config: Configuration) -> None:
@@ -360,6 +363,18 @@ def __add_saic_api_argument_group(
         action=EnvDefault,
         envvar="SAIC_READ_TIMEOUT",
         type=check_positive_float,
+    )
+    saic_api.add_argument(
+        "--saic-user-timezone",
+        help="""Force the account timezone instead of trusting the SAIC API value.
+                Accepts an IANA timezone name (e.g. Australia/Sydney) or the
+                GMT+HH:MM format. Any discrepancy between this value and the
+                timezone reported by the API is logged.""",
+        dest="saic_user_timezone",
+        required=False,
+        action=EnvDefault,
+        envvar="SAIC_USER_TIMEZONE",
+        type=check_timezone,
     )
     saic_api.add_argument(
         "--messages-request-interval",

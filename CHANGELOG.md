@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+* Add `--saic-user-timezone` / `SAIC_USER_TIMEZONE` config option to force
+  the account timezone instead of relying on the SAIC API value. Useful when
+  the API reports a wrong DST offset (#438). Discrepancies between the forced
+  zone and the API value are detected by comparing the current UTC offset and
+  logged at WARNING level.
+
 ### Fixed
 
 * Persist user-set HA gateway entities across gateway restarts by retaining

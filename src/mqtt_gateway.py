@@ -6,9 +6,7 @@ import contextlib
 import datetime
 import logging
 from random import uniform
-import re
 from typing import TYPE_CHECKING, Any, override
-from zoneinfo import ZoneInfo
 
 import apscheduler.schedulers.asyncio
 from saic_ismart_client_ng import SaicApi
@@ -25,11 +23,13 @@ from publisher.core import MqttCommandListener, Publisher
 from publisher.log_publisher import ConsolePublisher
 from publisher.mqtt_publisher import MqttPublisher
 from saic_api_listener import MqttGatewaySaicApiListener
-from utils import datetime_to_str, get_gateway_version
+from utils import datetime_to_str, get_gateway_version, parse_timezone
 from vehicle import VehicleState
 from vehicle_info import VehicleInfo
 
 if TYPE_CHECKING:
+    from zoneinfo import ZoneInfo
+
     from saic_ismart_client_ng.api.vehicle import VinInfo
 
     from configuration import Configuration
@@ -45,7 +45,7 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
         self.configuration = config
         self.__vehicle_handlers: dict[str, VehicleHandler] = {}
         self.__vehicle_tasks: list[Task[Any]] = []
-        self.__user_timezone: ZoneInfo | None = None
+        self.__user_timezone: ZoneInfo | None = config.saic_user_timezone
         self.publisher = self.__select_publisher()
         self.publisher.command_listener = self
         if config.publish_raw_api_data:
@@ -136,33 +136,11 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
         LOG.info("Entering main loop")
         await self.__run_until_all_tasks_done()
 
-    @staticmethod
-    def __parse_timezone(tz_str: str) -> ZoneInfo:
-        try:
-            return ZoneInfo(tz_str)
-        except (KeyError, ModuleNotFoundError):
-            pass
-
-        # Handle GMT+HH:MM / GMT-HH:MM format from the SAIC API.
-        # POSIX Etc/GMT zones use inverted signs: GMT+01:00 → Etc/GMT-1
-        m = re.fullmatch(r"GMT([+-])(\d{2}):(\d{2})", tz_str)
-        if m:
-            sign, hours, minutes = m.group(1), int(m.group(2)), int(m.group(3))
-            if minutes != 0:
-                LOG.warning(
-                    "Timezone %s has non-zero minutes, rounding to whole hour", tz_str
-                )
-            posix_sign = "-" if sign == "+" else "+"
-            return ZoneInfo(f"Etc/GMT{posix_sign}{hours}")
-
-        msg = f"Unrecognized timezone format: {tz_str}"
-        raise ValueError(msg)
-
     async def __fetch_user_timezone(self) -> ZoneInfo | None:
         try:
             resp = await self.saic_api.get_user_timezone()
             if resp.timezone:
-                tz = self.__parse_timezone(resp.timezone)
+                tz = parse_timezone(resp.timezone)
                 LOG.info("User timezone from API: %s → %s", resp.timezone, tz)
                 return tz
             LOG.warning("API returned no timezone, using system default")
@@ -182,7 +160,27 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
         self.publisher.publish_int(self.__get_account_topic(topic), value)
 
     async def __refresh_user_timezone(self) -> None:
-        tz = await self.__fetch_user_timezone()
+        forced_tz = self.configuration.saic_user_timezone
+        api_tz = await self.__fetch_user_timezone()
+        tz: ZoneInfo | None
+        if forced_tz is not None:
+            if api_tz is not None:
+                # Compare offsets at "now": IANA zones (Europe/Rome) and the
+                # API's fixed Etc/GMT zones never compare equal by identity,
+                # but their current UTC offset will match when DST aligns.
+                now = datetime.datetime.now(tz=datetime.UTC)
+                if forced_tz.utcoffset(now) != api_tz.utcoffset(now):
+                    LOG.warning(
+                        "Forced user timezone %s (offset %s) differs from "
+                        "API value %s (offset %s); using forced value",
+                        forced_tz,
+                        forced_tz.utcoffset(now),
+                        api_tz,
+                        api_tz.utcoffset(now),
+                    )
+            tz = forced_tz
+        else:
+            tz = api_tz
         if tz is not None:
             self.__user_timezone = tz
             for vh in self.vehicle_handlers.values():

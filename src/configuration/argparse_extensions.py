@@ -8,8 +8,11 @@ from typing import TYPE_CHECKING, Any, override
 
 from dotenv import dotenv_values
 
+from utils import parse_timezone
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
+    from zoneinfo import ZoneInfo
 
 
 # load .env file and merge with os.environ
@@ -105,3 +108,11 @@ def check_positive_float(value: str) -> float:
 
 def check_bool(value: str) -> bool:
     return str(value).lower() in ["true", "1", "yes", "y"]
+
+
+def check_timezone(value: str) -> ZoneInfo:
+    try:
+        return parse_timezone(value)
+    except (ValueError, KeyError, ModuleNotFoundError) as e:
+        msg = f"{value!r} is not a valid timezone"
+        raise argparse.ArgumentTypeError(msg) from e

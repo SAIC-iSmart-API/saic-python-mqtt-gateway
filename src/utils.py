@@ -2,13 +2,46 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from importlib.metadata import PackageNotFoundError, version
+import logging
 import os
+import re
 from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo
 
 from saic_ismart_client_ng.api.schema import GpsStatus
 
 if TYPE_CHECKING:
     from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
+
+LOG = logging.getLogger(__name__)
+
+
+def parse_timezone(tz_str: str) -> ZoneInfo:
+    """Parse a timezone string into a :class:`ZoneInfo`.
+
+    Accepts both IANA names (``Australia/Sydney``) and the ``GMT+HH:MM``
+    offset format returned by the SAIC API.
+    """
+    try:
+        return ZoneInfo(tz_str)
+    except (KeyError, ModuleNotFoundError):
+        pass
+
+    # Handle GMT+HH:MM / GMT-HH:MM format from the SAIC API.
+    # POSIX Etc/GMT zones use inverted signs: GMT+01:00 → Etc/GMT-1
+    m = re.fullmatch(r"GMT([+-])(\d{2}):(\d{2})", tz_str)
+    if m:
+        sign, hours, minutes = m.group(1), int(m.group(2)), int(m.group(3))
+        if minutes != 0:
+            LOG.warning(
+                "Timezone %s has non-zero minutes, rounding to whole hour", tz_str
+            )
+        posix_sign = "-" if sign == "+" else "+"
+        return ZoneInfo(f"Etc/GMT{posix_sign}{hours}")
+
+    msg = f"Unrecognized timezone format: {tz_str}"
+    raise ValueError(msg)
+
 
 def value_in_range[Numeric: (int, float)](
     value: Numeric,

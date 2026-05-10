@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import datetime
 from unittest import TestCase
+from zoneinfo import ZoneInfo
 
+import pytest
 from saic_ismart_client_ng.api.schema import GpsPosition, GpsStatus
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 
-from utils import get_update_timestamp
+from utils import get_update_timestamp, parse_timezone
 
 
 class Test(TestCase):
@@ -118,3 +120,19 @@ class Test(TestCase):
         result = get_update_timestamp(vehicle_status_resp)
 
         assert result <= datetime.datetime.now(tz=datetime.UTC)
+
+
+class TestParseTimezone(TestCase):
+    def test_parses_iana_name(self) -> None:
+        assert parse_timezone("Australia/Sydney") == ZoneInfo("Australia/Sydney")
+
+    def test_parses_gmt_positive_offset(self) -> None:
+        # POSIX Etc/GMT zones use inverted signs: GMT+10:00 → Etc/GMT-10
+        assert parse_timezone("GMT+10:00") == ZoneInfo("Etc/GMT-10")
+
+    def test_parses_gmt_negative_offset(self) -> None:
+        assert parse_timezone("GMT-05:00") == ZoneInfo("Etc/GMT+5")
+
+    def test_rejects_unknown_format(self) -> None:
+        with pytest.raises(ValueError, match="Unrecognized timezone format"):
+            parse_timezone("not-a-timezone")
