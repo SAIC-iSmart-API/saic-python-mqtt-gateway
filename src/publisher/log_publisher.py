@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any, override
 
-from publisher.core import Publisher
+from publisher.core import Publishable, Publisher
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(level="DEBUG")
@@ -62,5 +62,7 @@ class ConsolePublisher(Publisher):
     def clear_topic(self, key: str, no_prefix: bool = False) -> None:
         self.internal_publish(key, None)
 
-    def internal_publish(self, key: str, value: Any, *, retain: bool = True) -> None:
+    def internal_publish(
+        self, key: str, value: Publishable | None, *, retain: bool = True
+    ) -> None:
         LOG.debug(f"{key}: {value} (retain={retain})")
