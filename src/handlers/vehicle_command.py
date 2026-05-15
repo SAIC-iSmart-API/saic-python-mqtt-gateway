@@ -8,6 +8,7 @@ from saic_ismart_client_ng.exceptions import SaicApiException, SaicLogoutExcepti
 
 from exceptions import MqttGatewayException
 from handlers.command import ALL_COMMAND_HANDLERS, CommandHandlerBase
+from handlers.command.base import RESULT_DO_NOTHING
 import mqtt_topics
 from vehicle import RefreshMode
 
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
     from saic_ismart_client_ng import SaicApi
 
     from handlers.relogin import ReloginHandler
-    from publisher.core import Publisher
+    from publisher.core import Publishable, Publisher
     from vehicle import VehicleState
 
     CommandHandler = Callable[[str], Awaitable[bool]]
@@ -56,6 +57,17 @@ class VehicleCommandHandler:
     @property
     def publisher(self) -> Publisher:
         return self.vehicle_state.publisher
+
+    def __publish_state(self, *, topic: str, value: Publishable) -> None:
+        full_topic = self.vehicle_state.get_topic(topic)
+        try:
+            self.publisher.publish(full_topic, value)
+        except Exception:
+            LOG.warning(
+                "Failed to publish state for topic %s",
+                full_topic,
+                exc_info=True,
+            )
 
     def __report_command_failure(
         self,
@@ -111,6 +123,37 @@ class VehicleCommandHandler:
                 retained=retained,
             )
 
+    async def __run_handler_and_report_success(
+        self,
+        *,
+        handler: CommandHandlerBase,
+        payload: str,
+        analyzed_topic: _MqttCommandTopic,
+        retained: bool,
+        eager_echo_published: bool = False,
+        rollback_state: Callable[[], None] | None = None,
+    ) -> None:
+        execution_result = await handler.handle(payload, retained=retained)
+        # If the handler short-circuited via RESULT_DO_NOTHING (e.g. unsupported
+        # vehicle capability) after we eagerly echoed, the broker still holds
+        # the requested-but-unapplied value. Roll it back so the slider snaps
+        # to the actual on-vehicle state.
+        if execution_result == RESULT_DO_NOTHING and eager_echo_published:
+            LOG.warning(
+                "Handler %s returned RESULT_DO_NOTHING after eager echo; rolling back",
+                handler.name(),
+            )
+            if rollback_state is not None:
+                rollback_state()
+        self.publisher.publish_str(analyzed_topic.response_no_global, "Success")
+        if execution_result.force_refresh:
+            self.vehicle_state.set_refresh_mode(
+                RefreshMode.FORCE,
+                f"after command execution on topic {analyzed_topic.command_no_vin}",
+            )
+        if execution_result.clear_command and not retained:
+            self.publisher.clear_topic(analyzed_topic.command_no_global)
+
     async def __execute_mqtt_command_handler(
         self,
         *,
@@ -120,7 +163,6 @@ class VehicleCommandHandler:
         retained: bool,
     ) -> None:
         topic = analyzed_topic.command_no_vin
-        topic_no_global = analyzed_topic.command_no_global
         result_topic = analyzed_topic.response_no_global
 
         if retained and not handler.is_replayable_when_retained():
@@ -136,60 +178,97 @@ class VehicleCommandHandler:
             )
             return
 
+        state_topic = handler.state_topic
+        prior_state: Publishable | None = None
+        published = False
+        if state_topic is not None and not retained:
+            expected = handler.expected_state(payload)
+            if expected is not None:
+                prior_state = handler.current_state
+                self.__publish_state(topic=state_topic, value=expected)
+                published = True
+
+        def rollback_state() -> None:
+            if published and state_topic is not None and prior_state is not None:
+                self.__publish_state(topic=state_topic, value=prior_state)
+
         try:
-            execution_result = await handler.handle(payload, retained=retained)
-            self.publisher.publish_str(result_topic, "Success")
-            if execution_result.force_refresh:
-                self.vehicle_state.set_refresh_mode(
-                    RefreshMode.FORCE, f"after command execution on topic {topic}"
-                )
-            if execution_result.clear_command and not retained:
-                self.publisher.clear_topic(topic_no_global)
+            await self.__run_handler_and_report_success(
+                handler=handler,
+                payload=payload,
+                analyzed_topic=analyzed_topic,
+                retained=retained,
+                eager_echo_published=published,
+                rollback_state=rollback_state,
+            )
         except MqttGatewayException as e:
+            rollback_state()
             self.__report_command_failure(
                 command=topic, result_topic=result_topic, detail=e.message, exc=e
             )
         except SaicLogoutException:
-            LOG.warning(
-                "API Client was logged out, attempting immediate relogin and retry"
+            await self.__handle_logout_and_retry(
+                handler=handler,
+                payload=payload,
+                analyzed_topic=analyzed_topic,
+                retained=retained,
+                eager_echo_published=published,
+                rollback_state=rollback_state,
             )
-            try:
-                await self.relogin_handler.force_login()
-            except Exception as login_err:
-                self.__report_command_failure(
-                    command=topic,
-                    result_topic=result_topic,
-                    detail=f"relogin failed ({login_err})",
-                    exc=login_err,
-                )
-                return
-            try:
-                execution_result = await handler.handle(payload, retained=retained)
-                self.publisher.publish_str(result_topic, "Success")
-                if execution_result.force_refresh:
-                    self.vehicle_state.set_refresh_mode(
-                        RefreshMode.FORCE,
-                        f"after command execution on topic {topic}",
-                    )
-                if execution_result.clear_command and not retained:
-                    self.publisher.clear_topic(topic_no_global)
-            except Exception as retry_err:
-                self.__report_command_failure(
-                    command=topic,
-                    result_topic=result_topic,
-                    detail=str(retry_err),
-                    exc=retry_err,
-                )
         except SaicApiException as se:
+            rollback_state()
             self.__report_command_failure(
                 command=topic, result_topic=result_topic, detail=se.message, exc=se
             )
         except Exception as e:
+            rollback_state()
             self.__report_command_failure(
                 command=topic,
                 result_topic=result_topic,
                 detail="unexpected error",
                 exc=e,
+            )
+
+    async def __handle_logout_and_retry(
+        self,
+        *,
+        handler: CommandHandlerBase,
+        payload: str,
+        analyzed_topic: _MqttCommandTopic,
+        retained: bool,
+        eager_echo_published: bool,
+        rollback_state: Callable[[], None],
+    ) -> None:
+        topic = analyzed_topic.command_no_vin
+        result_topic = analyzed_topic.response_no_global
+        LOG.warning("API Client was logged out, attempting immediate relogin and retry")
+        try:
+            await self.relogin_handler.force_login()
+        except Exception as login_err:
+            rollback_state()
+            self.__report_command_failure(
+                command=topic,
+                result_topic=result_topic,
+                detail=f"relogin failed ({login_err})",
+                exc=login_err,
+            )
+            return
+        try:
+            await self.__run_handler_and_report_success(
+                handler=handler,
+                payload=payload,
+                analyzed_topic=analyzed_topic,
+                retained=retained,
+                eager_echo_published=eager_echo_published,
+                rollback_state=rollback_state,
+            )
+        except Exception as retry_err:
+            rollback_state()
+            self.__report_command_failure(
+                command=topic,
+                result_topic=result_topic,
+                detail=str(retry_err),
+                exc=retry_err,
             )
 
     def __get_command_topics(self, topic: str) -> _MqttCommandTopic:

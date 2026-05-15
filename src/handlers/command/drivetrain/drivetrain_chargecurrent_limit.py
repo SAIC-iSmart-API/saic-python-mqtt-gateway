@@ -22,8 +22,27 @@ class DrivetrainChargeCurrentLimitCommand(
     PayloadConvertingCommandHandler[ChargeCurrentLimitCode]
 ):
     @classmethod
+    @override
     def topic(cls) -> str:
         return mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT_SET
+
+    @property
+    @override
+    def state_topic(self) -> str:
+        return mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT
+
+    @property
+    @override
+    def current_state(self) -> str | None:
+        limit = self.vehicle_state.charge_current_limit
+        return None if limit is None else limit.limit
+
+    @override
+    def expected_state(self, raw_payload: str) -> str | None:
+        try:
+            return self.convert_payload(raw_payload).limit
+        except (ValueError, KeyError):
+            return None
 
     @staticmethod
     @override

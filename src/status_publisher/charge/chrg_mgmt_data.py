@@ -25,6 +25,7 @@ LOG = logging.getLogger(__name__)
 @dataclasses.dataclass(kw_only=True, frozen=True)
 class ScheduledCharging:
     start_time: datetime.time
+    end_time: datetime.time
     mode: ScheduledChargingMode
 
 
@@ -192,6 +193,7 @@ class ChrgMgmtDataPublisher(
                 start_time = datetime.time(hour=start_hour, minute=start_minute)
                 end_hour = charge_mgmt_data.bmsReserSpHourDspCmd
                 end_minute = charge_mgmt_data.bmsReserSpMintueDspCmd
+                end_time = datetime.time(hour=end_hour, minute=end_minute)
                 mode = ScheduledChargingMode(charge_mgmt_data.bmsReserCtrlDspCmd)
                 self._publish(
                     topic=mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE,
@@ -201,7 +203,9 @@ class ChrgMgmtDataPublisher(
                         "mode": mode.name,
                     },
                 )
-                scheduled_charging = ScheduledCharging(start_time=start_time, mode=mode)
+                scheduled_charging = ScheduledCharging(
+                    start_time=start_time, end_time=end_time, mode=mode
+                )
 
             except ValueError:
                 LOG.exception("Error parsing scheduled charging info")

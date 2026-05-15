@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     )
 
     from publisher.core import Publisher
+    from status_publisher.charge.chrg_mgmt_data import ScheduledCharging
     from vehicle_info import VehicleInfo
 
 DEFAULT_AC_TEMP = 22
@@ -141,6 +142,7 @@ class VehicleState:
         self.__remote_heated_seats_front_left_level: int = 0
         self.__remote_heated_seats_front_right_level: int = 0
         self.__scheduler = scheduler
+        self.__scheduled_charging: ScheduledCharging | None = None
         self.__scheduled_battery_heating_enabled = False
         self.__scheduled_battery_heating_start: datetime.time | None = None
         self.__user_timezone: ZoneInfo | None = user_timezone
@@ -236,9 +238,10 @@ class VehicleState:
             except ValueError:
                 LOG.exception(f"Unhandled charge current limit {charge_current_limit}")
 
-    def update_scheduled_charging(
-        self, start_time: datetime.time, mode: ScheduledChargingMode
-    ) -> None:
+    def update_scheduled_charging(self, schedule: ScheduledCharging) -> None:
+        self.__scheduled_charging = schedule
+        start_time = schedule.start_time
+        mode = schedule.mode
         scheduled_charging_job_id = f"{self.vin}_scheduled_charging"
         existing_job: Job | None = self.__scheduler.get_job(scheduled_charging_job_id)
         if mode in [
@@ -585,9 +588,7 @@ class VehicleState:
         result = self.__charge_response_publisher.publish(charge_info_resp)
 
         if result.scheduled_charging is not None:
-            self.update_scheduled_charging(
-                result.scheduled_charging.start_time, result.scheduled_charging.mode
-            )
+            self.update_scheduled_charging(result.scheduled_charging)
 
         if result.charge_current_limit is not None:
             self.update_charge_current_limit(result.charge_current_limit)
@@ -825,3 +826,15 @@ class VehicleState:
     @property
     def vin(self) -> str:
         return self.vehicle.vin
+
+    @property
+    def scheduled_charging(self) -> ScheduledCharging | None:
+        return self.__scheduled_charging
+
+    @property
+    def scheduled_battery_heating_start(self) -> datetime.time | None:
+        return self.__scheduled_battery_heating_start
+
+    @property
+    def scheduled_battery_heating_enabled(self) -> bool:
+        return self.__scheduled_battery_heating_enabled

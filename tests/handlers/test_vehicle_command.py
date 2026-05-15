@@ -1,14 +1,24 @@
 from __future__ import annotations
 
+import datetime
+import json
 from typing import cast
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from saic_ismart_client_ng.api.vehicle.schema import VehicleModelConfiguration, VinInfo
+from saic_ismart_client_ng.api.vehicle_charging import (
+    ChargeCurrentLimitCode,
+    ScheduledChargingMode,
+    TargetBatteryCode,
+)
 from saic_ismart_client_ng.exceptions import SaicApiException, SaicLogoutException
 
 from handlers.vehicle_command import VehicleCommandHandler
 import mqtt_topics
+from status_publisher.charge.chrg_mgmt_data import ScheduledCharging
 from vehicle import RefreshMode
+from vehicle_info import VehicleInfo
 
 MQTT_TOPIC = "saic"
 VIN = "vin_test_000000000"
@@ -20,12 +30,36 @@ CHARGING_RESULT_TOPIC = (
     f"{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_CHARGING}/{mqtt_topics.RESULT_SUFFIX}"
 )
 COMMAND_ERROR_TOPIC = f"{VEHICLE_PREFIX}/{mqtt_topics.COMMAND_ERROR}"
+SOC_TARGET_SET_TOPIC = (
+    f"{MQTT_TOPIC}/{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_SOC_TARGET_SET}"
+)
+SOC_TARGET_STATE_TOPIC = f"{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_SOC_TARGET}"
+SOC_TARGET_RESULT_TOPIC = (
+    f"{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_SOC_TARGET}/{mqtt_topics.RESULT_SUFFIX}"
+)
+CHARGECURRENT_SET_TOPIC = (
+    f"{MQTT_TOPIC}/{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT_SET}"
+)
+CHARGECURRENT_STATE_TOPIC = (
+    f"{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT}"
+)
+CHARGING_SCHEDULE_SET_TOPIC = (
+    f"{MQTT_TOPIC}/{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE_SET}"
+)
+CHARGING_SCHEDULE_STATE_TOPIC = (
+    f"{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE}"
+)
+BATTERY_HEATING_SET_TOPIC = f"{MQTT_TOPIC}/{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_BATTERY_HEATING_SCHEDULE_SET}"
+BATTERY_HEATING_STATE_TOPIC = (
+    f"{VEHICLE_PREFIX}/{mqtt_topics.DRIVETRAIN_BATTERY_HEATING_SCHEDULE}"
+)
 
 
 def _build(
     *,
     saic_api: AsyncMock | None = None,
     relogin_handler: AsyncMock | None = None,
+    vehicle_state: MagicMock | None = None,
 ) -> tuple[VehicleCommandHandler, MagicMock]:
     """Build a VehicleCommandHandler with a MagicMock publisher.
 
@@ -33,7 +67,8 @@ def _build(
     without going through the typed Publisher interface.
     """
     mock_publisher = MagicMock()
-    vehicle_state = MagicMock()
+    if vehicle_state is None:
+        vehicle_state = MagicMock()
     vehicle_state.publisher = mock_publisher
     vehicle_state.vin = VIN
     vehicle_state.get_topic.side_effect = lambda t: f"{VEHICLE_PREFIX}/{t}"
@@ -47,6 +82,26 @@ def _build(
         ),
         mock_publisher,
     )
+
+
+def _make_target_soc_state(
+    *, current: TargetBatteryCode | None = TargetBatteryCode.P_80
+) -> MagicMock:
+    """Build a vehicle state mock that supports target SoC.
+
+    Reports `current` as the previously applied value (for rollback testing).
+    """
+    vin_info = VinInfo()
+    vin_info.vin = VIN
+    vin_info.vehicleModelConfiguration = [
+        VehicleModelConfiguration(itemCode="BType", itemValue="1"),
+    ]
+    vehicle_info = VehicleInfo(vin_info, None)
+
+    state = MagicMock()
+    state.vehicle = vehicle_info
+    state.target_soc = current
+    return state
 
 
 class TestSuccessPath(unittest.IsolatedAsyncioTestCase):
@@ -214,6 +269,325 @@ class TestReportFailureResilience(unittest.IsolatedAsyncioTestCase):
         await handler.handle_mqtt_command(topic=CHARGING_SET_TOPIC, payload="true")
 
         pub.publish_str.assert_called_once()
+
+
+class TestEagerStatePublish(unittest.IsolatedAsyncioTestCase):
+    """Verify the dispatcher's eager-publish + rollback path.
+
+    With `optimistic: false`, HA waits for `state_topic` before updating the
+    slider. The dispatcher must therefore publish the expected state on
+    receipt (instant UX feedback) and revert to the prior value if the SAIC
+    call fails (visible rejection).
+    """
+
+    async def test_publishes_expected_state_on_receipt(self) -> None:
+        state = _make_target_soc_state(current=TargetBatteryCode.P_80)
+        handler, pub = _build(vehicle_state=state)
+
+        await handler.handle_mqtt_command(topic=SOC_TARGET_SET_TOPIC, payload="90")
+
+        pub.publish.assert_any_call(SOC_TARGET_STATE_TOPIC, 90)
+
+    async def test_rollback_on_saic_api_failure(self) -> None:
+        saic_api = AsyncMock()
+        saic_api.set_target_battery_soc.side_effect = SaicApiException(
+            "rejected", return_code=4
+        )
+        state = _make_target_soc_state(current=TargetBatteryCode.P_80)
+        handler, pub = _build(saic_api=saic_api, vehicle_state=state)
+
+        await handler.handle_mqtt_command(topic=SOC_TARGET_SET_TOPIC, payload="90")
+
+        # First the expected state for the requested value (90), then the
+        # rollback to the captured prior value (80).
+        state_publishes = [
+            call.args[1]
+            for call in pub.publish.call_args_list
+            if call.args[0] == SOC_TARGET_STATE_TOPIC
+        ]
+        assert state_publishes == [90, 80]
+
+    async def test_no_rollback_when_no_prior_state_captured(self) -> None:
+        # If the gateway has not yet learned the vehicle's current target SoC
+        # there is nothing to roll back to, so we must not publish None.
+        saic_api = AsyncMock()
+        saic_api.set_target_battery_soc.side_effect = SaicApiException(
+            "rejected", return_code=4
+        )
+        state = _make_target_soc_state(current=None)
+        handler, pub = _build(saic_api=saic_api, vehicle_state=state)
+
+        await handler.handle_mqtt_command(topic=SOC_TARGET_SET_TOPIC, payload="90")
+
+        state_publishes = [
+            call.args[1]
+            for call in pub.publish.call_args_list
+            if call.args[0] == SOC_TARGET_STATE_TOPIC
+        ]
+        assert state_publishes == [90]
+
+    async def test_non_numeric_payload_skips_publish(self) -> None:
+        state = _make_target_soc_state(current=TargetBatteryCode.P_80)
+        handler, pub = _build(vehicle_state=state)
+
+        await handler.handle_mqtt_command(
+            topic=SOC_TARGET_SET_TOPIC, payload="not_a_number"
+        )
+
+        state_publishes = [
+            call.args
+            for call in pub.publish.call_args_list
+            if call.args[0] == SOC_TARGET_STATE_TOPIC
+        ]
+        assert state_publishes == []
+
+    async def test_numeric_but_unsupported_bucket_skips_publish(self) -> None:
+        # 85% is numeric but not one of the discrete TargetBatteryCode buckets
+        # (40/50/60/70/80/90/100). `from_percentage` raises, expected_state
+        # returns None, and nothing is published to state_topic.
+        state = _make_target_soc_state(current=TargetBatteryCode.P_80)
+        handler, pub = _build(vehicle_state=state)
+
+        await handler.handle_mqtt_command(topic=SOC_TARGET_SET_TOPIC, payload="85")
+
+        state_publishes = [
+            call.args
+            for call in pub.publish.call_args_list
+            if call.args[0] == SOC_TARGET_STATE_TOPIC
+        ]
+        assert state_publishes == []
+
+    async def test_switch_command_does_not_publish_state(self) -> None:
+        # Switches don't override state_topic on CommandHandlerBase, so it
+        # stays None and the dispatcher skips the eager-publish path. Verify
+        # nothing leaks to a state topic.
+        handler, pub = _build()
+
+        await handler.handle_mqtt_command(topic=CHARGING_SET_TOPIC, payload="true")
+
+        for call in pub.publish.call_args_list:
+            assert "drivetrain/charging" not in call.args[0] or "/set" in call.args[0]
+
+    async def test_retained_soc_target_does_not_leak_to_state_topic(self) -> None:
+        # SoC target has not opted into is_replayable_when_retained(), so a
+        # retained `/set` (e.g. from a misbehaving non-HA client that retained
+        # the topic) is dropped at the dispatcher gate before the eager-publish
+        # block runs. Nothing must leak to state_topic — otherwise the slider
+        # would jump on reconnect to a value the SAIC API never confirmed.
+        state = _make_target_soc_state(current=TargetBatteryCode.P_80)
+        handler, pub = _build(vehicle_state=state)
+
+        await handler.handle_mqtt_command(
+            topic=SOC_TARGET_SET_TOPIC, payload="90", retained=True
+        )
+
+        state_publishes = [
+            call.args[1]
+            for call in pub.publish.call_args_list
+            if call.args[0] == SOC_TARGET_STATE_TOPIC
+        ]
+        assert state_publishes == []
+
+
+class TestEagerStatePublishOtherEntities(unittest.IsolatedAsyncioTestCase):
+    """Eager-publish + rollback for the other API-backed writable entities.
+
+    Same contract as the SoC slider: charge current limit (string state) and
+    the two schedule entities (JSON-dict state) all need eager-echo because
+    HA's `optimistic: false` would otherwise leave the user staring at a
+    frozen control while the SAIC roundtrip completes.
+    """
+
+    async def test_chargecurrent_limit_echo_and_rollback(self) -> None:
+        saic_api = AsyncMock()
+        saic_api.set_target_battery_soc.side_effect = SaicApiException(
+            "rejected", return_code=4
+        )
+        state = MagicMock()
+        state.charge_current_limit = ChargeCurrentLimitCode.C_6A
+        state.target_soc = TargetBatteryCode.P_80
+        handler, pub = _build(saic_api=saic_api, vehicle_state=state)
+
+        await handler.handle_mqtt_command(topic=CHARGECURRENT_SET_TOPIC, payload="MAX")
+
+        state_publishes = [
+            call.args[1]
+            for call in pub.publish.call_args_list
+            if call.args[0] == CHARGECURRENT_STATE_TOPIC
+        ]
+        assert state_publishes == [
+            ChargeCurrentLimitCode.C_MAX.limit,
+            ChargeCurrentLimitCode.C_6A.limit,
+        ]
+
+    async def test_charging_schedule_echo_and_rollback(self) -> None:
+        saic_api = AsyncMock()
+        saic_api.set_schedule_charging.side_effect = SaicApiException(
+            "rejected", return_code=4
+        )
+        prior = ScheduledCharging(
+            start_time=datetime.time(7, 0),
+            end_time=datetime.time(9, 0),
+            mode=ScheduledChargingMode.DISABLED,
+        )
+        state = _make_target_soc_state(current=TargetBatteryCode.P_80)
+        state.scheduled_charging = prior
+        handler, pub = _build(saic_api=saic_api, vehicle_state=state)
+
+        payload = json.dumps(
+            {"startTime": "08:00", "endTime": "10:00", "mode": "UNTIL_CONFIGURED_TIME"}
+        )
+        await handler.handle_mqtt_command(
+            topic=CHARGING_SCHEDULE_SET_TOPIC, payload=payload
+        )
+
+        state_publishes = [
+            call.args[1]
+            for call in pub.publish.call_args_list
+            if call.args[0] == CHARGING_SCHEDULE_STATE_TOPIC
+        ]
+        assert state_publishes == [
+            {
+                "startTime": "08:00",
+                "endTime": "10:00",
+                "mode": "UNTIL_CONFIGURED_TIME",
+            },
+            {"startTime": "07:00", "endTime": "09:00", "mode": "DISABLED"},
+        ]
+
+    async def test_battery_heating_schedule_echo_and_rollback(self) -> None:
+        saic_api = AsyncMock()
+        saic_api.enable_schedule_battery_heating.side_effect = SaicApiException(
+            "rejected", return_code=4
+        )
+        state = MagicMock()
+        state.scheduled_battery_heating_start = datetime.time(6, 30)
+        state.scheduled_battery_heating_enabled = True
+        state.user_timezone = None
+        handler, pub = _build(saic_api=saic_api, vehicle_state=state)
+
+        payload = json.dumps({"startTime": "08:00", "mode": "ON"})
+        await handler.handle_mqtt_command(
+            topic=BATTERY_HEATING_SET_TOPIC, payload=payload
+        )
+
+        state_publishes = [
+            call.args[1]
+            for call in pub.publish.call_args_list
+            if call.args[0] == BATTERY_HEATING_STATE_TOPIC
+        ]
+        assert state_publishes == [
+            {"startTime": "08:00", "mode": "on"},
+            {"startTime": "06:30", "mode": "on"},
+        ]
+        # The fix moves the in-memory mutation to after API success. With the
+        # API call failing, update_scheduled_battery_heating must NOT have run
+        # — otherwise the gateway holds the failed-new value and the next
+        # eager-echo's `current_state` would be wrong.
+        state.update_scheduled_battery_heating.assert_not_called()
+
+
+class TestEagerStateEdgeCases(unittest.IsolatedAsyncioTestCase):
+    """Edge cases around the eager-echo path that aren't tied to a single entity."""
+
+    async def test_result_do_nothing_rolls_back_eager_echo(self) -> None:
+        # Vehicle without target-SoC support: the SoC handler returns
+        # RESULT_DO_NOTHING after we've already echoed the requested value.
+        # Without the fix the slider would stick on the unsupported value.
+        vin_info = VinInfo()
+        vin_info.vin = VIN
+        vin_info.vehicleModelConfiguration = []
+        state = MagicMock()
+        state.vehicle = VehicleInfo(vin_info, None)
+        state.target_soc = TargetBatteryCode.P_80
+        handler, pub = _build(vehicle_state=state)
+
+        await handler.handle_mqtt_command(topic=SOC_TARGET_SET_TOPIC, payload="90")
+
+        state_publishes = [
+            call.args[1]
+            for call in pub.publish.call_args_list
+            if call.args[0] == SOC_TARGET_STATE_TOPIC
+        ]
+        assert state_publishes == [90, 80]
+
+    async def test_logout_retry_success_preserves_eager_echo(self) -> None:
+        # First SAIC call hits a logout, retry after relogin succeeds. The
+        # eager-echoed value must remain on the broker (no spurious rollback).
+        saic_api = AsyncMock()
+        saic_api.set_target_battery_soc.side_effect = [
+            SaicLogoutException("logged out"),
+            None,
+        ]
+        state = _make_target_soc_state(current=TargetBatteryCode.P_80)
+        handler, pub = _build(saic_api=saic_api, vehicle_state=state)
+
+        await handler.handle_mqtt_command(topic=SOC_TARGET_SET_TOPIC, payload="90")
+
+        state_publishes = [
+            call.args[1]
+            for call in pub.publish.call_args_list
+            if call.args[0] == SOC_TARGET_STATE_TOPIC
+        ]
+        # Only the eager echo — no rollback on the successful retry.
+        assert state_publishes == [90]
+        assert saic_api.set_target_battery_soc.await_count == 2
+        pub.publish_str.assert_any_call(SOC_TARGET_RESULT_TOPIC, "Success")
+
+    async def test_broker_failure_during_rollback_does_not_crash(self) -> None:
+        # The broker drops while we try to roll back the eager echo. The
+        # dispatcher must still attempt the rollback and publish the failure
+        # to the result topic, not propagate the publish exception.
+        saic_api = AsyncMock()
+        saic_api.set_target_battery_soc.side_effect = SaicApiException(
+            "rejected", return_code=4
+        )
+        state = _make_target_soc_state(current=TargetBatteryCode.P_80)
+        handler, pub = _build(saic_api=saic_api, vehicle_state=state)
+        # First publish is the eager echo (succeeds), second is the rollback
+        # (broker is now down).
+        pub.publish.side_effect = [None, ConnectionError("broker down")]
+
+        await handler.handle_mqtt_command(topic=SOC_TARGET_SET_TOPIC, payload="90")
+
+        # Both publish calls to the state topic must fire: the rollback was
+        # attempted even though the broker raised on it.
+        state_publishes = [
+            call.args
+            for call in pub.publish.call_args_list
+            if call.args[0] == SOC_TARGET_STATE_TOPIC
+        ]
+        assert len(state_publishes) == 2
+        # And the dispatcher kept going to publish the failure result.
+        result_calls = [
+            call.args
+            for call in pub.publish_str.call_args_list
+            if call.args[0] == SOC_TARGET_RESULT_TOPIC
+        ]
+        assert any("Failed:" in args[1] for args in result_calls)
+
+    async def test_malformed_charging_schedule_skips_eager_echo(self) -> None:
+        # Bad JSON in the payload: convert_payload (and thus expected_state)
+        # raises and the dispatcher must skip the eager publish entirely.
+        prior = ScheduledCharging(
+            start_time=datetime.time(7, 0),
+            end_time=datetime.time(9, 0),
+            mode=ScheduledChargingMode.DISABLED,
+        )
+        state = _make_target_soc_state(current=TargetBatteryCode.P_80)
+        state.scheduled_charging = prior
+        handler, pub = _build(vehicle_state=state)
+
+        await handler.handle_mqtt_command(
+            topic=CHARGING_SCHEDULE_SET_TOPIC, payload="not json {"
+        )
+
+        state_publishes = [
+            call.args
+            for call in pub.publish.call_args_list
+            if call.args[0] == CHARGING_SCHEDULE_STATE_TOPIC
+        ]
+        assert state_publishes == []
 
 
 class TestErrorEventPayload(unittest.IsolatedAsyncioTestCase):

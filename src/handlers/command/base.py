@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
     from saic_ismart_client_ng import SaicApi
 
-    from publisher.core import Publisher
+    from publisher.core import Publishable, Publisher
     from vehicle import VehicleState
 
 
@@ -67,6 +67,23 @@ class CommandHandlerBase(metaclass=ABCMeta):
         self, payload: str, *, retained: bool = False
     ) -> CommandProcessingResult:
         raise NotImplementedError
+
+    # Optional eager-publish + rollback hooks. A handler opts in by overriding
+    # `state_topic` to return a non-None topic, in which case the dispatcher
+    # will publish `expected_state(payload)` to that topic on receipt and
+    # republish `current_state` if the SAIC call later fails. See
+    # `VehicleCommandHandler` in `handlers/vehicle_command.py`.
+
+    @property
+    def state_topic(self) -> str | None:
+        return None
+
+    @property
+    def current_state(self) -> Publishable | None:
+        return None
+
+    def expected_state(self, _raw_payload: str) -> Publishable | None:
+        return None
 
     @property
     def saic_api(self) -> SaicApi:
