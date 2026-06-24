@@ -73,7 +73,7 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
         assert self.received_payload == REAR_WINDOW_HEAT_STATE
 
     async def send_message(self, topic: str, payload: Any) -> None:
-        await self.mqtt_client._on_message("client", topic, payload, 0, {})
+        await self.mqtt_client._on_message("client", topic, payload, 0, False)
 
     async def test_get_vin_from_sanitized_topic(self) -> None:
         """Topics arrive with the sanitized prefix, not the raw username."""

@@ -96,7 +96,7 @@ class MqttPublisher(Publisher):
                             str(message.topic),
                             message.payload,
                             message.qos,
-                            message.properties,
+                            message.retain,
                         )
             except aiomqtt.MqttError:
                 LOG.warning(
@@ -178,14 +178,13 @@ class MqttPublisher(Publisher):
             raise e
 
     async def _on_message(
-        self, _client: Any, topic: str, payload: Any, _qos: Any, _properties: Any
+        self, _client: Any, topic: str, payload: Any, _qos: Any, retained: bool
     ) -> None:
         try:
             if isinstance(payload, bytes):
                 payload = payload.decode("utf-8")
             else:
                 payload = str(payload)
-            retained = bool(_properties.get("retain", 0))
             await self.__on_message_real(
                 topic=topic, payload=payload, retained=retained
             )
