@@ -19,6 +19,10 @@ if TYPE_CHECKING:
 
 LOG = logging.getLogger(__name__)
 
+# Reconnect backoff: starts at 5 s, doubles on each failure, caps at 5 min
+_RECONNECT_INTERVAL_MIN = 5
+_RECONNECT_INTERVAL_MAX = 300
+
 # MQTT 3.1.1 spec section 3.2.2.3 — permanent connection refusal codes
 _CONNACK_REFUSED_PROTOCOL_VERSION = 1
 _CONNACK_REFUSED_IDENTIFIER_REJECTED = 2
@@ -90,7 +94,7 @@ class MqttPublisher(Publisher):
             ),
         )
         client.pending_calls_threshold = 150
-        reconnect_interval = 5
+        reconnect_interval = _RECONNECT_INTERVAL_MIN
         while True:
             try:
                 LOG.debug(
@@ -103,6 +107,7 @@ class MqttPublisher(Publisher):
                     self.client = client_context
                     self.__connected.set()
                     await self.__on_connect()
+                    reconnect_interval = _RECONNECT_INTERVAL_MIN
                     async for message in client_context.messages:
                         await self._on_message(
                             client_context,
@@ -124,6 +129,7 @@ class MqttPublisher(Publisher):
                     reconnect_interval,
                 )
                 await asyncio.sleep(reconnect_interval)
+                reconnect_interval = min(reconnect_interval * 2, _RECONNECT_INTERVAL_MAX)
             except aiomqtt.MqttError:
                 LOG.warning(
                     "Connection to %s:%s lost; Reconnecting in %d seconds ...",
@@ -132,6 +138,7 @@ class MqttPublisher(Publisher):
                     reconnect_interval,
                 )
                 await asyncio.sleep(reconnect_interval)
+                reconnect_interval = min(reconnect_interval * 2, _RECONNECT_INTERVAL_MAX)
             except asyncio.exceptions.CancelledError:
                 LOG.debug("MQTT publisher loop cancelled")
                 raise
