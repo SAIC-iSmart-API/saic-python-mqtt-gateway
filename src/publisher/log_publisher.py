@@ -28,7 +28,8 @@ class ConsolePublisher(Publisher):
         key: str,
         data: dict[str, Any],
         no_prefix: bool = False,
-        retain: bool = False,
+        *,
+        retain: bool = True,
         qos: int = 0,
     ) -> None:
         anonymized_json = self.dict_to_anonymized_json(data)
@@ -40,7 +41,8 @@ class ConsolePublisher(Publisher):
         key: str,
         value: str,
         no_prefix: bool = False,
-        retain: bool = False,
+        *,
+        retain: bool = True,
         qos: int = 0,
     ) -> None:
         self.internal_publish(key, value)
@@ -51,7 +53,8 @@ class ConsolePublisher(Publisher):
         key: str,
         value: int,
         no_prefix: bool = False,
-        retain: bool = False,
+        *,
+        retain: bool = True,
         qos: int = 0,
     ) -> None:
         self.internal_publish(key, value)
@@ -62,7 +65,8 @@ class ConsolePublisher(Publisher):
         key: str,
         value: bool,
         no_prefix: bool = False,
-        retain: bool = False,
+        *,
+        retain: bool = True,
         qos: int = 0,
     ) -> None:
         self.internal_publish(key, value)
@@ -73,7 +77,8 @@ class ConsolePublisher(Publisher):
         key: str,
         value: float,
         no_prefix: bool = False,
-        retain: bool = False,
+        *,
+        retain: bool = True,
         qos: int = 0,
     ) -> None:
         self.internal_publish(key, value)

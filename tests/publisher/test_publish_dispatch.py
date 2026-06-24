@@ -297,7 +297,8 @@ class _MinimalPublisher(Publisher):
         key: str,
         data: dict[str, Any],
         no_prefix: bool = False,
-        retain: bool = False,
+        *,
+        retain: bool = True,
         qos: int = 0,
     ) -> None:
         pass
@@ -308,7 +309,8 @@ class _MinimalPublisher(Publisher):
         key: str,
         value: str,
         no_prefix: bool = False,
-        retain: bool = False,
+        *,
+        retain: bool = True,
         qos: int = 0,
     ) -> None:
         pass
@@ -319,7 +321,8 @@ class _MinimalPublisher(Publisher):
         key: str,
         value: int,
         no_prefix: bool = False,
-        retain: bool = False,
+        *,
+        retain: bool = True,
         qos: int = 0,
     ) -> None:
         pass
@@ -330,7 +333,8 @@ class _MinimalPublisher(Publisher):
         key: str,
         value: bool,
         no_prefix: bool = False,
-        retain: bool = False,
+        *,
+        retain: bool = True,
         qos: int = 0,
     ) -> None:
         pass
@@ -341,7 +345,8 @@ class _MinimalPublisher(Publisher):
         key: str,
         value: float,
         no_prefix: bool = False,
-        retain: bool = False,
+        *,
+        retain: bool = True,
         qos: int = 0,
     ) -> None:
         pass
