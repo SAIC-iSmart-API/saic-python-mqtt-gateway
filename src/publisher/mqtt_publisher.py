@@ -85,7 +85,9 @@ class MqttPublisher(Publisher):
             clean_session=True,
             tls_context=ssl_context,
             tls_insecure=bool(
-                ssl_context and not self.configuration.tls_server_cert_check_hostname
+                ssl_context
+                and self.configuration.tls_server_cert_path
+                and not self.configuration.tls_server_cert_check_hostname
             ),
             will=aiomqtt.Will(
                 topic=self.get_topic(mqtt_topics.INTERNAL_LWT, False),
