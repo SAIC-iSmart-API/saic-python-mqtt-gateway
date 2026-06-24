@@ -9,6 +9,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Always branch from `develop` for features and bugfixes.** PRs must target `develop`, not `main`. The only exception is a hotfix that must go directly to `main`.
 
+## Release process
+
+1. Merge all relevant PRs into `develop`.
+2. Add a `## <version>` section to `CHANGELOG.md` and commit it directly to `develop`.
+3. Tag `develop` as `<version>-rc<N>` (e.g. `0.13.0-rc1`) and push the tag — **RC tags live on `develop`, not `main`**.
+4. After the RC is validated, open a PR from `develop` → `main` and merge it.
+5. Tag the resulting `main` commit as the final release (e.g. `0.13.0`) and push the tag.
+
 ## Commands
 
 ```bash
