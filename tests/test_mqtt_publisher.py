@@ -168,6 +168,6 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
         assert json.loads(args[1]) == {"a": 1}
         assert kwargs == {"retain": False, "qos": 0}
 
-    async def test_clear_topic_publishes_none_not_retained(self) -> None:
+    async def test_clear_topic_publishes_none_retained(self) -> None:
         m = await self._call_and_flush(self.mqtt_client.clear_topic, "foo")
         m.assert_called_once_with("saic/foo", None, retain=True, qos=0)
