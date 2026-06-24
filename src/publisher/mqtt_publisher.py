@@ -118,6 +118,9 @@ class MqttPublisher(Publisher):
         if self.__running and not self.__running.done():
             LOG.warning("MQTT client is already running")
             return
+        if not self.host:
+            LOG.info("MQTT host is not configured")
+            return
         self.__running = asyncio.create_task(self.__run_loop())
         await self.__connected.wait()
 
