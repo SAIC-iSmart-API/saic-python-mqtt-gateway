@@ -172,6 +172,14 @@ class MqttPublisher(Publisher):
                         charging_station.connected_topic
                     ] = charging_station.vin
                     await self.client.subscribe(charging_station.connected_topic)
+                if charging_station.imported_energy_topic:
+                    LOG.debug(
+                        f"Subscribing to MQTT topic {charging_station.imported_energy_topic}"
+                    )
+                    self.vin_by_imported_energy_topic[
+                        charging_station.imported_energy_topic
+                    ] = charging_station.vin
+                    await self.client.subscribe(charging_station.imported_energy_topic)
             if self.configuration.ha_discovery_enabled:
                 # enable dynamic discovery pushing in case ha reconnects
                 await self.client.subscribe(self.configuration.ha_lwt_topic)
