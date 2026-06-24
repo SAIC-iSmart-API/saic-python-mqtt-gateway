@@ -45,7 +45,7 @@ class ConsolePublisher(Publisher):
         retain: bool = True,
         qos: int = 0,
     ) -> None:
-        self.internal_publish(key, value)
+        self.internal_publish(key, value, retain=retain)
 
     @override
     def publish_int(
@@ -57,7 +57,7 @@ class ConsolePublisher(Publisher):
         retain: bool = True,
         qos: int = 0,
     ) -> None:
-        self.internal_publish(key, value)
+        self.internal_publish(key, value, retain=retain)
 
     @override
     def publish_bool(
@@ -69,7 +69,7 @@ class ConsolePublisher(Publisher):
         retain: bool = True,
         qos: int = 0,
     ) -> None:
-        self.internal_publish(key, value)
+        self.internal_publish(key, value, retain=retain)
 
     @override
     def publish_float(
@@ -81,7 +81,7 @@ class ConsolePublisher(Publisher):
         retain: bool = True,
         qos: int = 0,
     ) -> None:
-        self.internal_publish(key, value)
+        self.internal_publish(key, value, retain=retain)
 
     @override
     def clear_topic(self, key: str, no_prefix: bool = False, qos: int = 0) -> None:
