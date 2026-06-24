@@ -60,7 +60,7 @@ class MqttPublisher(Publisher):
         client = aiomqtt.Client(
             hostname=self.host,
             port=self.port,
-            identifier=str(self.publisher_id) + "a",
+            identifier=str(self.publisher_id),
             transport=self.transport_protocol.transport_mechanism,
             username=self.configuration.mqtt_user or None,
             password=self.configuration.mqtt_password or None,
