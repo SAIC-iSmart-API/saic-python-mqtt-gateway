@@ -104,18 +104,18 @@ class ChrgMgmtDataPublisher(
         self._transform_and_publish(
             topic=mqtt_topics.BMS_CHARGE_STATUS,
             value=charge_mgmt_data.bms_charging_status,
-            transform=lambda x: f"UNKNOWN {charge_mgmt_data.bmsChrgSts}"
-            if x is None
-            else x.name,
+            transform=lambda x: (
+                f"UNKNOWN {charge_mgmt_data.bmsChrgSts}" if x is None else x.name
+            ),
         )
 
         self._transform_and_publish(
             topic=mqtt_topics.DRIVETRAIN_CHARGING_STOP_REASON,
             value=charge_mgmt_data.charging_stop_reason,
             validator=lambda x: x != ChargingStopReason.NO_REASON,
-            transform=lambda x: f"UNKNOWN {charge_mgmt_data.bmsChrgSpRsn}"
-            if x is None
-            else x.name,
+            transform=lambda x: (
+                f"UNKNOWN {charge_mgmt_data.bmsChrgSpRsn}" if x is None else x.name
+            ),
         )
 
         self._publish(
@@ -153,9 +153,9 @@ class ChrgMgmtDataPublisher(
             topic=mqtt_topics.DRIVETRAIN_BATTERY_HEATING_STOP_REASON,
             value=charge_mgmt_data.heating_stop_reason,
             validator=lambda x: x != HeatingStopReason.NO_REASON,
-            transform=lambda x: f"UNKNOWN ({charge_mgmt_data.bmsPTCHeatResp})"
-            if x is None
-            else x.name,
+            transform=lambda x: (
+                f"UNKNOWN ({charge_mgmt_data.bmsPTCHeatResp})" if x is None else x.name
+            ),
         )
 
         self._transform_and_publish(

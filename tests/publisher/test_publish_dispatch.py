@@ -299,35 +299,60 @@ class _MinimalPublisher(Publisher):
         no_prefix: bool = False,
         *,
         retain: bool = True,
+        qos: int = 0,
     ) -> None:
         pass
 
     @override
     def publish_str(
-        self, key: str, value: str, no_prefix: bool = False, *, retain: bool = True
+        self,
+        key: str,
+        value: str,
+        no_prefix: bool = False,
+        *,
+        retain: bool = True,
+        qos: int = 0,
     ) -> None:
         pass
 
     @override
     def publish_int(
-        self, key: str, value: int, no_prefix: bool = False, *, retain: bool = True
+        self,
+        key: str,
+        value: int,
+        no_prefix: bool = False,
+        *,
+        retain: bool = True,
+        qos: int = 0,
     ) -> None:
         pass
 
     @override
     def publish_bool(
-        self, key: str, value: bool, no_prefix: bool = False, *, retain: bool = True
+        self,
+        key: str,
+        value: bool,
+        no_prefix: bool = False,
+        *,
+        retain: bool = True,
+        qos: int = 0,
     ) -> None:
         pass
 
     @override
     def publish_float(
-        self, key: str, value: float, no_prefix: bool = False, *, retain: bool = True
+        self,
+        key: str,
+        value: float,
+        no_prefix: bool = False,
+        *,
+        retain: bool = True,
+        qos: int = 0,
     ) -> None:
         pass
 
     @override
-    def clear_topic(self, key: str, no_prefix: bool = False) -> None:
+    def clear_topic(self, key: str, no_prefix: bool = False, qos: int = 0) -> None:
         pass
 
 
