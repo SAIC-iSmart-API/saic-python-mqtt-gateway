@@ -55,7 +55,7 @@ class TestSuccessPath(unittest.IsolatedAsyncioTestCase):
 
         await handler.handle_mqtt_command(topic=CHARGING_SET_TOPIC, payload="true")
 
-        pub.publish_str.assert_any_call(CHARGING_RESULT_TOPIC, "Success")
+        pub.publish_str.assert_any_call(CHARGING_RESULT_TOPIC, "Success", retain=False)
         pub.publish_json.assert_not_called()
 
 
@@ -70,6 +70,7 @@ class TestNoHandlerFound(unittest.IsolatedAsyncioTestCase):
         pub.publish_str.assert_any_call(
             result_topic,
             "Failed: No handler found for command topic nonexistent/topic/set",
+            retain=False,
         )
         pub.publish_json.assert_called_once()
         event = pub.publish_json.call_args[0][1]
@@ -99,6 +100,7 @@ class TestMqttGatewayException(unittest.IsolatedAsyncioTestCase):
             CHARGING_RESULT_TOPIC,
             "Failed: Unsupported payload not_a_boolean for command "
             "DrivetrainChargingCommand",
+            retain=False,
         )
         pub.publish_json.assert_called_once()
         event = pub.publish_json.call_args[0][1]
@@ -119,6 +121,7 @@ class TestSaicApiException(unittest.IsolatedAsyncioTestCase):
         pub.publish_str.assert_any_call(
             CHARGING_RESULT_TOPIC,
             "Failed: return code: 8, message: operation too frequent",
+            retain=False,
         )
         pub.publish_json.assert_called_once()
         event = pub.publish_json.call_args[0][1]
@@ -135,7 +138,7 @@ class TestUnexpectedException(unittest.IsolatedAsyncioTestCase):
         await handler.handle_mqtt_command(topic=CHARGING_SET_TOPIC, payload="true")
 
         pub.publish_str.assert_any_call(
-            CHARGING_RESULT_TOPIC, "Failed: unexpected error"
+            CHARGING_RESULT_TOPIC, "Failed: unexpected error", retain=False
         )
         event = pub.publish_json.call_args[0][1]
         assert event["detail"] == "unexpected error"
@@ -157,7 +160,7 @@ class TestSaicLogoutException(unittest.IsolatedAsyncioTestCase):
         assert isinstance(relogin, AsyncMock)
         relogin.force_login.assert_awaited_once()
         assert saic_api.control_charging.await_count == 2
-        pub.publish_str.assert_any_call(CHARGING_RESULT_TOPIC, "Success")
+        pub.publish_str.assert_any_call(CHARGING_RESULT_TOPIC, "Success", retain=False)
         pub.publish_json.assert_not_called()
 
     async def test_relogin_failure_publishes_error_event(self) -> None:
@@ -170,7 +173,7 @@ class TestSaicLogoutException(unittest.IsolatedAsyncioTestCase):
         await handler.handle_mqtt_command(topic=CHARGING_SET_TOPIC, payload="true")
 
         pub.publish_str.assert_any_call(
-            CHARGING_RESULT_TOPIC, "Failed: relogin failed (login failed)"
+            CHARGING_RESULT_TOPIC, "Failed: relogin failed (login failed)", retain=False
         )
         pub.publish_json.assert_called_once()
         event = pub.publish_json.call_args[0][1]
@@ -186,7 +189,9 @@ class TestSaicLogoutException(unittest.IsolatedAsyncioTestCase):
 
         await handler.handle_mqtt_command(topic=CHARGING_SET_TOPIC, payload="true")
 
-        pub.publish_str.assert_any_call(CHARGING_RESULT_TOPIC, "Failed: retry boom")
+        pub.publish_str.assert_any_call(
+            CHARGING_RESULT_TOPIC, "Failed: retry boom", retain=False
+        )
         pub.publish_json.assert_called_once()
         event = pub.publish_json.call_args[0][1]
         assert event["detail"] == "retry boom"
@@ -277,7 +282,7 @@ class TestRetainedReplay(unittest.IsolatedAsyncioTestCase):
         )
 
         vehicle_state.set_refresh_mode.assert_not_called()
-        pub.publish_str.assert_any_call(REFRESH_MODE_RESULT_TOPIC, "Success")
+        pub.publish_str.assert_any_call(REFRESH_MODE_RESULT_TOPIC, "Success", retain=False)
 
     async def test_retained_charging_detection_refresh_mode_dropped(self) -> None:
         handler, pub = _build()
@@ -290,7 +295,7 @@ class TestRetainedReplay(unittest.IsolatedAsyncioTestCase):
         )
 
         vehicle_state.set_refresh_mode.assert_not_called()
-        pub.publish_str.assert_any_call(REFRESH_MODE_RESULT_TOPIC, "Success")
+        pub.publish_str.assert_any_call(REFRESH_MODE_RESULT_TOPIC, "Success", retain=False)
 
     async def test_retained_periodic_refresh_mode_applied(self) -> None:
         handler, _pub = _build()
@@ -339,7 +344,9 @@ class TestRetainedReplay(unittest.IsolatedAsyncioTestCase):
 
         vehicle_state.update_battery_capacity.assert_called_once_with(50.0)
         pub.publish_float.assert_any_call(TOTAL_BATTERY_CAPACITY_STATE_TOPIC, 50.0)
-        pub.publish_str.assert_any_call(TOTAL_BATTERY_CAPACITY_RESULT_TOPIC, "Success")
+        pub.publish_str.assert_any_call(
+            TOTAL_BATTERY_CAPACITY_RESULT_TOPIC, "Success", retain=False
+        )
 
     async def test_battery_capacity_zero_payload_publishes_model_default(self) -> None:
         """Payload `0` clears the override; the per-model default is republished."""

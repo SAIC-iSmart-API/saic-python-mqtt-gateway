@@ -70,7 +70,7 @@ class VehicleCommandHandler:
         else:
             LOG.error("Command %s failed: %s", command, detail)
         try:
-            self.publisher.publish_str(result_topic, f"Failed: {detail}")
+            self.publisher.publish_str(result_topic, f"Failed: {detail}", retain=False)
         except Exception:
             LOG.warning(
                 "Failed to publish failure result for command %s",
@@ -138,7 +138,7 @@ class VehicleCommandHandler:
 
         try:
             execution_result = await handler.handle(payload, retained=retained)
-            self.publisher.publish_str(result_topic, "Success")
+            self.publisher.publish_str(result_topic, "Success", retain=False)
             if execution_result.force_refresh:
                 self.vehicle_state.set_refresh_mode(
                     RefreshMode.FORCE, f"after command execution on topic {topic}"
@@ -165,7 +165,7 @@ class VehicleCommandHandler:
                 return
             try:
                 execution_result = await handler.handle(payload, retained=retained)
-                self.publisher.publish_str(result_topic, "Success")
+                self.publisher.publish_str(result_topic, "Success", retain=False)
                 if execution_result.force_refresh:
                     self.vehicle_state.set_refresh_mode(
                         RefreshMode.FORCE,
