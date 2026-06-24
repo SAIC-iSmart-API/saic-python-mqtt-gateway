@@ -54,6 +54,7 @@ class MqttPublisher(Publisher):
         self.client: None | aiomqtt.Client = None
         self.__running: asyncio.Task[None] | None = None
         self.__connected = asyncio.Event()
+        self.__fatal_connect_error: SystemExit | None = None
 
     async def __run_loop(self) -> None:
         if not self.host:
@@ -119,9 +120,12 @@ class MqttPublisher(Publisher):
             except MqttConnectError as e:
                 # Permanent rejections — retrying won't help.
                 # rc 3 (server unavailable) is transient and falls through to reconnect.
-                if isinstance(e.rc, int) and e.rc in _FATAL_CONNECT_RC:
-                    msg = f"MQTT connection permanently refused: {e}"
-                    raise SystemExit(msg) from e
+                # ReasonCode.__eq__ supports int comparison, so no isinstance guard needed.
+                if e.rc in _FATAL_CONNECT_RC:
+                    LOG.error("MQTT connection permanently refused: %s", e)
+                    self.__fatal_connect_error = SystemExit(str(e))
+                    self.__connected.set()
+                    return
                 LOG.warning(
                     "Connection to %s:%s refused (transient); Reconnecting in %d seconds ...",
                     self.host,
@@ -156,6 +160,8 @@ class MqttPublisher(Publisher):
             return
         self.__running = asyncio.create_task(self.__run_loop())
         await self.__connected.wait()
+        if self.__fatal_connect_error is not None:
+            raise self.__fatal_connect_error
 
     async def __on_connect(self) -> None:
         LOG.info("Connected to MQTT broker")
@@ -168,7 +174,12 @@ class MqttPublisher(Publisher):
 
     @override
     def enable_commands(self) -> None:
-        asyncio.get_running_loop().create_task(self.__enable_commands())
+        task = asyncio.get_running_loop().create_task(self.__enable_commands())
+        task.add_done_callback(self.__on_enable_commands_done)
+
+    def __on_enable_commands_done(self, task: asyncio.Task[None]) -> None:
+        if not task.cancelled() and (exc := task.exception()):
+            LOG.error("Failed to enable MQTT command subscriptions: %s", exc)
 
     async def __enable_commands(self) -> None:
         if not self.__connected.is_set() or not self.client:
