@@ -104,9 +104,7 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
 
     async def _call_and_flush(self, fn: Any, *args: Any, **kwargs: Any) -> AsyncMock:
         mock = AsyncMock()
-        with patch.object(
-            self.mqtt_client, "_MqttPublisher__async_publish", mock
-        ):
+        with patch.object(self.mqtt_client, "_MqttPublisher__async_publish", mock):
             self.mqtt_client._MqttPublisher__connected.set()  # type: ignore[attr-defined]
             fn(*args, **kwargs)
             await asyncio.sleep(0)
@@ -153,9 +151,7 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
         m.assert_called_once_with("saic/foo", 1.5, retain=False, qos=0)
 
     async def test_publish_json_default_is_retained(self) -> None:
-        m = await self._call_and_flush(
-            self.mqtt_client.publish_json, "foo", {"a": 1}
-        )
+        m = await self._call_and_flush(self.mqtt_client.publish_json, "foo", {"a": 1})
         m.assert_called_once()
         args, kwargs = m.call_args
         assert args[0] == "saic/foo"

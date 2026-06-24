@@ -261,7 +261,12 @@ class MqttPublisher(Publisher):
             )
 
     def __publish(
-        self, topic: str, payload: WirePayload | None, *, retain: bool = True, qos: int = 0
+        self,
+        topic: str,
+        payload: WirePayload | None,
+        *,
+        retain: bool = True,
+        qos: int = 0,
     ) -> None:
         LOG.debug("Publishing to MQTT topic %s with payload %s", topic, payload)
         loop = asyncio.get_running_loop()
