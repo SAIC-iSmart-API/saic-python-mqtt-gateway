@@ -168,8 +168,7 @@ class MqttPublisher(Publisher):
 
     @override
     def enable_commands(self) -> None:
-        loop = asyncio.get_running_loop()
-        asyncio.run_coroutine_threadsafe(self.__enable_commands(), loop)
+        asyncio.get_running_loop().create_task(self.__enable_commands())
 
     async def __enable_commands(self) -> None:
         if not self.__connected.is_set() or not self.client:
@@ -314,9 +313,8 @@ class MqttPublisher(Publisher):
         qos: int = 0,
     ) -> None:
         LOG.debug("Publishing to MQTT topic %s with payload %s", topic, payload)
-        loop = asyncio.get_running_loop()
-        asyncio.run_coroutine_threadsafe(
-            self.__async_publish(topic, payload, retain=retain, qos=qos), loop
+        asyncio.get_running_loop().create_task(
+            self.__async_publish(topic, payload, retain=retain, qos=qos)
         )
 
     async def __async_publish(
