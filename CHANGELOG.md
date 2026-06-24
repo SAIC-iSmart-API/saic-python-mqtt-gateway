@@ -1,5 +1,41 @@
 # Change Log
 
+## 0.13.0
+
+### Changed
+
+* Replace gmqtt with aiomqtt for MQTT connectivity. The new client uses a
+  pure-asyncio architecture — no more `run_coroutine_threadsafe` cross-thread
+  calls. Reconnect now uses exponential backoff (5 s → 10 s → … → 5 min)
+  instead of a fixed interval (#457).
+
+### Fixed
+
+* Exit immediately on permanent MQTT connection failures (bad credentials,
+  unknown protocol version, identifier rejected, not authorised) instead of
+  looping forever (#457).
+
+* Restore MQTT subscriptions and trigger HA re-discovery on broker reconnect
+  after a transient disconnect (#457).
+
+* Suppress spurious `WARNING: Could not extract a valid SoC kWh` log on every
+  poll for non-EV vehicles. The warning is preserved for EVs where the BMS
+  returns invalid data (#460).
+
+* Publish command result topics (`Success` / `Failed: …`) with `retain=False`
+  so a stale result from a previous session does not persist on the broker
+  across restarts (#461).
+
+* Emit `retain` as a JSON boolean (`true`/`false`) in Home Assistant MQTT
+  discovery payloads instead of the string `"true"`/`"false"` that the HA
+  schema requires (#459).
+
+* Warn when TLS hostname verification is disabled regardless of whether a
+  custom CA certificate is configured. Self-signed cert users (who typically
+  have no CA file) now see the warning too (#462).
+
+**Full Changelog**: https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/compare/0.12.0...0.13.0
+
 ## 0.12.0
 
 ### Added
