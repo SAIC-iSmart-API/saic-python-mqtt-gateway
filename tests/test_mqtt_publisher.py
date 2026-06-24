@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
+import json
 from typing import Any, override
 import unittest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from configuration import Configuration, TransportProtocol
 from publisher.core import MqttCommandListener
@@ -100,63 +102,92 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
     ) -> None:
         pass
 
-    def test_publish_str_default_is_retained(self) -> None:
-        with patch.object(self.mqtt_client.client, "publish") as m_pub:
-            self.mqtt_client.publish_str("foo", "bar")
-            m_pub.assert_called_once_with("saic/foo", "bar", retain=True)
+    async def _call_and_flush(self, fn: Any, *args: Any, **kwargs: Any) -> AsyncMock:
+        mock = AsyncMock()
+        with patch.object(
+            self.mqtt_client, "_MqttPublisher__async_publish", mock
+        ):
+            self.mqtt_client._MqttPublisher__connected.set()
+            fn(*args, **kwargs)
+            await asyncio.sleep(0)
+        return mock
 
-    def test_publish_str_forwards_retain_false(self) -> None:
-        with patch.object(self.mqtt_client.client, "publish") as m_pub:
-            self.mqtt_client.publish_str("foo", "bar", retain=False)
-            m_pub.assert_called_once_with("saic/foo", "bar", retain=False)
+    async def test_publish_str_default_is_not_retained(self) -> None:
+        m = await self._call_and_flush(self.mqtt_client.publish_str, "foo", "bar")
+        m.assert_called_once_with("saic/foo", "bar", retain=False, qos=0)
 
-    def test_publish_int_default_is_retained(self) -> None:
-        with patch.object(self.mqtt_client.client, "publish") as m_pub:
-            self.mqtt_client.publish_int("foo", 42)
-            m_pub.assert_called_once_with("saic/foo", 42, retain=True)
+    async def test_publish_str_forwards_retain_true(self) -> None:
+        m = await self._call_and_flush(
+            self.mqtt_client.publish_str, "foo", "bar", retain=True
+        )
+        m.assert_called_once_with("saic/foo", "bar", retain=True, qos=0)
 
-    def test_publish_int_forwards_retain_false(self) -> None:
-        with patch.object(self.mqtt_client.client, "publish") as m_pub:
-            self.mqtt_client.publish_int("foo", 42, retain=False)
-            m_pub.assert_called_once_with("saic/foo", 42, retain=False)
+    async def test_publish_str_forwards_retain_false(self) -> None:
+        m = await self._call_and_flush(
+            self.mqtt_client.publish_str, "foo", "bar", retain=False
+        )
+        m.assert_called_once_with("saic/foo", "bar", retain=False, qos=0)
 
-    def test_publish_bool_default_is_retained(self) -> None:
-        with patch.object(self.mqtt_client.client, "publish") as m_pub:
-            self.mqtt_client.publish_bool("foo", True)
-            m_pub.assert_called_once_with("saic/foo", True, retain=True)
+    async def test_publish_int_default_is_not_retained(self) -> None:
+        m = await self._call_and_flush(self.mqtt_client.publish_int, "foo", 42)
+        m.assert_called_once_with("saic/foo", 42, retain=False, qos=0)
 
-    def test_publish_bool_forwards_retain_false(self) -> None:
-        with patch.object(self.mqtt_client.client, "publish") as m_pub:
-            self.mqtt_client.publish_bool("foo", True, retain=False)
-            m_pub.assert_called_once_with("saic/foo", True, retain=False)
+    async def test_publish_int_forwards_retain_false(self) -> None:
+        m = await self._call_and_flush(
+            self.mqtt_client.publish_int, "foo", 42, retain=False
+        )
+        m.assert_called_once_with("saic/foo", 42, retain=False, qos=0)
 
-    def test_publish_float_default_is_retained(self) -> None:
-        with patch.object(self.mqtt_client.client, "publish") as m_pub:
-            self.mqtt_client.publish_float("foo", 1.5)
-            m_pub.assert_called_once_with("saic/foo", 1.5, retain=True)
+    async def test_publish_bool_default_is_not_retained(self) -> None:
+        m = await self._call_and_flush(self.mqtt_client.publish_bool, "foo", True)
+        m.assert_called_once_with("saic/foo", True, retain=False, qos=0)
 
-    def test_publish_float_forwards_retain_false(self) -> None:
-        with patch.object(self.mqtt_client.client, "publish") as m_pub:
-            self.mqtt_client.publish_float("foo", 1.5, retain=False)
-            m_pub.assert_called_once_with("saic/foo", 1.5, retain=False)
+    async def test_publish_bool_forwards_retain_false(self) -> None:
+        m = await self._call_and_flush(
+            self.mqtt_client.publish_bool, "foo", True, retain=False
+        )
+        m.assert_called_once_with("saic/foo", True, retain=False, qos=0)
 
-    def test_publish_json_default_is_retained(self) -> None:
-        with patch.object(self.mqtt_client.client, "publish") as m_pub:
-            self.mqtt_client.publish_json("foo", {"a": 1})
-            m_pub.assert_called_once()
-            args, kwargs = m_pub.call_args
-            assert args[0] == "saic/foo"
-            assert kwargs == {"retain": True}
+    async def test_publish_float_default_is_not_retained(self) -> None:
+        m = await self._call_and_flush(self.mqtt_client.publish_float, "foo", 1.5)
+        m.assert_called_once_with("saic/foo", 1.5, retain=False, qos=0)
 
-    def test_publish_json_forwards_retain_false(self) -> None:
-        with patch.object(self.mqtt_client.client, "publish") as m_pub:
-            self.mqtt_client.publish_json("foo", {"a": 1}, retain=False)
-            m_pub.assert_called_once()
-            args, kwargs = m_pub.call_args
-            assert args[0] == "saic/foo"
-            assert kwargs == {"retain": False}
+    async def test_publish_float_forwards_retain_false(self) -> None:
+        m = await self._call_and_flush(
+            self.mqtt_client.publish_float, "foo", 1.5, retain=False
+        )
+        m.assert_called_once_with("saic/foo", 1.5, retain=False, qos=0)
 
-    def test_clear_topic_publishes_none_retained(self) -> None:
-        with patch.object(self.mqtt_client.client, "publish") as m_pub:
-            self.mqtt_client.clear_topic("foo")
-            m_pub.assert_called_once_with("saic/foo", None, retain=True)
+    async def test_publish_json_default_is_not_retained(self) -> None:
+        m = await self._call_and_flush(
+            self.mqtt_client.publish_json, "foo", {"a": 1}
+        )
+        m.assert_called_once()
+        args, kwargs = m.call_args
+        assert args[0] == "saic/foo"
+        assert json.loads(args[1]) == {"a": 1}
+        assert kwargs == {"retain": False, "qos": 0}
+
+    async def test_publish_json_forwards_retain_true(self) -> None:
+        m = await self._call_and_flush(
+            self.mqtt_client.publish_json, "foo", {"a": 1}, retain=True
+        )
+        m.assert_called_once()
+        args, kwargs = m.call_args
+        assert args[0] == "saic/foo"
+        assert json.loads(args[1]) == {"a": 1}
+        assert kwargs == {"retain": True, "qos": 0}
+
+    async def test_publish_json_forwards_retain_false(self) -> None:
+        m = await self._call_and_flush(
+            self.mqtt_client.publish_json, "foo", {"a": 1}, retain=False
+        )
+        m.assert_called_once()
+        args, kwargs = m.call_args
+        assert args[0] == "saic/foo"
+        assert json.loads(args[1]) == {"a": 1}
+        assert kwargs == {"retain": False, "qos": 0}
+
+    async def test_clear_topic_publishes_none_not_retained(self) -> None:
+        m = await self._call_and_flush(self.mqtt_client.clear_topic, "foo")
+        m.assert_called_once_with("saic/foo", None, retain=False, qos=0)
