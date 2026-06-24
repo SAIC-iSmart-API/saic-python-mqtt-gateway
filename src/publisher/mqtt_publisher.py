@@ -125,6 +125,8 @@ class MqttPublisher(Publisher):
         LOG.info("Connected to MQTT broker")
         if not self.first_connection:
             await self.__enable_commands()
+            if self.command_listener is not None:
+                self.command_listener.on_mqtt_reconnected()
         self.first_connection = False
         self.keepalive()
 
