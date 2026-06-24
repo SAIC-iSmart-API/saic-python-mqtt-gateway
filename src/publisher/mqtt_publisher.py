@@ -184,7 +184,7 @@ class MqttPublisher(Publisher):
                 # enable dynamic discovery pushing in case ha reconnects
                 await self.client.subscribe(self.configuration.ha_lwt_topic)
         except aiomqtt.MqttError as e:
-            LOG.error("Failed to subscribe to MQTT command topics: {e}")
+            LOG.error(f"Failed to subscribe to MQTT command topics: {e}")
             raise e
 
     async def _on_message(
