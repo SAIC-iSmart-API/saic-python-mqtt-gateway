@@ -133,7 +133,9 @@ class MqttPublisher(Publisher):
                     reconnect_interval,
                 )
                 await asyncio.sleep(reconnect_interval)
-                reconnect_interval = min(reconnect_interval * 2, _RECONNECT_INTERVAL_MAX)
+                reconnect_interval = min(
+                    reconnect_interval * 2, _RECONNECT_INTERVAL_MAX
+                )
             except aiomqtt.MqttError:
                 LOG.warning(
                     "Connection to %s:%s lost; Reconnecting in %d seconds ...",
@@ -142,7 +144,9 @@ class MqttPublisher(Publisher):
                     reconnect_interval,
                 )
                 await asyncio.sleep(reconnect_interval)
-                reconnect_interval = min(reconnect_interval * 2, _RECONNECT_INTERVAL_MAX)
+                reconnect_interval = min(
+                    reconnect_interval * 2, _RECONNECT_INTERVAL_MAX
+                )
             except asyncio.exceptions.CancelledError:
                 LOG.debug("MQTT publisher loop cancelled")
                 raise
