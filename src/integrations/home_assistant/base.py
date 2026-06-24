@@ -270,6 +270,7 @@ class HomeAssistantDiscoveryBase(metaclass=abc.ABCMeta):
         state_class: str | None = None,
         unit_of_measurement: str | None = None,
         icon: str | None = None,
+        icon_template: str | None = None,
         value_template: str = "{{ value }}",
         custom_availability: HaCustomAvailabilityConfig | None = None,
     ) -> str:
@@ -288,6 +289,8 @@ class HomeAssistantDiscoveryBase(metaclass=abc.ABCMeta):
             payload["unit_of_measurement"] = unit_of_measurement
         if icon is not None:
             payload["icon"] = icon
+        if icon_template is not None:
+            payload["icon_template"] = icon_template
 
         return self._publish_ha_discovery_message(
             "sensor", name, payload, custom_availability

@@ -132,12 +132,42 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
         )
 
         # Standard sensors
+        charging_entity_id = f"binary_sensor.{self.vin}_battery_charging"
+        soc_icon_template = (
+            "{% set soc = value | int %}"
+            f"{{% if is_state('{charging_entity_id}', 'on') %}}"
+            "{%- if soc >= 95 %}mdi:battery-charging-100"
+            "{%- elif soc >= 85 %}mdi:battery-charging-90"
+            "{%- elif soc >= 75 %}mdi:battery-charging-80"
+            "{%- elif soc >= 65 %}mdi:battery-charging-70"
+            "{%- elif soc >= 55 %}mdi:battery-charging-60"
+            "{%- elif soc >= 45 %}mdi:battery-charging-50"
+            "{%- elif soc >= 35 %}mdi:battery-charging-40"
+            "{%- elif soc >= 25 %}mdi:battery-charging-30"
+            "{%- elif soc >= 15 %}mdi:battery-charging-20"
+            "{%- elif soc >= 5 %}mdi:battery-charging-10"
+            "{%- else %}mdi:battery-charging-outline{%- endif %}"
+            "{% else %}"
+            "{%- if soc >= 95 %}mdi:battery"
+            "{%- elif soc >= 85 %}mdi:battery-90"
+            "{%- elif soc >= 75 %}mdi:battery-80"
+            "{%- elif soc >= 65 %}mdi:battery-70"
+            "{%- elif soc >= 55 %}mdi:battery-60"
+            "{%- elif soc >= 45 %}mdi:battery-50"
+            "{%- elif soc >= 35 %}mdi:battery-40"
+            "{%- elif soc >= 25 %}mdi:battery-30"
+            "{%- elif soc >= 15 %}mdi:battery-20"
+            "{%- elif soc >= 5 %}mdi:battery-10"
+            "{%- else %}mdi:battery-outline{%- endif %}"
+            "{% endif %}"
+        )
         self._publish_sensor(
             mqtt_topics.DRIVETRAIN_SOC,
             "SoC",
             device_class="battery",
             state_class="measurement",
             unit_of_measurement="%",
+            icon_template=soc_icon_template,
         )
         self._publish_sensor(
             mqtt_topics.DRIVETRAIN_SOC_KWH,
