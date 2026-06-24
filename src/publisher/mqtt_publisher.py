@@ -70,10 +70,10 @@ class MqttPublisher(Publisher):
                 ssl_context.load_verify_locations(
                     cafile=self.configuration.tls_server_cert_path
                 )
-                if not self.configuration.tls_server_cert_check_hostname:
-                    LOG.warning(
-                        f"Skipping hostname check for TLS connection to {self.host}"
-                    )
+            if not self.configuration.tls_server_cert_check_hostname:
+                LOG.warning(
+                    f"Skipping hostname check for TLS connection to {self.host}"
+                )
 
         client = aiomqtt.Client(
             hostname=self.host,
@@ -85,9 +85,7 @@ class MqttPublisher(Publisher):
             clean_session=True,
             tls_context=ssl_context,
             tls_insecure=bool(
-                ssl_context
-                and self.configuration.tls_server_cert_path
-                and not self.configuration.tls_server_cert_check_hostname
+                ssl_context and not self.configuration.tls_server_cert_check_hostname
             ),
             will=aiomqtt.Will(
                 topic=self.get_topic(mqtt_topics.INTERNAL_LWT, False),
