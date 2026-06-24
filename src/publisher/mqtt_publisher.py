@@ -7,7 +7,6 @@ import ssl
 from typing import TYPE_CHECKING, Any, override
 
 import aiomqtt
-import paho.mqtt.client as paho_mqtt
 from aiomqtt.exceptions import MqttConnectError
 
 import mqtt_topics
@@ -19,6 +18,18 @@ if TYPE_CHECKING:
     from publisher.core import WirePayload
 
 LOG = logging.getLogger(__name__)
+
+# MQTT 3.1.1 spec section 3.2.2.3 — permanent connection refusal codes
+_CONNACK_REFUSED_PROTOCOL_VERSION = 1
+_CONNACK_REFUSED_IDENTIFIER_REJECTED = 2
+_CONNACK_REFUSED_BAD_CREDENTIALS = 4
+_CONNACK_REFUSED_NOT_AUTHORIZED = 5
+_FATAL_CONNECT_RC = {
+    _CONNACK_REFUSED_PROTOCOL_VERSION,
+    _CONNACK_REFUSED_IDENTIFIER_REJECTED,
+    _CONNACK_REFUSED_BAD_CREDENTIALS,
+    _CONNACK_REFUSED_NOT_AUTHORIZED,
+}
 
 
 class MqttPublisher(Publisher):
@@ -102,13 +113,7 @@ class MqttPublisher(Publisher):
                         )
             except MqttConnectError as e:
                 # Permanent rejections — retrying won't help.
-                # rc 3 (CONNACK_REFUSED_SERVER_UNAVAILABLE) is transient and falls through.
-                _FATAL_CONNECT_RC = {
-                    paho_mqtt.CONNACK_REFUSED_PROTOCOL_VERSION,
-                    paho_mqtt.CONNACK_REFUSED_IDENTIFIER_REJECTED,
-                    paho_mqtt.CONNACK_REFUSED_BAD_USERNAME_PASSWORD,
-                    paho_mqtt.CONNACK_REFUSED_NOT_AUTHORIZED,
-                }
+                # rc 3 (server unavailable) is transient and falls through to reconnect.
                 if isinstance(e.rc, int) and e.rc in _FATAL_CONNECT_RC:
                     msg = f"MQTT connection permanently refused: {e}"
                     raise SystemExit(msg) from e
