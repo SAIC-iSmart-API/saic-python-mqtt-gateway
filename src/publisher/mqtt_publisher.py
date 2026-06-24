@@ -7,6 +7,7 @@ import ssl
 from typing import TYPE_CHECKING, Any, override
 
 import aiomqtt
+from aiomqtt.exceptions import MqttConnectError
 
 import mqtt_topics
 from publisher.core import Publisher
@@ -98,6 +99,24 @@ class MqttPublisher(Publisher):
                             message.qos,
                             message.retain,
                         )
+            except MqttConnectError as e:
+                # rc values from MQTT 3.1.1 spec that are permanent — retrying won't help:
+                #   1 = incorrect protocol version
+                #   2 = invalid client identifier
+                #   4 = bad username or password
+                #   5 = not authorised
+                # rc 3 (server unavailable) is transient and falls through to reconnect.
+                _FATAL_CONNECT_RC = {1, 2, 4, 5}
+                if isinstance(e.rc, int) and e.rc in _FATAL_CONNECT_RC:
+                    msg = f"MQTT connection permanently refused: {e}"
+                    raise SystemExit(msg) from e
+                LOG.warning(
+                    "Connection to %s:%s refused (transient); Reconnecting in %d seconds ...",
+                    self.host,
+                    self.port,
+                    reconnect_interval,
+                )
+                await asyncio.sleep(reconnect_interval)
             except aiomqtt.MqttError:
                 LOG.warning(
                     "Connection to %s:%s lost; Reconnecting in %d seconds ...",
