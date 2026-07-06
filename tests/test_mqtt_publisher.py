@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import suppress
 import json
 from typing import Any, override
 import unittest
@@ -171,3 +172,45 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
     async def test_clear_topic_publishes_none_retained(self) -> None:
         m = await self._call_and_flush(self.mqtt_client.clear_topic, "foo")
         m.assert_called_once_with("saic/foo", None, retain=True, qos=0)
+
+    async def _connect_and_capture_client_kwargs(
+        self, config: Configuration
+    ) -> dict[str, Any]:
+        publisher = MqttPublisher(config)
+        with patch("publisher.mqtt_publisher.aiomqtt.Client") as client_cls:
+            client_cls.return_value.__aenter__.side_effect = asyncio.CancelledError
+            connect_task = asyncio.get_running_loop().create_task(publisher.connect())
+            for _ in range(20):
+                await asyncio.sleep(0)
+                if client_cls.call_args is not None:
+                    break
+            connect_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await connect_task
+            assert client_cls.call_args is not None
+            return dict(client_cls.call_args.kwargs)
+
+    async def test_plain_tcp_leaves_tls_insecure_unset(self) -> None:
+        """tls_insecure must stay None without TLS, else paho raises ValueError."""
+        config = Configuration()
+        config.mqtt_host = "localhost"
+        config.mqtt_transport_protocol = TransportProtocol.TCP
+        kwargs = await self._connect_and_capture_client_kwargs(config)
+        assert kwargs["tls_insecure"] is None
+        assert kwargs["tls_context"] is None
+
+    async def test_tls_without_hostname_check_enables_tls_insecure(self) -> None:
+        config = Configuration()
+        config.mqtt_host = "localhost"
+        config.mqtt_transport_protocol = TransportProtocol.TLS
+        config.tls_server_cert_check_hostname = False
+        kwargs = await self._connect_and_capture_client_kwargs(config)
+        assert kwargs["tls_insecure"] is True
+        assert kwargs["tls_context"] is not None
+
+    async def test_tls_with_hostname_check_leaves_tls_insecure_unset(self) -> None:
+        config = Configuration()
+        config.mqtt_host = "localhost"
+        config.mqtt_transport_protocol = TransportProtocol.TLS
+        kwargs = await self._connect_and_capture_client_kwargs(config)
+        assert kwargs["tls_insecure"] is None
