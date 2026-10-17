@@ -8,12 +8,28 @@ import re
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
+import httpx
 from saic_ismart_client_ng.api.schema import GpsStatus
 
 if TYPE_CHECKING:
     from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 
 LOG = logging.getLogger(__name__)
+
+
+def is_api_timeout(exc: BaseException) -> bool:
+    """Whether ``exc`` was caused by an HTTP timeout talking to the SAIC API."""
+    return isinstance(exc.__cause__, httpx.TimeoutException)
+
+
+def log_api_timeout(logger: logging.Logger, context: str, exc: BaseException) -> None:
+    """Log an API timeout as a short warning; keep the traceback for debug."""
+    logger.warning(
+        "%s: SAIC API timed out, the server is not answering or busy: %s",
+        context,
+        exc,
+        exc_info=exc if logger.isEnabledFor(logging.DEBUG) else None,
+    )
 
 
 def parse_timezone(tz_str: str) -> ZoneInfo:
