@@ -175,3 +175,14 @@ class TestApiTimeoutHelpers:
         with caplog.at_level(logging.DEBUG, logger=logger.name):
             log_transient_api_error(logger, "ctx", exc)
         assert caplog.records[-1].exc_info is not None
+
+    def test_log_transient_api_error_level(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        logger = logging.getLogger("test_api_level")
+        exc = self._wrapped(httpx.ReadTimeout("t"))
+        with caplog.at_level(logging.INFO, logger=logger.name):
+            log_transient_api_error(logger, "ctx", exc)
+            assert caplog.records[-1].levelno == logging.WARNING
+            log_transient_api_error(logger, "ctx", exc, level=logging.ERROR)
+            assert caplog.records[-1].levelno == logging.ERROR

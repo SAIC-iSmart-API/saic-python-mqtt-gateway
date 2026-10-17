@@ -29,10 +29,14 @@ def is_transient_api_error(exc: BaseException) -> bool:
 
 
 def log_transient_api_error(
-    logger: logging.Logger, context: str, exc: BaseException
+    logger: logging.Logger,
+    context: str,
+    exc: BaseException,
+    level: int = logging.WARNING,
 ) -> None:
-    """Log a transient API error as a short warning; keep the traceback for debug."""
-    logger.warning(
+    """Log a transient API error as one line; keep the traceback for debug."""
+    logger.log(
+        level,
         "%s: SAIC API is not answering or is busy: %s",
         context,
         exc,
