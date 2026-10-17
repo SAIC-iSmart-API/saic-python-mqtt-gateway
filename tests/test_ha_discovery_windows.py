@@ -11,6 +11,7 @@ from saic_ismart_client_ng.api.vehicle.schema import (
 
 from configuration import Configuration
 from integrations.home_assistant.discovery import HomeAssistantDiscovery
+import mqtt_topics
 from vehicle import RefreshMode, VehicleState
 from vehicle_info import VehicleInfo
 
@@ -110,3 +111,24 @@ class TestHaDiscoveryWindows(unittest.TestCase):
             "Expected unpublish message for binary_sensor Sun roof"
         )
         assert publisher.map[sunroof_binary] == ""
+
+
+class TestHaDiscoveryChargingAvailability(unittest.TestCase):
+    """Charging entities must go unavailable when charge data is stale."""
+
+    def test_charging_entities_depend_on_charge_data_availability(self) -> None:
+        discovery, publisher = TestHaDiscoveryWindows()._make_discovery()
+        discovery.publish_ha_discovery_messages()
+
+        availability_topic = (
+            f"/vehicles/{VIN}/{mqtt_topics.DRIVETRAIN_CHARGING_DATA_AVAILABLE}"
+        )
+        topics = [
+            f"homeassistant/binary_sensor/{VIN}_mg/{VIN}_battery_charging/config",
+            f"homeassistant/switch/{VIN}_mg/{VIN}_charging/config",
+            f"homeassistant/sensor/{VIN}_mg/{VIN}_remaining_charging_time/config",
+        ]
+        for topic in topics:
+            assert topic in publisher.map, topic
+            payload = json.loads(publisher.map[topic])
+            assert availability_topic in {a["topic"] for a in payload["availability"]}
