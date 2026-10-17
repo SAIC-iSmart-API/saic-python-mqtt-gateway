@@ -1,14 +1,22 @@
 from __future__ import annotations
 
 import datetime
+import logging
 from unittest import TestCase
 from zoneinfo import ZoneInfo
 
+import httpx
 import pytest
 from saic_ismart_client_ng.api.schema import GpsPosition, GpsStatus
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
+from saic_ismart_client_ng.exceptions import SaicApiException
 
-from utils import get_update_timestamp, parse_timezone
+from utils import (
+    get_update_timestamp,
+    is_api_timeout,
+    log_api_timeout,
+    parse_timezone,
+)
 
 
 class Test(TestCase):
@@ -136,3 +144,30 @@ class TestParseTimezone(TestCase):
     def test_rejects_unknown_format(self) -> None:
         with pytest.raises(ValueError, match="Unrecognized timezone format"):
             parse_timezone("not-a-timezone")
+
+
+class TestApiTimeoutHelpers:
+    @staticmethod
+    def _wrapped(cause: BaseException | None) -> SaicApiException:
+        exc = SaicApiException("failed", return_code=500)
+        exc.__cause__ = cause
+        return exc
+
+    def test_is_api_timeout_true_for_httpx_timeout_cause(self) -> None:
+        assert is_api_timeout(self._wrapped(httpx.ReadTimeout("t")))
+
+    def test_is_api_timeout_false_for_other_cause(self) -> None:
+        assert not is_api_timeout(self._wrapped(httpx.ConnectError("c")))
+        assert not is_api_timeout(self._wrapped(None))
+
+    def test_log_api_timeout_traceback_only_in_debug(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        logger = logging.getLogger("test_api_timeout")
+        exc = self._wrapped(httpx.ReadTimeout("t"))
+        with caplog.at_level(logging.INFO, logger=logger.name):
+            log_api_timeout(logger, "ctx", exc)
+        assert caplog.records[-1].exc_info is None
+        with caplog.at_level(logging.DEBUG, logger=logger.name):
+            log_api_timeout(logger, "ctx", exc)
+        assert caplog.records[-1].exc_info is not None
