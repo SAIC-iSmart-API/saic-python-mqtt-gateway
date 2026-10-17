@@ -208,7 +208,9 @@ class VehicleHandler:
                     charge_status,
                     charge_status_processing_result,
                 ) = await self.update_charge_status()
+                self.vehicle_state.mark_charge_data_received()
             except Exception as e:
+                self.vehicle_state.mark_charge_data_failed()
                 LOG.exception("Error updating charge status", exc_info=e)
 
             try:

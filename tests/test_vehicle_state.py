@@ -51,6 +51,32 @@ class TestVehicleState(unittest.IsolatedAsyncioTestCase):
             self.publisher, scheduler, account_prefix, vehicle_info
         )
 
+    def _charge_data_availability(self) -> str | None:
+        topic = f"/vehicles/{VIN}/{mqtt_topics.DRIVETRAIN_CHARGING_DATA_AVAILABLE}"
+        return self.publisher.map.get(topic)
+
+    def test_charge_data_unavailable_only_after_repeated_failures(self) -> None:
+        self.vehicle_state.mark_charge_data_received()
+        assert self._charge_data_availability() == "online"
+
+        self.vehicle_state.mark_charge_data_failed()
+        self.vehicle_state.mark_charge_data_failed()
+        assert self._charge_data_availability() == "online"
+
+        self.vehicle_state.mark_charge_data_failed()
+        assert self._charge_data_availability() == "offline"
+
+    def test_charge_data_recovers_and_resets_failure_count(self) -> None:
+        for _ in range(3):
+            self.vehicle_state.mark_charge_data_failed()
+        assert self._charge_data_availability() == "offline"
+
+        self.vehicle_state.mark_charge_data_received()
+        assert self._charge_data_availability() == "online"
+
+        self.vehicle_state.mark_charge_data_failed()
+        assert self._charge_data_availability() == "online"
+
     async def test_update_soc_with_no_bms_data(self) -> None:
         vehicle_status_resp = get_mock_vehicle_status_resp()
         result = self.vehicle_state.handle_vehicle_status(vehicle_status_resp)
