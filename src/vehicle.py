@@ -328,6 +328,11 @@ class VehicleState:
             self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING), self.is_charging
         )
 
+    def update_charging_cable_lock(self, *, locked: bool) -> None:
+        self.publisher.publish_bool(
+            self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK), locked
+        )
+
     def handle_vehicle_status(
         self, vehicle_status: VehicleStatusResp
     ) -> VehicleStatusRespProcessingResult:

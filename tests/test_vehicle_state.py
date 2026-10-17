@@ -55,6 +55,26 @@ class TestVehicleState(unittest.IsolatedAsyncioTestCase):
         topic = f"/vehicles/{VIN}/{mqtt_topics.DRIVETRAIN_CHARGING_DATA_AVAILABLE}"
         return self.publisher.map.get(topic)
 
+    def _cable_lock_topic(self) -> str:
+        return f"/vehicles/{VIN}/{mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK}"
+
+    def test_cable_lock_published_when_reported(self) -> None:
+        self.vehicle_state.handle_charge_status(get_mock_charge_management_data_resp())
+        assert self.publisher.map[self._cable_lock_topic()] is True
+
+    def test_cable_lock_not_published_when_not_reported(self) -> None:
+        resp = get_mock_charge_management_data_resp()
+        assert resp.chrgMgmtData is not None
+        resp.chrgMgmtData.ccuEleccLckCtrlDspCmd = None
+        self.vehicle_state.handle_charge_status(resp)
+        assert self._cable_lock_topic() not in self.publisher.map
+
+    def test_update_charging_cable_lock_publishes_commanded_state(self) -> None:
+        self.vehicle_state.update_charging_cable_lock(locked=True)
+        assert self.publisher.map[self._cable_lock_topic()] is True
+        self.vehicle_state.update_charging_cable_lock(locked=False)
+        assert self.publisher.map[self._cable_lock_topic()] is False
+
     def _vehicle_availability(self) -> str | None:
         return self.publisher.map.get(f"/vehicles/{VIN}/{mqtt_topics.AVAILABLE}")
 
