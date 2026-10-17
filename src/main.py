@@ -9,6 +9,7 @@ import sys
 
 from configuration.parser import process_command_line
 from mqtt_gateway import MqttGateway
+from shutdown import run_until_terminated
 
 if __name__ == "__main__":
     # Keep this at the top!
@@ -28,4 +29,4 @@ if __name__ == "__main__":
 
     mqtt_gateway = MqttGateway(configuration)
 
-    asyncio.run(mqtt_gateway.run(), debug=debug_log_enabled())
+    asyncio.run(run_until_terminated(mqtt_gateway.run()), debug=debug_log_enabled())
