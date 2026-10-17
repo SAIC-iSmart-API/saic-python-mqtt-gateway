@@ -273,3 +273,17 @@ This device provides visibility into the gateway's status even when no vehicles 
 ### Vehicle devices
 
 Each vehicle registered to your account appears as a separate device with sensors for drivetrain, climate, location, and more.
+
+#### Availability
+
+Two topics control when vehicle entities show as unavailable. Both publish `online` or `offline`, and both tolerate
+short glitches: they switch to `offline` only after 3 consecutive failures, and back to `online` on the next success.
+
+| Topic                                    | Goes `offline` when                                  | Entities affected                                                                       |
+|------------------------------------------|------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| `<vin>/available`                        | 3 consecutive polls of the vehicle API fail          | All vehicle entities (unless `HA_SHOW_UNAVAILABLE` is disabled)                         |
+| `<vin>/drivetrain/chargingDataAvailable` | 3 consecutive charge status requests fail            | Battery Charging, Remaining charging time and Charging finished                         |
+
+The charge status request is the one that fails when the car goes into deep sleep right after a charge. The vehicle stays
+`online` in that case, so the two topics are separate. Other entities keep their last known value. The **Charging**
+switch stays available, so you can still start or stop charging from Home Assistant while the car is asleep.
