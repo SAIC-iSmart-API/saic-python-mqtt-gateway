@@ -105,3 +105,32 @@ async def test_skips_when_missing_config(
     )
     assert not success
     await api.close()
+
+
+@pytest.mark.asyncio
+async def test_skip_reason_lists_missing_config(
+    vehicle_status: VehicleStatusResp,
+    charge_info: ChrgMgmtDataResp,
+) -> None:
+    api = AbrpApi(abrp_api_key=None, abrp_user_token=None)
+    _success, response = await api.update_abrp(
+        vehicle_status=vehicle_status,
+        charge_info=charge_info,
+    )
+    assert "ABRP API key" in response
+    assert "ABRP user token" in response
+    await api.close()
+
+
+@pytest.mark.asyncio
+async def test_skip_reason_reports_missing_charge_data(
+    abrp_api: AbrpApi,
+    vehicle_status: VehicleStatusResp,
+) -> None:
+    success, response = await abrp_api.update_abrp(
+        vehicle_status=vehicle_status,
+        charge_info=None,
+    )
+    assert not success
+    assert "charge management data" in response
+    assert "token" not in response
