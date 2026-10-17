@@ -229,6 +229,23 @@ with the default vehicle prefix: `saic/<saic_user>/vehicles/<vehicle_id>`
 | /refresh/period/inActiveGrace/set        | grace period (sec)                                   | After the vehicle has been shutdown, the gateway continues to query the state for 600 seconds (default value). The duration of this extended query period can be modified with this topic.                                            |
 | /location/findMyCar/set                  | [activate,lights_only,horn_only,stop]                | Activate 'find my car' with lights and horn (activate), with lights only (lights_only), with horn only (horn_only) or deactivate it (stop).                                                                                           |
 
+## Charging type values
+
+The `/drivetrain/chargingType` topic publishes the raw `chargingType` value reported by the SAIC API. The API does not
+document it. The values below were observed by users (see [#398](https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/issues/398))
+and may differ between models.
+
+| Value | Observed meaning                                                        |
+|-------|-------------------------------------------------------------------------|
+| 0     | Car in deep sleep                                                       |
+| 1     | Car just parked                                                         |
+| 3     | HV battery in use (driving, or remote A/C on)                           |
+| 6     | AC charging                                                             |
+| 7     | DC charging                                                             |
+| 9     | Charging stopped from the infotainment                                  |
+| 10    | Charging ended                                                          |
+| 16    | Car unplugged while charging was still in progress                      |
+
 ## Home Assistant auto-discovery
 
 The gateway supports [Home Assistant MQTT discovery](https://www.home-assistant.io/integrations/mqtt#mqtt-discovery). It
