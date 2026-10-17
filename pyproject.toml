@@ -130,6 +130,9 @@ ignore = [
     "FIX002", # Line contains TODO, consider resolving the issue
     "BLE001", # Do not catch blind exception: `Exception`,
     "PLR0913", # Too many arguments in function definition
+    "PLR0917", # Too many positional arguments in function definition
+    "CPY001", # Missing copyright notice at top of file
+    "ICN001", # Import conventions, e.g. `datetime` as `dt`
     "ERA001", # Commented-out code
     "PLR0912", # Logging statement uses f-string
     "G004", # Logging statement uses f-string
@@ -187,10 +190,6 @@ strict = true
 module = ["apscheduler.*"]
 ignore_missing_imports = true
 
-[[tool.mypy.overrides]]
-module = ["gmqtt.*"]
-ignore_missing_imports = true
-follow_untyped_imports = true
 
 [[tool.mypy.overrides]]
 module = ["publisher.mqtt_publisher"]

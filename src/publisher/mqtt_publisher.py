@@ -51,7 +51,7 @@ class MqttPublisher(Publisher):
         self.vin_by_charger_connected_topic: dict[str, str] = {}
         self.vin_by_imported_energy_topic: dict[str, str] = {}
         self.first_connection = True
-        self.client: None | aiomqtt.Client = None
+        self.client: aiomqtt.Client | None = None
         self.__running: asyncio.Task[None] | None = None
         self.__connected = asyncio.Event()
         self.__fatal_connect_error: SystemExit | None = None
