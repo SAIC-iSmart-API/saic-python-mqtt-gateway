@@ -153,7 +153,19 @@ class AbrpApi:
                 msg = f"HTTP error: {e}"
                 raise AbrpApiException(msg) from e
         else:
-            return False, "ABRP request skipped because of missing configuration"
+            missing = self.__missing_inputs(vehicle_status, charge_mgmt_data)
+            return False, f"ABRP request skipped, missing: {', '.join(missing)}"
+
+    def __missing_inputs(
+        self, vehicle_status: object | None, charge_mgmt_data: object | None
+    ) -> list[str]:
+        required = {
+            "ABRP API key": self.abrp_api_key,
+            "ABRP user token": self.abrp_user_token,
+            "vehicle status data": vehicle_status,
+            "charge management data": charge_mgmt_data,
+        }
+        return [name for name, value in required.items() if value is None]
 
     @staticmethod
     def __extract_basic_vehicle_status(
