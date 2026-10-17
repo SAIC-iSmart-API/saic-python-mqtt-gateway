@@ -316,7 +316,7 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
         for vin in known_vins - api_vins:
             LOG.warning("Vehicle %s no longer in API vehicle list, stopping", vin)
             vh = self.vehicle_handlers.pop(vin)
-            vh.vehicle_state.mark_failed_refresh()
+            vh.vehicle_state.mark_failed_refresh(force_offline=True)
             task = self.__cancel_vehicle_task(vin)
             if task is not None:
                 with contextlib.suppress(asyncio.CancelledError):
