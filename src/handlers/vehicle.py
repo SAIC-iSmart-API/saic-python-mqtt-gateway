@@ -18,7 +18,6 @@ from integrations.osmand.api import OsmAndApi
 import mqtt_topics
 from saic_api_listener import MqttGatewayAbrpListener, MqttGatewayOsmAndListener
 from status_publisher.vehicle_info import VehicleInfoPublisher
-from utils import is_api_timeout, log_api_timeout
 from vehicle import RefreshMode
 
 if TYPE_CHECKING:
@@ -169,13 +168,9 @@ class VehicleHandler:
                         self.relogin_handler.relogin()
                 except SaicApiException as e:
                     self.vehicle_state.mark_failed_refresh()
-                    if is_api_timeout(e):
-                        log_api_timeout(LOG, "Vehicle poll failed, will retry", e)
-                    else:
-                        LOG.exception(
-                            "handle_vehicle loop failed during SAIC API call",
-                            exc_info=e,
-                        )
+                    LOG.exception(
+                        "handle_vehicle loop failed during SAIC API call", exc_info=e
+                    )
                 except VehicleStatusDriftException as e:
                     self.vehicle_state.mark_failed_refresh()
                     LOG.error(

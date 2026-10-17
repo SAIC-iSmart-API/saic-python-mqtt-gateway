@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from saic_ismart_client_ng.exceptions import SaicApiException, SaicLogoutException
 
-from utils import ensure_datetime_aware, is_api_timeout, log_api_timeout
+from utils import ensure_datetime_aware
 from vehicle import RefreshMode
 
 if TYPE_CHECKING:
@@ -84,12 +84,9 @@ class MessageHandler:
             )
             self.relogin_handler.relogin()
         except SaicApiException as e:
-            if is_api_timeout(e):
-                log_api_timeout(LOG, "MessageHandler poll failed, will retry", e)
-            else:
-                LOG.exception(
-                    "MessageHandler poll loop failed during SAIC API Call", exc_info=e
-                )
+            LOG.exception(
+                "MessageHandler poll loop failed during SAIC API Call", exc_info=e
+            )
         except Exception as e:
             LOG.exception("MessageHandler poll loop failed unexpectedly", exc_info=e)
 
