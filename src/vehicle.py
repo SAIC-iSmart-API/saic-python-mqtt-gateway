@@ -44,6 +44,8 @@ if TYPE_CHECKING:
 
 DEFAULT_AC_TEMP = 22
 PRESSURE_TO_BAR_FACTOR = 0.04
+# Consecutive failed polls before the vehicle is marked offline
+VEHICLE_FAILURES_BEFORE_OFFLINE = 3
 # Consecutive charge data failures before charging entities are marked unavailable
 CHARGE_DATA_FAILURES_BEFORE_UNAVAILABLE = 3
 
@@ -115,6 +117,7 @@ class VehicleState:
         )
         self.__last_failed_refresh: datetime.datetime | None = None
         self.__failed_refresh_counter = 0
+        self.__consecutive_failed_refreshes = 0
         self.__failed_charge_data_counter = 0
         self.__charge_data_available: bool | None = None
         self.__refresh_period_error = 30
@@ -476,6 +479,7 @@ class VehicleState:
     def mark_successful_refresh(self) -> None:
         self.last_successful_refresh = datetime.datetime.now(tz=datetime.UTC)
         self.last_failed_refresh = None
+        self.__consecutive_failed_refreshes = 0
         self.publisher.publish_str(self.get_topic(mqtt_topics.AVAILABLE), "online")
 
     def mark_charge_data_received(self) -> None:
@@ -496,9 +500,15 @@ class VehicleState:
             "online" if available else "offline",
         )
 
-    def mark_failed_refresh(self) -> None:
+    def mark_failed_refresh(self, *, force_offline: bool = False) -> None:
         self.last_failed_refresh = datetime.datetime.now(tz=datetime.UTC)
-        self.publisher.publish_str(self.get_topic(mqtt_topics.AVAILABLE), "offline")
+        self.__consecutive_failed_refreshes += 1
+        # Tolerate a few intermittent failures before flipping entities to unavailable
+        if (
+            force_offline
+            or self.__consecutive_failed_refreshes >= VEHICLE_FAILURES_BEFORE_OFFLINE
+        ):
+            self.publisher.publish_str(self.get_topic(mqtt_topics.AVAILABLE), "offline")
 
     @property
     def refresh_period_error(self) -> int:

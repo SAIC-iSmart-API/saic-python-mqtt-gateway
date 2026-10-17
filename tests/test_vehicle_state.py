@@ -55,6 +55,34 @@ class TestVehicleState(unittest.IsolatedAsyncioTestCase):
         topic = f"/vehicles/{VIN}/{mqtt_topics.DRIVETRAIN_CHARGING_DATA_AVAILABLE}"
         return self.publisher.map.get(topic)
 
+    def _vehicle_availability(self) -> str | None:
+        return self.publisher.map.get(f"/vehicles/{VIN}/{mqtt_topics.AVAILABLE}")
+
+    def test_vehicle_offline_only_after_repeated_failures(self) -> None:
+        self.vehicle_state.mark_successful_refresh()
+        assert self._vehicle_availability() == "online"
+
+        self.vehicle_state.mark_failed_refresh()
+        self.vehicle_state.mark_failed_refresh()
+        assert self._vehicle_availability() == "online"
+
+        self.vehicle_state.mark_failed_refresh()
+        assert self._vehicle_availability() == "offline"
+
+    def test_successful_refresh_resets_vehicle_failure_count(self) -> None:
+        self.vehicle_state.mark_successful_refresh()
+        self.vehicle_state.mark_failed_refresh()
+        self.vehicle_state.mark_failed_refresh()
+        self.vehicle_state.mark_successful_refresh()
+        self.vehicle_state.mark_failed_refresh()
+        self.vehicle_state.mark_failed_refresh()
+        assert self._vehicle_availability() == "online"
+
+    def test_force_offline_is_immediate(self) -> None:
+        self.vehicle_state.mark_successful_refresh()
+        self.vehicle_state.mark_failed_refresh(force_offline=True)
+        assert self._vehicle_availability() == "offline"
+
     def test_charge_data_unavailable_only_after_repeated_failures(self) -> None:
         self.vehicle_state.mark_charge_data_received()
         assert self._charge_data_availability() == "online"
