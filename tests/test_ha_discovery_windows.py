@@ -125,10 +125,21 @@ class TestHaDiscoveryChargingAvailability(unittest.TestCase):
         )
         topics = [
             f"homeassistant/binary_sensor/{VIN}_mg/{VIN}_battery_charging/config",
-            f"homeassistant/switch/{VIN}_mg/{VIN}_charging/config",
             f"homeassistant/sensor/{VIN}_mg/{VIN}_remaining_charging_time/config",
         ]
         for topic in topics:
             assert topic in publisher.map, topic
             payload = json.loads(publisher.map[topic])
             assert availability_topic in {a["topic"] for a in payload["availability"]}
+
+    def test_charging_switch_stays_available_without_charge_data(self) -> None:
+        discovery, publisher = TestHaDiscoveryWindows()._make_discovery()
+        discovery.publish_ha_discovery_messages()
+
+        availability_topic = (
+            f"/vehicles/{VIN}/{mqtt_topics.DRIVETRAIN_CHARGING_DATA_AVAILABLE}"
+        )
+        payload = json.loads(
+            publisher.map[f"homeassistant/switch/{VIN}_mg/{VIN}_charging/config"]
+        )
+        assert availability_topic not in {a["topic"] for a in payload["availability"]}

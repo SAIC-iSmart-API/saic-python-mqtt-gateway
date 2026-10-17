@@ -388,11 +388,7 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
                 charge_data_availability,
             ]
         )
-        self._publish_switch(
-            mqtt_topics.DRIVETRAIN_CHARGING,
-            "Charging",
-            custom_availability=charge_data_availability_config,
-        )
+        self._publish_switch(mqtt_topics.DRIVETRAIN_CHARGING, "Charging")
         self._publish_binary_sensor(
             mqtt_topics.DRIVETRAIN_CHARGING,
             "Battery Charging",
