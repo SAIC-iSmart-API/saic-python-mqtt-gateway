@@ -160,7 +160,12 @@ class ChrgMgmtDataPublisher(
 
         self._transform_and_publish(
             topic=mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK,
-            value=charge_mgmt_data.charging_port_locked,
+            # Some models (e.g. MG ZS EV) do not report the lock state at all
+            value=(
+                charge_mgmt_data.charging_port_locked
+                if charge_mgmt_data.ccuEleccLckCtrlDspCmd is not None
+                else None
+            ),
             transform=int_to_bool,
         )
 
