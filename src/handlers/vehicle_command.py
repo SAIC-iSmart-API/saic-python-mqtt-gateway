@@ -71,7 +71,7 @@ class VehicleCommandHandler:
                 LOG, f"Command {command} failed", exc, level=logging.ERROR
             )
         elif exc is not None:
-            LOG.exception("Command %s failed: %s", command, detail, exc_info=exc)
+            LOG.error("Command %s failed: %s", command, detail, exc_info=exc)
         else:
             LOG.error("Command %s failed: %s", command, detail)
         try:

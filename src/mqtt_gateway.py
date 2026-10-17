@@ -458,7 +458,7 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
                 if task.cancelled():
                     LOG.debug(f"{task_name!r} task was cancelled")
                 elif (exception := task.exception()) is not None:
-                    LOG.exception(
+                    LOG.error(
                         f"{task_name!r} task crashed with an exception",
                         exc_info=exception,
                     )

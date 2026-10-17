@@ -12,7 +12,7 @@ def snake_case(s: str) -> str:
 
 
 def decode_as_utf8(
-    byte_string: str | None | bytes | bytearray, default: str = ""
+    byte_string: str | bytes | bytearray | None, default: str = ""
 ) -> str:
     if byte_string is None:
         return default
