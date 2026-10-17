@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 
 import httpx
 from saic_ismart_client_ng.api.schema import GpsStatus
+from saic_ismart_client_ng.exceptions import SaicApiRetryException
 
 if TYPE_CHECKING:
     from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
@@ -17,15 +18,26 @@ if TYPE_CHECKING:
 LOG = logging.getLogger(__name__)
 
 
-def is_api_timeout(exc: BaseException) -> bool:
-    """Whether ``exc`` was caused by an HTTP timeout talking to the SAIC API."""
-    return isinstance(exc.__cause__, httpx.TimeoutException)
+def is_transient_api_error(exc: BaseException) -> bool:
+    """Whether ``exc`` is a transient SAIC API failure.
+
+    That is an HTTP timeout, or the server asking the client to retry later.
+    """
+    return isinstance(exc, SaicApiRetryException) or isinstance(
+        exc.__cause__, httpx.TimeoutException
+    )
 
 
-def log_api_timeout(logger: logging.Logger, context: str, exc: BaseException) -> None:
-    """Log an API timeout as a short warning; keep the traceback for debug."""
-    logger.warning(
-        "%s: SAIC API timed out, the server is not answering or busy: %s",
+def log_transient_api_error(
+    logger: logging.Logger,
+    context: str,
+    exc: BaseException,
+    level: int = logging.WARNING,
+) -> None:
+    """Log a transient API error as one line; keep the traceback for debug."""
+    logger.log(
+        level,
+        "%s: SAIC API is not answering or is busy: %s",
         context,
         exc,
         exc_info=exc if logger.isEnabledFor(logging.DEBUG) else None,
