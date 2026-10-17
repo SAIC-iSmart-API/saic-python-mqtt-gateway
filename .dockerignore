@@ -188,3 +188,8 @@ fabric.properties
 junit/
 
 .github/
+
+# Not needed to build the image
+.git/
+.claude/
+tests/
