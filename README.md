@@ -233,21 +233,22 @@ with the default vehicle prefix: `saic/<saic_user>/vehicles/<vehicle_id>`
 
 The `/drivetrain/chargingType` topic publishes the raw `chargingType` value reported by the SAIC API. The API does not
 document it. The meanings below were reported by users in
-[#398](https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/issues/398) and checked against about 74k logged
-samples from one vehicle. They may differ between models.
+[#398](https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/issues/398) and checked against about 89k logged
+API responses from one vehicle (Mar 2024 – Oct 2026). They may differ between models.
 
-| Value | Reported meaning                                       | Checked against logged data                          |
-|-------|--------------------------------------------------------|------------------------------------------------------|
-| 0     | Car in deep sleep                                      | Not confirmed (22 samples)                           |
-| 1     | Car just parked                                        | Consistent (near-zero battery current)               |
-| 3     | HV battery in use (driving, or remote A/C on)          | Consistent (battery current under load)              |
-| 6     | AC charging                                            | Confirmed (on-board charger input current present)   |
-| 7     | DC charging                                            | Confirmed (about 200 A battery current, no AC input) |
-| 9     | Charging stopped from the infotainment                 | Not confirmed (2 samples)                            |
-| 10    | Charging ended                                         | Consistent, few samples (24)                         |
-| 16    | Car unplugged while charging was still in progress     | Never observed                                       |
+| Value | Reported meaning                                   | Checked against logged data                                                      |
+|-------|----------------------------------------------------|----------------------------------------------------------------------------------|
+| 0     | Car in deep sleep                                  | Not supported: 31 isolated samples between values 1 and 3, not a sustained state |
+| 1     | Car just parked                                    | Consistent (near-zero battery current)                                           |
+| 3     | HV battery in use (driving, or remote A/C on)      | Consistent (battery current under load)                                          |
+| 6     | AC charging                                        | Confirmed (on-board charger input current present)                               |
+| 7     | DC charging                                        | Confirmed (about 200 A battery current, no AC input)                             |
+| 9     | Charging stopped from the infotainment             | Unclear: both samples follow DC charging while plugged in                        |
+| 10    | Charging ended                                     | Supported: 17 of 24 samples follow AC charging while plugged in                  |
+| 16    | Car unplugged while charging was still in progress | Never observed                                                                   |
 
-Values 2, 4 and 12 were seen only 1 to 2 times each, so their meaning is unknown.
+Values 2, 4 and 12 were seen only 1 to 3 times each. 4 and 12 appeared around the start or end of charging, which could
+mean a transition state. Their meaning is unknown.
 
 ## Home Assistant auto-discovery
 
