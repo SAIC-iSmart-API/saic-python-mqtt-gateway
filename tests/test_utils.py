@@ -9,12 +9,12 @@ import httpx
 import pytest
 from saic_ismart_client_ng.api.schema import GpsPosition, GpsStatus
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
-from saic_ismart_client_ng.exceptions import SaicApiException
+from saic_ismart_client_ng.exceptions import SaicApiException, SaicApiRetryException
 
 from utils import (
     get_update_timestamp,
-    is_api_timeout,
-    log_api_timeout,
+    is_transient_api_error,
+    log_transient_api_error,
     parse_timezone,
 )
 
@@ -153,21 +153,25 @@ class TestApiTimeoutHelpers:
         exc.__cause__ = cause
         return exc
 
-    def test_is_api_timeout_true_for_httpx_timeout_cause(self) -> None:
-        assert is_api_timeout(self._wrapped(httpx.ReadTimeout("t")))
+    def test_is_transient_api_error_true_for_httpx_timeout_cause(self) -> None:
+        assert is_transient_api_error(self._wrapped(httpx.ReadTimeout("t")))
 
-    def test_is_api_timeout_false_for_other_cause(self) -> None:
-        assert not is_api_timeout(self._wrapped(httpx.ConnectError("c")))
-        assert not is_api_timeout(self._wrapped(None))
+    def test_is_transient_api_error_true_for_retry_exception(self) -> None:
+        exc = SaicApiRetryException("try again later", event_id="1", return_code=4)
+        assert is_transient_api_error(exc)
 
-    def test_log_api_timeout_traceback_only_in_debug(
+    def test_is_transient_api_error_false_for_other_cause(self) -> None:
+        assert not is_transient_api_error(self._wrapped(httpx.ConnectError("c")))
+        assert not is_transient_api_error(self._wrapped(None))
+
+    def test_log_transient_api_error_traceback_only_in_debug(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         logger = logging.getLogger("test_api_timeout")
         exc = self._wrapped(httpx.ReadTimeout("t"))
         with caplog.at_level(logging.INFO, logger=logger.name):
-            log_api_timeout(logger, "ctx", exc)
+            log_transient_api_error(logger, "ctx", exc)
         assert caplog.records[-1].exc_info is None
         with caplog.at_level(logging.DEBUG, logger=logger.name):
-            log_api_timeout(logger, "ctx", exc)
+            log_transient_api_error(logger, "ctx", exc)
         assert caplog.records[-1].exc_info is not None

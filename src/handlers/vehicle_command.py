@@ -9,7 +9,7 @@ from saic_ismart_client_ng.exceptions import SaicApiException, SaicLogoutExcepti
 from exceptions import MqttGatewayException
 from handlers.command import ALL_COMMAND_HANDLERS, CommandHandlerBase
 import mqtt_topics
-from utils import is_api_timeout, log_api_timeout
+from utils import is_transient_api_error, log_transient_api_error
 from vehicle import RefreshMode
 
 if TYPE_CHECKING:
@@ -66,8 +66,8 @@ class VehicleCommandHandler:
         detail: str,
         exc: Exception | None = None,
     ) -> None:
-        if exc is not None and is_api_timeout(exc):
-            log_api_timeout(LOG, f"Command {command} failed", exc)
+        if exc is not None and is_transient_api_error(exc):
+            log_transient_api_error(LOG, f"Command {command} failed", exc)
         elif exc is not None:
             LOG.exception("Command %s failed: %s", command, detail, exc_info=exc)
         else:
