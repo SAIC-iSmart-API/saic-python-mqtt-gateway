@@ -73,7 +73,7 @@ The following are the known available endpoints:
 |-----------------------|----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | --ha-discovery        | HA_DISCOVERY_ENABLED | Home Assistant auto-discovery is enabled (True) by default. It can be disabled (False) with this parameter.                                                                         |
 | --ha-discovery-prefix | HA_DISCOVERY_PREFIX  | The default MQTT prefix for Home Assistant auto-discovery is 'homeassistant'. Another prefix can be configured with this parameter                                                  |
-| --ha-show-unavailable | HA_SHOW_UNAVAILABLE  | Show entities as Unavailable in Home Assistant when car polling fails. Enabled (True) by default. Can be disabled, to retain the pre 0.6.x behaviour, but do that at your own risk. |
+| --ha-show-unavailable | HA_SHOW_UNAVAILABLE  | Show entities as Unavailable in Home Assistant after 3 consecutive failed polls (a single failed poll is tolerated). Enabled (True) by default. Can be disabled, to retain the pre 0.6.x behaviour, but do that at your own risk. |
 
 ### A Better Route Planner (ABRP) integration
 
