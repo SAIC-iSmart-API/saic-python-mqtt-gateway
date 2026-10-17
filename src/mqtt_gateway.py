@@ -134,7 +134,16 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
         self.__scheduler.start()
 
         LOG.info("Entering main loop")
-        await self.__run_until_all_tasks_done()
+        try:
+            await self.__run_until_all_tasks_done()
+        finally:
+            await self.__close_saic_api()
+
+    async def __close_saic_api(self) -> None:
+        try:
+            await self.saic_api.close()
+        except Exception:
+            LOG.warning("Failed to close the SAIC API client", exc_info=True)
 
     async def __fetch_user_timezone(self) -> ZoneInfo | None:
         try:
