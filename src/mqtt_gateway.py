@@ -450,13 +450,8 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
         """
         if task.cancelled():
             LOG.debug(f"{task.get_name()!r} task was cancelled")
-        elif (exception := task.exception()) is not None:
-            LOG.error(
-                f"{task.get_name()!r} task crashed with an exception, exiting",
-                exc_info=exception,
-            )
-            raise SystemExit(-1)
         else:
+            # A crash is already logged with its traceback by log_task_failure
             LOG.error(f"{task.get_name()!r} task terminated unexpectedly, exiting")
             raise SystemExit(-1)
 

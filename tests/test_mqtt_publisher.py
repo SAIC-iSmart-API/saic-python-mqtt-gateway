@@ -244,6 +244,7 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
             with suppress(asyncio.CancelledError):
                 await connect_task
         assert task is not None
+        assert task.get_name() == "mqtt-loop"
 
     async def test_plain_tcp_leaves_tls_insecure_unset(self) -> None:
         """tls_insecure must stay None without TLS, else paho raises ValueError."""
