@@ -53,6 +53,7 @@ class MqttPublisher(Publisher):
         self.first_connection = True
         self.client: aiomqtt.Client | None = None
         self.__running: asyncio.Task[None] | None = None
+        self.__publish_tasks: set[asyncio.Task[None]] = set()
         self.__connected = asyncio.Event()
         self.__fatal_connect_error: SystemExit | None = None
 
@@ -331,16 +332,19 @@ class MqttPublisher(Publisher):
     ) -> None:
         LOG.debug("Publishing to MQTT topic %s with payload %s", topic, payload)
         try:
-            asyncio.get_running_loop()
+            loop = asyncio.get_running_loop()
         except RuntimeError as e:
             msg = (
                 f"Cannot publish to MQTT topic {topic} outside the event loop thread. "
                 "Publish from a coroutine, e.g. register scheduler jobs as async functions"
             )
             raise RuntimeError(msg) from e
-        asyncio.get_running_loop().create_task(
+        task = loop.create_task(
             self.__async_publish(topic, payload, retain=retain, qos=qos)
         )
+        # Keep a strong reference until done, otherwise the task may be garbage collected
+        self.__publish_tasks.add(task)
+        task.add_done_callback(self.__publish_tasks.discard)
 
     async def __async_publish(
         self, topic: str, payload: Any, retain: bool, qos: int
