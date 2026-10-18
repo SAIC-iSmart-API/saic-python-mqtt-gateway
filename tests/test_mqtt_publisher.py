@@ -229,6 +229,22 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
                 await asyncio.wait_for(publisher.connect(), timeout=2)
         assert "mqtt-loop" in logs.output[0]
 
+    async def test_connection_task_is_the_mqtt_loop_task(self) -> None:
+        config = Configuration()
+        config.mqtt_host = "localhost"
+        config.mqtt_transport_protocol = TransportProtocol.TCP
+        publisher = MqttPublisher(config)
+        assert publisher.connection_task() is None
+        with patch("publisher.mqtt_publisher.aiomqtt.Client") as client_cls:
+            client_cls.return_value.__aenter__.side_effect = asyncio.CancelledError
+            connect_task = asyncio.get_running_loop().create_task(publisher.connect())
+            await asyncio.sleep(0)
+            task = publisher.connection_task()
+            connect_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await connect_task
+        assert task is not None
+
     async def test_plain_tcp_leaves_tls_insecure_unset(self) -> None:
         """tls_insecure must stay None without TLS, else paho raises ValueError."""
         config = Configuration()

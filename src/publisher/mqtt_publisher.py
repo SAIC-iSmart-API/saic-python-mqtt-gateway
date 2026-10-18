@@ -184,6 +184,10 @@ class MqttPublisher(Publisher):
             msg = "MQTT loop ended before connecting to the broker"
             raise RuntimeError(msg)
 
+    @override
+    def connection_task(self) -> asyncio.Task[None] | None:
+        return self.__running
+
     async def __on_connect(self) -> None:
         LOG.info("Connected to MQTT broker")
         if not self.first_connection:

@@ -10,6 +10,8 @@ import mqtt_topics
 from utils import datetime_to_str
 
 if TYPE_CHECKING:
+    import asyncio
+
     from configuration import Configuration
 
 T = TypeVar("T")
@@ -89,6 +91,14 @@ class Publisher(ABC):
     @abstractmethod
     def enable_commands(self) -> None:
         pass
+
+    def connection_task(self) -> asyncio.Task[Any] | None:
+        """Return the long-lived task that keeps the transport up, if there is one.
+
+        The gateway watches it and exits when it ends, since it cannot work
+        without its transport. Publishers without a transport return ``None``.
+        """
+        return None
 
     @abstractmethod
     def is_connected(self) -> bool:
