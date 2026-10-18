@@ -117,24 +117,25 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
         m = await self._call_and_flush(self.mqtt_client.publish_str, "foo", "bar")
         m.assert_called_once_with("saic/foo", "bar", retain=True, qos=0)
 
-    async def test_publish_tasks_are_released_once_done(self) -> None:
+    async def test_publish_runs_as_background_task(self) -> None:
         pending = self.mqtt_client._MqttPublisher__background_tasks  # type: ignore[attr-defined]
         with patch.object(
             self.mqtt_client, "_MqttPublisher__async_publish", AsyncMock()
-        ):
+        ) as publish:
             self.mqtt_client.publish_str("foo", "bar")
             assert len(pending) == 1
-            await asyncio.gather(*pending)
             await asyncio.sleep(0)
-        assert not pending
+            await asyncio.sleep(0)
+        publish.assert_awaited_once()
+        assert len(pending) == 0
 
-    async def test_enable_commands_task_is_held_until_done(self) -> None:
+    async def test_enable_commands_runs_as_background_task(self) -> None:
         pending = self.mqtt_client._MqttPublisher__background_tasks  # type: ignore[attr-defined]
         self.mqtt_client.enable_commands()
         assert len(pending) == 1
-        await asyncio.gather(*pending)
         await asyncio.sleep(0)
-        assert not pending
+        await asyncio.sleep(0)
+        assert len(pending) == 0
 
     async def test_publish_str_outside_event_loop_raises_clear_error(self) -> None:
         with pytest.raises(RuntimeError, match="outside the event loop thread"):
