@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, override
 import aiomqtt
 from aiomqtt.exceptions import MqttConnectError
 
+from background_tasks import BackgroundTasks
 import mqtt_topics
 from publisher.core import Publisher
 
@@ -53,7 +54,7 @@ class MqttPublisher(Publisher):
         self.first_connection = True
         self.client: aiomqtt.Client | None = None
         self.__running: asyncio.Task[None] | None = None
-        self.__publish_tasks: set[asyncio.Task[None]] = set()
+        self.__background_tasks = BackgroundTasks()
         self.__connected = asyncio.Event()
         self.__fatal_connect_error: SystemExit | None = None
 
@@ -193,12 +194,7 @@ class MqttPublisher(Publisher):
 
     @override
     def enable_commands(self) -> None:
-        task = asyncio.get_running_loop().create_task(self.__enable_commands())
-        task.add_done_callback(self.__on_enable_commands_done)
-
-    def __on_enable_commands_done(self, task: asyncio.Task[None]) -> None:
-        if not task.cancelled() and (exc := task.exception()):
-            LOG.error("Failed to enable MQTT command subscriptions: %s", exc)
+        self.__background_tasks.spawn(self.__enable_commands(), name="enable_commands")
 
     async def __enable_commands(self) -> None:
         if not self.__connected.is_set() or not self.client:
@@ -343,20 +339,10 @@ class MqttPublisher(Publisher):
         qos: int = 0,
     ) -> None:
         LOG.debug("Publishing to MQTT topic %s with payload %s", topic, payload)
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError as e:
-            msg = (
-                f"Cannot publish to MQTT topic {topic} outside the event loop thread. "
-                "Publish from a coroutine, e.g. register scheduler jobs as async functions"
-            )
-            raise RuntimeError(msg) from e
-        task = loop.create_task(
-            self.__async_publish(topic, payload, retain=retain, qos=qos)
+        self.__background_tasks.spawn(
+            self.__async_publish(topic, payload, retain=retain, qos=qos),
+            name=f"publish {topic}",
         )
-        # Keep a strong reference until done, otherwise the task may be garbage collected
-        self.__publish_tasks.add(task)
-        task.add_done_callback(self.__publish_tasks.discard)
 
     async def __async_publish(
         self, topic: str, payload: Any, retain: bool, qos: int
