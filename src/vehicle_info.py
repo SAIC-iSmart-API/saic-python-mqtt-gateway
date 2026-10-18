@@ -78,6 +78,21 @@ class VehicleInfo:
         normalized_property_name = str(property_name).strip().upper()
         return self.__properties_by_code.get(normalized_property_name)
 
+    def __get_int_property_by_code(self, property_name: str) -> int:
+        # Absent or non-numeric codes read as 0, i.e. "feature not available"
+        try:
+            return int(self.__get_property_by_code(property_name) or 0)
+        except ValueError:
+            return 0
+
+    def __is_feature_enabled(self, property_name: str) -> bool:
+        return self.__get_int_property_by_code(property_name) != 0
+
+    def __get_mask_by_code(self, property_name: str, index: int) -> bool:
+        # 4-char positional mask: driver, passenger, rear left, rear right
+        mask = self.__get_property_by_code(property_name) or ""
+        return len(mask) == 4 and mask[index] == "1"
+
     @property
     def is_ev(self) -> bool:
         return not self.series.startswith("ZP22")
@@ -88,7 +103,39 @@ class VehicleInfo:
 
     @property
     def has_sunroof(self) -> bool:
-        return self.__get_property_by_code("S35") != "0"
+        # The value 2 alone does not denote a sunroof
+        return self.__get_int_property_by_code("S35") & ~2 != 0
+
+    @property
+    def has_driver_door(self) -> bool:
+        return self.__get_mask_by_code("DOOR", 0)
+
+    @property
+    def has_passenger_door(self) -> bool:
+        return self.__get_mask_by_code("DOOR", 1)
+
+    @property
+    def has_rear_left_door(self) -> bool:
+        return self.__get_mask_by_code("DOOR", 2)
+
+    @property
+    def has_rear_right_door(self) -> bool:
+        return self.__get_mask_by_code("DOOR", 3)
+
+    # WINDOW, BONNUT, BATTERY and EXTEMP are deliberately not used: real vehicles
+    # report 0 for them while still sending the data (e.g. WINDOW=0000 on the MG4)
+
+    @property
+    def has_boot_status(self) -> bool:
+        return self.__is_feature_enabled("BOOT")
+
+    @property
+    def has_tyre_pressure(self) -> bool:
+        return self.__is_feature_enabled("J17")
+
+    @property
+    def has_interior_temperature(self) -> bool:
+        return self.__is_feature_enabled("INTEMP")
 
     @property
     def has_on_off_heated_seats(self) -> bool:

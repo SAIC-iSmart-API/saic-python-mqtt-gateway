@@ -1,0 +1,2601 @@
+[
+  {
+    "model": "ZS EV",
+    "series": "ZS EV S",
+    "model_year": "2021",
+    "source": "https://github.com/townsmcp/mg-saic-ha/issues/100",
+    "configuration": [
+      {
+        "itemCode": "J17",
+        "itemName": "Tire",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q00",
+        "itemName": "Airbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q01",
+        "itemName": "FAirbag",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "Q09",
+        "itemName": "AirbagS",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S35",
+        "itemName": "Sunroof",
+        "itemValue": "3"
+      },
+      {
+        "itemCode": "S61",
+        "itemName": "Remote control",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "T11",
+        "itemName": "AC",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EPS",
+        "itemName": "EPS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SA64",
+        "itemName": "SA64",
+        "itemValue": "0111110000000000001000000100101000000010100000000000000000000110"
+      },
+      {
+        "itemCode": "BONNUT",
+        "itemName": "BONNUT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "DOOR",
+        "itemName": "DOOR",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "BOOT",
+        "itemName": "BOOT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENGINE",
+        "itemName": "ENGINE",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EV",
+        "itemName": "EV",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "HeatedSeat",
+        "itemName": "HeatedSeat",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "KEYPOS",
+        "itemName": "KEYPOS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENERGY",
+        "itemName": "ENERGY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BATTERY",
+        "itemName": "BATTERY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "INTEMP",
+        "itemName": "INTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EXTEMP",
+        "itemName": "EXTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "WINDOW",
+        "itemName": "WINDOW",
+        "itemValue": "0000"
+      },
+      {
+        "itemCode": "LRD",
+        "itemName": "LRD",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BTKEY",
+        "itemName": "BTKEY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BType",
+        "itemName": "Battery",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SBH",
+        "itemName": "SBH",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BHI",
+        "itemName": "BHI",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "ROV",
+        "itemName": "ROV",
+        "itemValue": "25857"
+      }
+    ]
+  },
+  {
+    "model": "EH32 X7",
+    "series": "EH32 S",
+    "model_year": "2023",
+    "source": "https://github.com/townsmcp/mg-saic-ha/issues/137",
+    "configuration": [
+      {
+        "itemCode": "J17",
+        "itemName": "Tire",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q00",
+        "itemName": "Airbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q01",
+        "itemName": "FAirbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q09",
+        "itemName": "AirbagS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "S35",
+        "itemName": "Sunroof",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S61",
+        "itemName": "Remote control",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "T11",
+        "itemName": "AC",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EPS",
+        "itemName": "EPS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SA64",
+        "itemName": "SA64",
+        "itemValue": "0111110000000000001000000100101000000010100000000000000000000110"
+      },
+      {
+        "itemCode": "BONNUT",
+        "itemName": "BONNUT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "DOOR",
+        "itemName": "DOOR",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "BOOT",
+        "itemName": "BOOT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENGINE",
+        "itemName": "ENGINE",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EV",
+        "itemName": "EV",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "HeatedSeat",
+        "itemName": "HeatedSeat",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "KEYPOS",
+        "itemName": "KEYPOS",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "ENERGY",
+        "itemName": "ENERGY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BATTERY",
+        "itemName": "BATTERY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "INTEMP",
+        "itemName": "INTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EXTEMP",
+        "itemName": "EXTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "WINDOW",
+        "itemName": "WINDOW",
+        "itemValue": "0000"
+      },
+      {
+        "itemCode": "LRD",
+        "itemName": "LRD",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BTKEY",
+        "itemName": "BTKEY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BType",
+        "itemName": "Battery",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SBH",
+        "itemName": "SBH",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BHI",
+        "itemName": "BHI",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ROV",
+        "itemName": "ROV",
+        "itemValue": "25857"
+      }
+    ]
+  },
+  {
+    "model": "Cyberster",
+    "series": "EC32",
+    "model_year": "2024",
+    "source": "https://github.com/townsmcp/mg-saic-ha/issues/14",
+    "configuration": [
+      {
+        "itemCode": "J17",
+        "itemName": "Tire",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q00",
+        "itemName": "Airbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q01",
+        "itemName": "FAirbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q09",
+        "itemName": "AirbagS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "S35",
+        "itemName": "Sunroof",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S61",
+        "itemName": "Remote control",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "T11",
+        "itemName": "AC",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EPS",
+        "itemName": "EPS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SA64",
+        "itemName": "SA64",
+        "itemValue": "0111110000000000001000000100101000000010100000000000000000000110"
+      },
+      {
+        "itemCode": "BONNUT",
+        "itemName": "BONNUT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "DOOR",
+        "itemName": "DOOR",
+        "itemValue": "1100"
+      },
+      {
+        "itemCode": "BOOT",
+        "itemName": "BOOT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENGINE",
+        "itemName": "ENGINE",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EV",
+        "itemName": "EV",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "HeatedSeat",
+        "itemName": "HeatedSeat",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "KEYPOS",
+        "itemName": "KEYPOS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENERGY",
+        "itemName": "ENERGY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BATTERY",
+        "itemName": "BATTERY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "INTEMP",
+        "itemName": "INTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EXTEMP",
+        "itemName": "EXTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "WINDOW",
+        "itemName": "WINDOW",
+        "itemValue": "0000"
+      },
+      {
+        "itemCode": "LRD",
+        "itemName": "LRD",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BTKEY",
+        "itemName": "BTKEY",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BType",
+        "itemName": "Battery",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SBH",
+        "itemName": "SBH",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BHI",
+        "itemName": "BHI",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ROV",
+        "itemName": "ROV",
+        "itemValue": "25858"
+      }
+    ]
+  },
+  {
+    "model": "EH32 X7",
+    "series": "EH32 L",
+    "model_year": "2023",
+    "source": "https://github.com/townsmcp/mg-saic-ha/issues/151",
+    "configuration": [
+      {
+        "itemCode": "J17",
+        "itemName": "Tire",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q00",
+        "itemName": "Airbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q01",
+        "itemName": "FAirbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q09",
+        "itemName": "AirbagS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "S35",
+        "itemName": "Sunroof",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S61",
+        "itemName": "Remote control",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "T11",
+        "itemName": "AC",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EPS",
+        "itemName": "EPS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SA64",
+        "itemName": "SA64",
+        "itemValue": "0111110000000000001000000100101000000010100000000000000000000110"
+      },
+      {
+        "itemCode": "BONNUT",
+        "itemName": "BONNUT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "DOOR",
+        "itemName": "DOOR",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "BOOT",
+        "itemName": "BOOT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENGINE",
+        "itemName": "ENGINE",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EV",
+        "itemName": "EV",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "HeatedSeat",
+        "itemName": "HeatedSeat",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "KEYPOS",
+        "itemName": "KEYPOS",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "ENERGY",
+        "itemName": "ENERGY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BATTERY",
+        "itemName": "BATTERY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "INTEMP",
+        "itemName": "INTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EXTEMP",
+        "itemName": "EXTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "WINDOW",
+        "itemName": "WINDOW",
+        "itemValue": "0000"
+      },
+      {
+        "itemCode": "LRD",
+        "itemName": "LRD",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BTKEY",
+        "itemName": "BTKEY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BType",
+        "itemName": "Battery",
+        "itemValue": "2"
+      },
+      {
+        "itemCode": "SBH",
+        "itemName": "SBH",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BHI",
+        "itemName": "BHI",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ROV",
+        "itemName": "ROV",
+        "itemValue": "25857"
+      }
+    ]
+  },
+  {
+    "model": "HS Super Hybrid",
+    "series": "AS33P S",
+    "model_year": "2025",
+    "source": "https://github.com/townsmcp/mg-saic-ha/issues/198",
+    "configuration": [
+      {
+        "itemCode": "J17",
+        "itemName": "Tire",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q00",
+        "itemName": "Airbag",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S35",
+        "itemName": "Sunroof",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S61",
+        "itemName": "Remote control",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "T11",
+        "itemName": "AC",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EPS",
+        "itemName": "EPS",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SA64",
+        "itemName": "SA64",
+        "itemValue": "0111110000000000001000000100101000000010100000000000000000000110"
+      },
+      {
+        "itemCode": "BONNUT",
+        "itemName": "BONNUT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "DOOR",
+        "itemName": "DOOR",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "BOOT",
+        "itemName": "BOOT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENGINE",
+        "itemName": "ENGINE",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "HeatedSeat",
+        "itemName": "HeatedSeat",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "HEATEDSEAT2",
+        "itemName": "HEATEDSEAT2",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "KEYPOS",
+        "itemName": "KEYPOS",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "ENERGY",
+        "itemName": "ENERGY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BATTERY",
+        "itemName": "BATTERY",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "INTEMP",
+        "itemName": "INTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EXTEMP",
+        "itemName": "EXTEMP",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "WINDOW",
+        "itemName": "WINDOW",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "LRD",
+        "itemName": "LRD",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BTKEY",
+        "itemName": "BTKEY",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BTKNOTIFY",
+        "itemName": "BTKNOTIFY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BType",
+        "itemName": "Battery",
+        "itemValue": "2"
+      },
+      {
+        "itemCode": "SBH",
+        "itemName": "SBH",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BHI",
+        "itemName": "BHI",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "TR",
+        "itemName": "TR",
+        "itemValue": "3"
+      },
+      {
+        "itemCode": "SWH",
+        "itemName": "SWH",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "UB",
+        "itemName": "UB",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SS",
+        "itemName": "SS",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SC",
+        "itemName": "SC",
+        "itemValue": "5"
+      },
+      {
+        "itemCode": "ROV",
+        "itemName": "ROV",
+        "itemValue": "25858"
+      }
+    ]
+  },
+  {
+    "model": "MG S9 PHEV",
+    "series": "xxxxx L",
+    "model_year": "2025",
+    "source": "https://github.com/townsmcp/mg-saic-ha/issues/204",
+    "configuration": [
+      {
+        "itemCode": "J17",
+        "itemName": "Tire",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q00",
+        "itemName": "Airbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q01",
+        "itemName": "FAirbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q09",
+        "itemName": "AirbagS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "S35",
+        "itemName": "Sunroof",
+        "itemValue": "3"
+      },
+      {
+        "itemCode": "S61",
+        "itemName": "Remote control",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "T11",
+        "itemName": "AC",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EPS",
+        "itemName": "EPS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BONNUT",
+        "itemName": "BONNUT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "DOOR",
+        "itemName": "DOOR",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "BOOT",
+        "itemName": "BOOT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENGINE",
+        "itemName": "ENGINE",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "HeatedSeat",
+        "itemName": "HeatedSeat",
+        "itemValue": "2"
+      },
+      {
+        "itemCode": "KEYPOS",
+        "itemName": "KEYPOS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENERGY",
+        "itemName": "ENERGY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BATTERY",
+        "itemName": "BATTERY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "INTEMP",
+        "itemName": "INTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EXTEMP",
+        "itemName": "EXTEMP",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "WINDOW",
+        "itemName": "WINDOW",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "LRD",
+        "itemName": "LRD",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BTKEY",
+        "itemName": "BTKEY",
+        "itemValue": "2"
+      },
+      {
+        "itemCode": "BType",
+        "itemName": "Battery",
+        "itemValue": "2"
+      },
+      {
+        "itemCode": "SBH",
+        "itemName": "SBH",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BHI",
+        "itemName": "BHI",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SWH",
+        "itemName": "SWH",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "UB",
+        "itemName": "UB",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SL",
+        "itemName": "SL",
+        "itemValue": "1_2_5"
+      },
+      {
+        "itemCode": "DF",
+        "itemName": "DF",
+        "itemValue": "9"
+      },
+      {
+        "itemCode": "RWH",
+        "itemName": "RWH",
+        "itemValue": "9"
+      },
+      {
+        "itemCode": "SC",
+        "itemName": "SC",
+        "itemValue": "5"
+      },
+      {
+        "itemCode": "ROV",
+        "itemName": "ROV",
+        "itemValue": "25858"
+      }
+    ]
+  },
+  {
+    "model": "MG3",
+    "series": "ZP22 EU",
+    "model_year": "2023",
+    "source": "https://github.com/townsmcp/mg-saic-ha/issues/206",
+    "configuration": [
+      {
+        "itemCode": "J17",
+        "itemName": "Tire",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q00",
+        "itemName": "Airbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "S35",
+        "itemName": "Sunroof",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S61",
+        "itemName": "Remote control",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "T11",
+        "itemName": "AC",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EPS",
+        "itemName": "EPS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BONNUT",
+        "itemName": "BONNUT",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "DOOR",
+        "itemName": "DOOR",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "BOOT",
+        "itemName": "BOOT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENGINE",
+        "itemName": "ENGINE",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "HeatedSeat",
+        "itemName": "HeatedSeat",
+        "itemValue": "2"
+      },
+      {
+        "itemCode": "KEYPOS",
+        "itemName": "KEYPOS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENERGY",
+        "itemName": "ENERGY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BATTERY",
+        "itemName": "BATTERY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "INTEMP",
+        "itemName": "INTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EXTEMP",
+        "itemName": "EXTEMP",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "WINDOW",
+        "itemName": "WINDOW",
+        "itemValue": "1000"
+      },
+      {
+        "itemCode": "LRD",
+        "itemName": "LRD",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BTKEY",
+        "itemName": "BTKEY",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BType",
+        "itemName": "Battery",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SBH",
+        "itemName": "SBH",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BHI",
+        "itemName": "BHI",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SWH",
+        "itemName": "SWH",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SS",
+        "itemName": "SS",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SC",
+        "itemName": "SC",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ROV",
+        "itemName": "ROV",
+        "itemValue": "REDACTED"
+      }
+    ]
+  },
+  {
+    "model": "EH32 X8",
+    "series": "EH32 L",
+    "model_year": "2023",
+    "source": "https://github.com/townsmcp/mg-saic-ha/issues/23",
+    "configuration": [
+      {
+        "itemCode": "J17",
+        "itemName": "Tire",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q00",
+        "itemName": "Airbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q01",
+        "itemName": "FAirbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q09",
+        "itemName": "AirbagS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "S35",
+        "itemName": "Sunroof",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S61",
+        "itemName": "Remote control",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "T11",
+        "itemName": "AC",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EPS",
+        "itemName": "EPS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SA64",
+        "itemName": "SA64",
+        "itemValue": "0111110000000000001000000100101000000010100000000000000000000110"
+      },
+      {
+        "itemCode": "BONNUT",
+        "itemName": "BONNUT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "DOOR",
+        "itemName": "DOOR",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "BOOT",
+        "itemName": "BOOT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENGINE",
+        "itemName": "ENGINE",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EV",
+        "itemName": "EV",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "HeatedSeat",
+        "itemName": "HeatedSeat",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "KEYPOS",
+        "itemName": "KEYPOS",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "ENERGY",
+        "itemName": "ENERGY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BATTERY",
+        "itemName": "BATTERY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "INTEMP",
+        "itemName": "INTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EXTEMP",
+        "itemName": "EXTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "WINDOW",
+        "itemName": "WINDOW",
+        "itemValue": "0000"
+      },
+      {
+        "itemCode": "LRD",
+        "itemName": "LRD",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BTKEY",
+        "itemName": "BTKEY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BType",
+        "itemName": "Battery",
+        "itemValue": "2"
+      },
+      {
+        "itemCode": "SBH",
+        "itemName": "SBH",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BHI",
+        "itemName": "BHI",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ROV",
+        "itemName": "ROV",
+        "itemValue": "25857"
+      }
+    ]
+  },
+  {
+    "model": "MG4 EV URBAN",
+    "series": "AH4EM L",
+    "model_year": "2025",
+    "source": "https://github.com/townsmcp/mg-saic-ha/issues/243",
+    "configuration": [
+      {
+        "itemCode": "J17",
+        "itemName": "Tire",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q00",
+        "itemName": "Airbag",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "Q01",
+        "itemName": "FAirbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q09",
+        "itemName": "AirbagS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "S35",
+        "itemName": "Sunroof",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S61",
+        "itemName": "Remote control",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "T11",
+        "itemName": "AC",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EPS",
+        "itemName": "EPS",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SA64",
+        "itemName": "SA64",
+        "itemValue": "0111110000000000001000000100101000000010100000000000000000000110"
+      },
+      {
+        "itemCode": "BONNUT",
+        "itemName": "BONNUT",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "DOOR",
+        "itemName": "DOOR",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "BOOT",
+        "itemName": "BOOT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENGINE",
+        "itemName": "ENGINE",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "EV",
+        "itemName": "EV",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "HeatedSeat",
+        "itemName": "HeatedSeat",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "KEYPOS",
+        "itemName": "KEYPOS",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "ENERGY",
+        "itemName": "ENERGY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BATTERY",
+        "itemName": "BATTERY",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "INTEMP",
+        "itemName": "INTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EXTEMP",
+        "itemName": "EXTEMP",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "WINDOW",
+        "itemName": "WINDOW",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "LRD",
+        "itemName": "LRD",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BTKEY",
+        "itemName": "BTKEY",
+        "itemValue": "2"
+      },
+      {
+        "itemCode": "BType",
+        "itemName": "Battery",
+        "itemValue": "2"
+      },
+      {
+        "itemCode": "SBH",
+        "itemName": "SBH",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BHI",
+        "itemName": "BHI",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "TR",
+        "itemName": "TR",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SWH",
+        "itemName": "SWH",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BTKNOTIFY",
+        "itemName": "BTKNOTIFY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SS",
+        "itemName": "SS",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SC",
+        "itemName": "SC",
+        "itemValue": "5"
+      },
+      {
+        "itemCode": "CL",
+        "itemName": "CL",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ROV",
+        "itemName": "ROV",
+        "itemValue": "25859"
+      }
+    ]
+  },
+  {
+    "model": "MG3",
+    "series": "ZP22",
+    "model_year": "2025",
+    "source": "https://github.com/townsmcp/mg-saic-ha/issues/258",
+    "configuration": [
+      {
+        "itemCode": "J17",
+        "itemName": "Tire",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q00",
+        "itemName": "Airbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q01",
+        "itemName": "FAirbag",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "Q09",
+        "itemName": "AirbagS",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S35",
+        "itemName": "Sunroof",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S61",
+        "itemName": "Remote control",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "T11",
+        "itemName": "AC",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EPS",
+        "itemName": "EPS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SA64",
+        "itemName": "SA64",
+        "itemValue": "0111110000000000001000000100101000000010100000000000000000000110"
+      },
+      {
+        "itemCode": "BONNUT",
+        "itemName": "BONNUT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "DOOR",
+        "itemName": "DOOR",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "BOOT",
+        "itemName": "BOOT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENGINE",
+        "itemName": "ENGINE",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "HeatedSeat",
+        "itemName": "HeatedSeat",
+        "itemValue": "2"
+      },
+      {
+        "itemCode": "KEYPOS",
+        "itemName": "KEYPOS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENERGY",
+        "itemName": "ENERGY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BATTERY",
+        "itemName": "BATTERY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "INTEMP",
+        "itemName": "INTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EXTEMP",
+        "itemName": "EXTEMP",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "WINDOW",
+        "itemName": "WINDOW",
+        "itemValue": "1000"
+      },
+      {
+        "itemCode": "LRD",
+        "itemName": "LRD",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BTKEY",
+        "itemName": "BTKEY",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BType",
+        "itemName": "Battery",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SBH",
+        "itemName": "SBH",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BHI",
+        "itemName": "BHI",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SWH",
+        "itemName": "SWH",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "ROV",
+        "itemName": "ROV",
+        "itemValue": "25857"
+      }
+    ]
+  },
+  {
+    "model": "MG3",
+    "series": "ZP22 EU",
+    "model_year": "2023",
+    "source": "https://github.com/townsmcp/mg-saic-ha/issues/318",
+    "configuration": [
+      {
+        "itemCode": "J17",
+        "itemName": "Tire",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q00",
+        "itemName": "Airbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "S35",
+        "itemName": "Sunroof",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S61",
+        "itemName": "Remote control",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "T11",
+        "itemName": "AC",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EPS",
+        "itemName": "EPS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BONNUT",
+        "itemName": "BONNUT",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "DOOR",
+        "itemName": "DOOR",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "BOOT",
+        "itemName": "BOOT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENGINE",
+        "itemName": "ENGINE",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "HeatedSeat",
+        "itemName": "HeatedSeat",
+        "itemValue": "2"
+      },
+      {
+        "itemCode": "KEYPOS",
+        "itemName": "KEYPOS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENERGY",
+        "itemName": "ENERGY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BATTERY",
+        "itemName": "BATTERY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "INTEMP",
+        "itemName": "INTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EXTEMP",
+        "itemName": "EXTEMP",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "WINDOW",
+        "itemName": "WINDOW",
+        "itemValue": "1000"
+      },
+      {
+        "itemCode": "LRD",
+        "itemName": "LRD",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BTKEY",
+        "itemName": "BTKEY",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BType",
+        "itemName": "Battery",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SBH",
+        "itemName": "SBH",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BHI",
+        "itemName": "BHI",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SWH",
+        "itemName": "SWH",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SS",
+        "itemName": "SS",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SC",
+        "itemName": "SC",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ROV",
+        "itemName": "ROV",
+        "itemValue": "25857"
+      }
+    ]
+  },
+  {
+    "model": "MG5 Electric",
+    "series": "EP22 UK",
+    "model_year": "2022",
+    "source": "https://github.com/townsmcp/mg-saic-ha/issues/401",
+    "configuration": [
+      {
+        "itemCode": "J17",
+        "itemName": "Tire",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q00",
+        "itemName": "Airbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q01",
+        "itemName": "FAirbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q09",
+        "itemName": "AirbagS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "S35",
+        "itemName": "Sunroof",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S61",
+        "itemName": "Remote control",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "T11",
+        "itemName": "AC",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EPS",
+        "itemName": "EPS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SA64",
+        "itemName": "SA64",
+        "itemValue": "0111110000000000001000000100101000000010100000000000000000000110"
+      },
+      {
+        "itemCode": "BONNUT",
+        "itemName": "BONNUT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "DOOR",
+        "itemName": "DOOR",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "BOOT",
+        "itemName": "BOOT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENGINE",
+        "itemName": "ENGINE",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EV",
+        "itemName": "EV",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "HeatedSeat",
+        "itemName": "HeatedSeat",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "KEYPOS",
+        "itemName": "KEYPOS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENERGY",
+        "itemName": "ENERGY",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BATTERY",
+        "itemName": "BATTERY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "INTEMP",
+        "itemName": "INTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EXTEMP",
+        "itemName": "EXTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "WINDOW",
+        "itemName": "WINDOW",
+        "itemValue": "0000"
+      },
+      {
+        "itemCode": "LRD",
+        "itemName": "LRD",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BTKEY",
+        "itemName": "BTKEY",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BType",
+        "itemName": "Battery",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SBH",
+        "itemName": "SBH",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BHI",
+        "itemName": "BHI",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "ROV",
+        "itemName": "ROV",
+        "itemValue": "25857"
+      }
+    ]
+  },
+  {
+    "model": "ZS EV",
+    "series": "ZS EV L",
+    "model_year": "2021",
+    "source": "https://github.com/townsmcp/mg-saic-ha/issues/43",
+    "configuration": [
+      {
+        "itemCode": "J17",
+        "itemName": "Tire pressure monitoring system",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q00",
+        "itemName": "Regular airbags",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q01",
+        "itemName": "Front-seat airbags",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "Q09",
+        "itemName": "Airbag switch",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S35",
+        "itemName": "Sun Roof",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S61",
+        "itemName": "Remote control",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "T11",
+        "itemName": "Air conditioning",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EPS",
+        "itemName": "Electric Power Steering",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SA64",
+        "itemName": "Security alert",
+        "itemValue": "0111110000000000000010000100100100000010100000000000000000000110"
+      },
+      {
+        "itemCode": "BONNUT",
+        "itemName": "Bonnut Status",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "DOOR",
+        "itemName": "Door Status",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "BOOT",
+        "itemName": "Boot Status",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENGINE",
+        "itemName": "Engine Status",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EV",
+        "itemName": "Electric Vehicle",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "HeatedSeat",
+        "itemName": "HeatedSeat",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "KEYPOS",
+        "itemName": "Key Position",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENERGY",
+        "itemName": "Energy state",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BATTERY",
+        "itemName": "Battery Voltage",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "INTEMP",
+        "itemName": "Interior Temperature",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EXTEMP",
+        "itemName": "Exterior Temperature",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "WINDOW",
+        "itemName": "Window Status",
+        "itemValue": "0000"
+      },
+      {
+        "itemCode": "LRD",
+        "itemName": "Left-Right Driving",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BTKEY",
+        "itemName": "BLE CarKey",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BTYPE",
+        "itemName": "Battery Type",
+        "itemValue": "2"
+      },
+      {
+        "itemCode": "ROV",
+        "itemName": "ROV",
+        "itemValue": "25857"
+      }
+    ]
+  },
+  {
+    "model": "ZS",
+    "series": "ZS32 EU",
+    "model_year": "2024",
+    "source": "https://github.com/townsmcp/mg-saic-ha/issues/441",
+    "configuration": [
+      {
+        "itemCode": "J17",
+        "itemName": "Tire",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q00",
+        "itemName": "Airbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "S35",
+        "itemName": "Sunroof",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S61",
+        "itemName": "Remote control",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "T11",
+        "itemName": "AC",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EPS",
+        "itemName": "EPS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BONNUT",
+        "itemName": "BONNUT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "DOOR",
+        "itemName": "DOOR",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "BOOT",
+        "itemName": "BOOT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENGINE",
+        "itemName": "ENGINE",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EV",
+        "itemName": "EV",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "HeatedSeat",
+        "itemName": "HeatedSeat",
+        "itemValue": "2"
+      },
+      {
+        "itemCode": "KEYPOS",
+        "itemName": "KEYPOS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENERGY",
+        "itemName": "ENERGY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BATTERY",
+        "itemName": "BATTERY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "INTEMP",
+        "itemName": "INTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EXTEMP",
+        "itemName": "EXTEMP",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "WINDOW",
+        "itemName": "WINDOW",
+        "itemValue": "1000"
+      },
+      {
+        "itemCode": "LRD",
+        "itemName": "LRD",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BTKEY",
+        "itemName": "BTKEY",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BType",
+        "itemName": "Battery",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SBH",
+        "itemName": "SBH",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BHI",
+        "itemName": "BHI",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SWH",
+        "itemName": "SWH",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SS",
+        "itemName": "SS",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "ROV",
+        "itemName": "ROV",
+        "itemValue": "25857"
+      }
+    ]
+  },
+  {
+    "model": "MG4",
+    "series": "EH32 L",
+    "model_year": "2024",
+    "source": "https://github.com/townsmcp/mg-saic-ha/issues/75",
+    "configuration": [
+      {
+        "itemCode": "J17",
+        "itemName": "Tire pressure monitoring system",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q00",
+        "itemName": "Regular airbags",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q01",
+        "itemName": "Front-seat airbags",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q09",
+        "itemName": "Airbag switch",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "S35",
+        "itemName": "Sun Roof",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S61",
+        "itemName": "Remote control",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "T11",
+        "itemName": "Air conditioning",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EPS",
+        "itemName": "Electric Power Steering",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SA64",
+        "itemName": "Security alert",
+        "itemValue": "0111110000000000001000000100101000000010100000000000000000000110"
+      },
+      {
+        "itemCode": "BONNUT",
+        "itemName": "Bonnut Status",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "DOOR",
+        "itemName": "Door Status",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "BOOT",
+        "itemName": "Boot Status",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENGINE",
+        "itemName": "Engine Status",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EV",
+        "itemName": "Electric Vehicle",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "HeatedSeat",
+        "itemName": "HeatedSeat",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "KEYPOS",
+        "itemName": "Key Position",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "ENERGY",
+        "itemName": "Energy state",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BATTERY",
+        "itemName": "Battery Voltage",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "INTEMP",
+        "itemName": "Interior Temperature",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EXTEMP",
+        "itemName": "Exterior Temperature",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "WINDOW",
+        "itemName": "Window Status",
+        "itemValue": "0000"
+      },
+      {
+        "itemCode": "LRD",
+        "itemName": "Left-Right Driving",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BTKEY",
+        "itemName": "Bluetooth Key",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BTYPE",
+        "itemName": "Battery Type",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ROV",
+        "itemName": "ROV",
+        "itemValue": "25857"
+      }
+    ]
+  },
+  {
+    "model": "AS33 UK",
+    "series": "AS33 UK",
+    "model_year": "2024",
+    "source": "https://github.com/townsmcp/mg-saic-ha/issues/91",
+    "configuration": [
+      {
+        "itemCode": "J17",
+        "itemName": "Tire",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q00",
+        "itemName": "Airbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q01",
+        "itemName": "FAirbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q09",
+        "itemName": "AirbagS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "S35",
+        "itemName": "Sunroof",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S61",
+        "itemName": "Remote control",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "T11",
+        "itemName": "AC",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EPS",
+        "itemName": "EPS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SA64",
+        "itemName": "SA64",
+        "itemValue": "0111110000000000001000000100101000000010100000000000000000000110"
+      },
+      {
+        "itemCode": "BONNUT",
+        "itemName": "BONNUT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "DOOR",
+        "itemName": "DOOR",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "BOOT",
+        "itemName": "BOOT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENGINE",
+        "itemName": "ENGINE",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EV",
+        "itemName": "EV",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "HeatedSeat",
+        "itemName": "HeatedSeat",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "KEYPOS",
+        "itemName": "KEYPOS",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "ENERGY",
+        "itemName": "ENERGY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BATTERY",
+        "itemName": "BATTERY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "INTEMP",
+        "itemName": "INTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EXTEMP",
+        "itemName": "EXTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "WINDOW",
+        "itemName": "WINDOW",
+        "itemValue": "0000"
+      },
+      {
+        "itemCode": "LRD",
+        "itemName": "LRD",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BTKEY",
+        "itemName": "BTKEY",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BType",
+        "itemName": "Battery",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SBH",
+        "itemName": "SBH",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BHI",
+        "itemName": "BHI",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "SWH",
+        "itemName": "SWH",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "ROV",
+        "itemName": "ROV",
+        "itemValue": "25858"
+      }
+    ]
+  },
+  {
+    "model": "ZS EV",
+    "series": "ZS EV S",
+    "model_year": "2021",
+    "source": "https://github.com/townsmcp/mg-saic-ha/issues/98",
+    "configuration": [
+      {
+        "itemCode": "J17",
+        "itemName": "Tire",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q00",
+        "itemName": "Airbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q01",
+        "itemName": "FAirbag",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "Q09",
+        "itemName": "AirbagS",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S35",
+        "itemName": "Sunroof",
+        "itemValue": "3"
+      },
+      {
+        "itemCode": "S61",
+        "itemName": "Remote control",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "T11",
+        "itemName": "AC",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EPS",
+        "itemName": "EPS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SA64",
+        "itemName": "SA64",
+        "itemValue": "0111110000000000001000000100101000000010100000000000000000000110"
+      },
+      {
+        "itemCode": "BONNUT",
+        "itemName": "BONNUT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "DOOR",
+        "itemName": "DOOR",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "BOOT",
+        "itemName": "BOOT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENGINE",
+        "itemName": "ENGINE",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EV",
+        "itemName": "EV",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "HeatedSeat",
+        "itemName": "HeatedSeat",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "KEYPOS",
+        "itemName": "KEYPOS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENERGY",
+        "itemName": "ENERGY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "INTEMP",
+        "itemName": "INTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EXTEMP",
+        "itemName": "EXTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "WINDOW",
+        "itemName": "WIN\n> DOW",
+        "itemValue": "0000"
+      },
+      {
+        "itemCode": "LRD",
+        "itemName": "LRD",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BTKEY",
+        "itemName": "BTKEY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SBH",
+        "itemName": "SBH",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BHI",
+        "itemName": "BHI",
+        "itemValue": "0"
+      }
+    ]
+  },
+  {
+    "model": "MG4 Electric",
+    "series": "EH32 S",
+    "model_year": "2022",
+    "source": "gateway API capture (maintainer's vehicle)",
+    "configuration": [
+      {
+        "itemCode": "J17",
+        "itemName": "Tire",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q00",
+        "itemName": "Airbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q01",
+        "itemName": "FAirbag",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "Q09",
+        "itemName": "AirbagS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "S35",
+        "itemName": "Sunroof",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "S61",
+        "itemName": "Remote control",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "T11",
+        "itemName": "AC",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EPS",
+        "itemName": "EPS",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SA64",
+        "itemName": "SA64",
+        "itemValue": "0111110000000000001000000100101000000010100000000000000000000110"
+      },
+      {
+        "itemCode": "BONNUT",
+        "itemName": "BONNUT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "DOOR",
+        "itemName": "DOOR",
+        "itemValue": "1111"
+      },
+      {
+        "itemCode": "BOOT",
+        "itemName": "BOOT",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ENGINE",
+        "itemName": "ENGINE",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EV",
+        "itemName": "EV",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "HeatedSeat",
+        "itemName": "HeatedSeat",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "KEYPOS",
+        "itemName": "KEYPOS",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "ENERGY",
+        "itemName": "ENERGY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BATTERY",
+        "itemName": "BATTERY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "INTEMP",
+        "itemName": "INTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "EXTEMP",
+        "itemName": "EXTEMP",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "WINDOW",
+        "itemName": "WINDOW",
+        "itemValue": "0000"
+      },
+      {
+        "itemCode": "LRD",
+        "itemName": "LRD",
+        "itemValue": "0"
+      },
+      {
+        "itemCode": "BTKEY",
+        "itemName": "BTKEY",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BType",
+        "itemName": "Battery",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "SBH",
+        "itemName": "SBH",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "BHI",
+        "itemName": "BHI",
+        "itemValue": "1"
+      },
+      {
+        "itemCode": "ROV",
+        "itemName": "ROV",
+        "itemValue": "25857"
+      }
+    ]
+  }
+]
