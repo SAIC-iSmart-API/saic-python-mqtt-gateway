@@ -118,7 +118,7 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
         m.assert_called_once_with("saic/foo", "bar", retain=True, qos=0)
 
     async def test_publish_tasks_are_released_once_done(self) -> None:
-        pending = self.mqtt_client._MqttPublisher__publish_tasks  # type: ignore[attr-defined]
+        pending = self.mqtt_client._MqttPublisher__background_tasks  # type: ignore[attr-defined]
         with patch.object(
             self.mqtt_client, "_MqttPublisher__async_publish", AsyncMock()
         ):
@@ -126,6 +126,14 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
             assert len(pending) == 1
             await asyncio.gather(*pending)
             await asyncio.sleep(0)
+        assert not pending
+
+    async def test_enable_commands_task_is_held_until_done(self) -> None:
+        pending = self.mqtt_client._MqttPublisher__background_tasks  # type: ignore[attr-defined]
+        self.mqtt_client.enable_commands()
+        assert len(pending) == 1
+        await asyncio.gather(*pending)
+        await asyncio.sleep(0)
         assert not pending
 
     async def test_publish_str_outside_event_loop_raises_clear_error(self) -> None:

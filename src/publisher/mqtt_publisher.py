@@ -53,7 +53,7 @@ class MqttPublisher(Publisher):
         self.first_connection = True
         self.client: aiomqtt.Client | None = None
         self.__running: asyncio.Task[None] | None = None
-        self.__publish_tasks: set[asyncio.Task[None]] = set()
+        self.__background_tasks: set[asyncio.Task[None]] = set()
         self.__connected = asyncio.Event()
         self.__fatal_connect_error: SystemExit | None = None
 
@@ -182,6 +182,8 @@ class MqttPublisher(Publisher):
     @override
     def enable_commands(self) -> None:
         task = asyncio.get_running_loop().create_task(self.__enable_commands())
+        self.__background_tasks.add(task)
+        task.add_done_callback(self.__background_tasks.discard)
         task.add_done_callback(self.__on_enable_commands_done)
 
     def __on_enable_commands_done(self, task: asyncio.Task[None]) -> None:
@@ -343,8 +345,8 @@ class MqttPublisher(Publisher):
             self.__async_publish(topic, payload, retain=retain, qos=qos)
         )
         # Keep a strong reference until done, otherwise the task may be garbage collected
-        self.__publish_tasks.add(task)
-        task.add_done_callback(self.__publish_tasks.discard)
+        self.__background_tasks.add(task)
+        task.add_done_callback(self.__background_tasks.discard)
 
     async def __async_publish(
         self, topic: str, payload: Any, retain: bool, qos: int
