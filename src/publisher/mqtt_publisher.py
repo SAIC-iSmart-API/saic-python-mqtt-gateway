@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, override
 import aiomqtt
 from aiomqtt.exceptions import MqttConnectError
 
-from background_tasks import BackgroundTasks
+from background_tasks import BackgroundTasks, log_task_failure
 import mqtt_topics
 from publisher.core import Publisher
 
@@ -166,7 +166,8 @@ class MqttPublisher(Publisher):
         if not self.host:
             LOG.info("MQTT host is not configured")
             return
-        self.__running = asyncio.create_task(self.__run_loop())
+        self.__running = asyncio.create_task(self.__run_loop(), name="mqtt-loop")
+        self.__running.add_done_callback(log_task_failure)
         connected = asyncio.create_task(self.__connected.wait())
         try:
             # Also stop waiting if the loop dies, else connect() would hang forever

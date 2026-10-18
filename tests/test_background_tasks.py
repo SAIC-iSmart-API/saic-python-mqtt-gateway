@@ -7,7 +7,7 @@ import unittest
 
 import pytest
 
-from background_tasks import BackgroundTasks
+from background_tasks import BackgroundTasks, log_task_failure
 
 
 class TestBackgroundTasks(unittest.IsolatedAsyncioTestCase):
@@ -90,3 +90,17 @@ class TestBackgroundTasks(unittest.IsolatedAsyncioTestCase):
 
         with pytest.raises(RuntimeError, match="outside the event loop thread"):
             await asyncio.to_thread(lambda: tasks.spawn(work()))
+
+
+class TestLogTaskFailure(unittest.IsolatedAsyncioTestCase):
+    async def test_logs_exception_of_failed_task(self) -> None:
+        async def boom() -> None:
+            msg = "kaput"
+            raise ValueError(msg)
+
+        task = asyncio.get_running_loop().create_task(boom(), name="boom-task")
+        task.add_done_callback(log_task_failure)
+        with self.assertLogs("background_tasks", level=logging.ERROR) as logs:
+            await asyncio.wait([task])
+
+        assert "boom-task" in logs.output[0]
