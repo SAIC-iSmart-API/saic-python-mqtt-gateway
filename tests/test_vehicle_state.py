@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import datetime
+import inspect
 import json
 from typing import Any
 import unittest
 from zoneinfo import ZoneInfo
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.schedulers.blocking import BlockingScheduler
 import pytest
 from saic_ismart_client_ng.api.vehicle.schema import VinInfo
 from saic_ismart_client_ng.api.vehicle_charging import (
     ChargeCurrentLimitCode,
+    ScheduledChargingMode,
     TargetBatteryCode,
 )
 from saic_ismart_client_ng.api.vehicle_charging.schema import (
@@ -630,6 +633,29 @@ class TestVehicleState(unittest.IsolatedAsyncioTestCase):
         self.vehicle_state.should_refresh()
         assert self.publisher.map[phase_topic] == PollingPhase.OFF.value
         assert self.publisher.publish_count[phase_topic] == 3
+
+    async def test_scheduled_charging_job_runs_on_event_loop(self) -> None:
+        """Regression for #484: sync jobs run in a worker thread, not on the loop."""
+        scheduler = AsyncIOScheduler()
+        vin_info = VinInfo()
+        vin_info.vin = VIN
+        state = VehicleState(
+            self.publisher, scheduler, f"/vehicles/{VIN}", VehicleInfo(vin_info, None)
+        )
+        state.update_scheduled_charging(
+            datetime.time(hour=23, minute=10),
+            ScheduledChargingMode.UNTIL_CONFIGURED_TIME,
+        )
+        job = scheduler.get_job(f"{VIN}_scheduled_charging")
+        assert job is not None
+        assert inspect.iscoroutinefunction(job.func)
+
+        await job.func()
+
+        assert state.refresh_mode == RefreshMode.FORCE
+        assert self.publisher.map[self.get_topic(mqtt_topics.REFRESH_MODE)] == (
+            RefreshMode.FORCE.value
+        )
 
     @staticmethod
     def get_topic(sub_topic: str) -> str:

@@ -279,8 +279,7 @@ class VehicleState:
                 )
             else:
                 self.__scheduler.add_job(
-                    func=self.set_refresh_mode,
-                    args=[RefreshMode.FORCE, "check for scheduled charging start"],
+                    func=self.__force_refresh_for_scheduled_charging,
                     trigger=trigger,
                     kwargs={},
                     name=scheduled_charging_job_id,
@@ -762,6 +761,11 @@ class VehicleState:
         self.publisher.publish_str(
             self.get_topic(mqtt_topics.REFRESH_POLLING_PHASE), phase.value
         )
+
+    async def __force_refresh_for_scheduled_charging(self) -> None:
+        # Must be a coroutine: AsyncIOScheduler runs sync jobs in a worker thread,
+        # where we can't touch the MQTT publisher or the polling state safely.
+        self.set_refresh_mode(RefreshMode.FORCE, "check for scheduled charging start")
 
     def set_refresh_mode(self, mode: RefreshMode, cause: str) -> None:
         if mode is not None and (
