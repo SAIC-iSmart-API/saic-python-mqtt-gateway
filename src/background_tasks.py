@@ -47,6 +47,15 @@ class BackgroundTasks:
         task.add_done_callback(self.__on_done)
         return task
 
+    async def wait(self) -> None:
+        """Wait until the tasks running right now are done.
+
+        Tasks are released and failures logged by the time this returns. To bound
+        the wait, wrap it in ``asyncio.wait_for``: that does not cancel the tasks.
+        """
+        if self.__tasks:
+            await asyncio.wait(set(self.__tasks))
+
     def __on_done(self, task: asyncio.Task[Any]) -> None:
         self.__tasks.discard(task)
         if not task.cancelled() and (exc := task.exception()) is not None:

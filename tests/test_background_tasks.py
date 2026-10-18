@@ -23,8 +23,28 @@ class TestBackgroundTasks(unittest.IsolatedAsyncioTestCase):
         assert len(tasks) == 1
         release.set()
         assert await task == "done"
-        await asyncio.sleep(0)
+        await tasks.wait()
         assert len(tasks) == 0
+
+    async def test_wait_returns_once_tasks_are_done_and_released(self) -> None:
+        tasks = BackgroundTasks()
+        tasks.spawn(asyncio.sleep(0.01))
+        tasks.spawn(asyncio.sleep(0.02))
+
+        await tasks.wait()
+
+        assert len(tasks) == 0
+
+    async def test_bounded_wait_does_not_cancel_tasks(self) -> None:
+        tasks = BackgroundTasks()
+        task = tasks.spawn(asyncio.sleep(10))
+
+        with pytest.raises(TimeoutError):
+            await asyncio.wait_for(tasks.wait(), timeout=0.01)
+
+        assert not task.done()
+        assert len(tasks) == 1
+        task.cancel()
 
     async def test_task_survives_garbage_collection(self) -> None:
         tasks = BackgroundTasks()
@@ -48,7 +68,7 @@ class TestBackgroundTasks(unittest.IsolatedAsyncioTestCase):
         with self.assertLogs("background_tasks", level=logging.ERROR) as logs:
             task = tasks.spawn(boom(), name="boom-task")
             await asyncio.wait([task])
-            await asyncio.sleep(0)
+            await tasks.wait()
 
         assert "boom-task" in logs.output[0]
         assert len(tasks) == 0
@@ -59,7 +79,7 @@ class TestBackgroundTasks(unittest.IsolatedAsyncioTestCase):
         task.cancel()
         with self.assertNoLogs("background_tasks", level=logging.ERROR):
             await asyncio.wait([task])
-            await asyncio.sleep(0)
+            await tasks.wait()
         assert len(tasks) == 0
 
     async def test_spawn_outside_event_loop_raises(self) -> None:

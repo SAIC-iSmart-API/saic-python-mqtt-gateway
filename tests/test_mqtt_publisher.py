@@ -124,8 +124,7 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
         ) as publish:
             self.mqtt_client.publish_str("foo", "bar")
             assert len(pending) == 1
-            await asyncio.sleep(0)
-            await asyncio.sleep(0)
+            await pending.wait()
         publish.assert_awaited_once()
         assert len(pending) == 0
 
@@ -133,8 +132,7 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
         pending = self.mqtt_client._MqttPublisher__background_tasks  # type: ignore[attr-defined]
         self.mqtt_client.enable_commands()
         assert len(pending) == 1
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
+        await pending.wait()
         assert len(pending) == 0
 
     async def test_publish_str_outside_event_loop_raises_clear_error(self) -> None:
