@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import datetime
+from importlib.metadata import PackageNotFoundError
 import logging
 from unittest import TestCase
+from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -12,6 +14,7 @@ from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.exceptions import SaicApiException, SaicApiRetryException
 
 from utils import (
+    get_gateway_version,
     get_update_timestamp,
     is_transient_api_error,
     log_transient_api_error,
@@ -186,3 +189,33 @@ class TestApiTimeoutHelpers:
             assert caplog.records[-1].levelno == logging.WARNING
             log_transient_api_error(logger, "ctx", exc, level=logging.ERROR)
             assert caplog.records[-1].levelno == logging.ERROR
+
+
+class TestGetGatewayVersion:
+    def test_release_version_env_wins_over_package_metadata(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("RELEASE_VERSION", "1.2.3")
+        with patch("utils.version", return_value="0.11.0"):
+            assert get_gateway_version() == "1.2.3"
+
+    def test_falls_back_to_package_metadata(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("RELEASE_VERSION", raising=False)
+        with patch("utils.version", return_value="0.11.0"):
+            assert get_gateway_version() == "0.11.0"
+
+    def test_empty_release_version_is_ignored(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("RELEASE_VERSION", "")
+        with patch("utils.version", return_value="0.11.0"):
+            assert get_gateway_version() == "0.11.0"
+
+    def test_unknown_without_env_or_metadata(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("RELEASE_VERSION", raising=False)
+        with patch("utils.version", side_effect=PackageNotFoundError):
+            assert get_gateway_version() == "unknown"
