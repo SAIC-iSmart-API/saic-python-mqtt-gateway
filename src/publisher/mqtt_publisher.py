@@ -166,9 +166,21 @@ class MqttPublisher(Publisher):
             LOG.info("MQTT host is not configured")
             return
         self.__running = asyncio.create_task(self.__run_loop())
-        await self.__connected.wait()
+        connected = asyncio.create_task(self.__connected.wait())
+        try:
+            # Also stop waiting if the loop dies, else connect() would hang forever
+            await asyncio.wait(
+                {self.__running, connected}, return_when=asyncio.FIRST_COMPLETED
+            )
+        finally:
+            connected.cancel()
         if self.__fatal_connect_error is not None:
             raise self.__fatal_connect_error
+        if not self.__connected.is_set():
+            if (exc := self.__running.exception()) is not None:
+                raise exc
+            msg = "MQTT loop ended before connecting to the broker"
+            raise RuntimeError(msg)
 
     async def __on_connect(self) -> None:
         LOG.info("Connected to MQTT broker")
