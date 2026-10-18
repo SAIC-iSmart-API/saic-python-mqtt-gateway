@@ -113,10 +113,14 @@ def get_update_timestamp(vehicle_status: VehicleStatusResp) -> datetime:
 
 
 def get_gateway_version() -> str:
+    # The release version set at build time wins over the package metadata,
+    # whose version in pyproject.toml is not kept in sync with the release tags
+    if release_version := os.environ.get("RELEASE_VERSION"):
+        return release_version
     try:
         return version("saic-python-mqtt-gateway")
     except PackageNotFoundError:
-        return os.environ.get("RELEASE_VERSION", "unknown")
+        return "unknown"
 
 
 def ensure_datetime_aware(dt: datetime) -> datetime:
