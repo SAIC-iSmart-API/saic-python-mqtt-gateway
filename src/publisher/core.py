@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 import json
 import re
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any
 
 import mqtt_topics
 from utils import datetime_to_str
@@ -13,8 +13,6 @@ if TYPE_CHECKING:
     import asyncio
 
     from configuration import Configuration
-
-T = TypeVar("T")
 
 type Publishable = bool | int | float | str | dict[str, Any] | datetime
 """Closed union of value types this gateway knows how to publish to MQTT.
@@ -239,7 +237,7 @@ class Publisher(ABC):
                         self.__remove_byte_strings(item)
         return data
 
-    def __anonymize(self, data: T) -> T:
+    def __anonymize[T](self, data: T) -> T:
         if isinstance(data, dict):
             for key in data:
                 if isinstance(data[key], str):
