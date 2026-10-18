@@ -190,3 +190,7 @@ junit/
 
 # macOS
 .DS_Store
+# Claude Code local state (commands/ is tracked)
+.claude/settings.json
+.claude/settings.local.json
+.claude/worktrees/
