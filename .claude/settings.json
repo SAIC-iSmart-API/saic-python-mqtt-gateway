@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(poetry run pytest:*)",
+      "Bash(poetry run mypy:*)",
+      "Bash(poetry run ruff check:*)",
+      "Bash(poetry run ruff format:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)"
+    ]
+  }
+}
