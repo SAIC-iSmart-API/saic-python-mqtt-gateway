@@ -281,7 +281,6 @@ class VehicleState:
                 self.__scheduler.add_job(
                     func=self.__force_refresh_for_scheduled_charging,
                     trigger=trigger,
-                    kwargs={},
                     name=scheduled_charging_job_id,
                     id=scheduled_charging_job_id,
                     replace_existing=True,
