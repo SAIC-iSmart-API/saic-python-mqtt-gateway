@@ -137,7 +137,14 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
         try:
             await self.__run_until_all_tasks_done()
         finally:
+            await self.__flush_publisher()
             await self.__close_saic_api()
+
+    async def __flush_publisher(self) -> None:
+        try:
+            await self.publisher.flush()
+        except Exception:
+            LOG.warning("Failed to flush pending MQTT publishes", exc_info=True)
 
     async def __close_saic_api(self) -> None:
         try:

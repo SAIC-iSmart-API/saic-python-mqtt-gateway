@@ -52,3 +52,27 @@ class TestGatewayShutdown(unittest.IsolatedAsyncioTestCase):
             await self._run_with_main_loop(gateway, AsyncMock())
 
         gateway.saic_api.close.assert_awaited_once()
+
+    async def test_publisher_flushed_before_api_client_closes(self) -> None:
+        gateway = _make_gateway()
+        order: list[str] = []
+        gateway.saic_api.close = AsyncMock(  # type: ignore[method-assign]
+            side_effect=lambda: order.append("close")
+        )
+        gateway.publisher.flush = AsyncMock(  # type: ignore[method-assign]
+            side_effect=lambda: order.append("flush")
+        )
+
+        await self._run_with_main_loop(gateway, AsyncMock())
+
+        assert order == ["flush", "close"]
+
+    async def test_flush_failure_is_logged_not_raised(self) -> None:
+        gateway = _make_gateway()
+        gateway.saic_api.close = AsyncMock()  # type: ignore[method-assign]
+        gateway.publisher.flush = AsyncMock(side_effect=RuntimeError("boom"))  # type: ignore[method-assign]
+
+        with self.assertLogs("mqtt_gateway", level="WARNING"):
+            await self._run_with_main_loop(gateway, AsyncMock())
+
+        gateway.saic_api.close.assert_awaited_once()

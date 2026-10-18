@@ -246,6 +246,49 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
         assert task is not None
         assert task.get_name() == "mqtt-loop"
 
+    def _connected_publisher_with_client(self, client: Any) -> MqttPublisher:
+        publisher = MqttPublisher(Configuration())
+        publisher.client = client
+        publisher._MqttPublisher__connected.set()  # type: ignore[attr-defined]
+        return publisher
+
+    async def test_flush_waits_for_in_flight_publishes(self) -> None:
+        sent: list[str] = []
+
+        class SlowClient:
+            async def publish(self, topic: str, *_: Any, **__: Any) -> None:
+                await asyncio.sleep(0.05)
+                sent.append(topic)
+
+        publisher = self._connected_publisher_with_client(SlowClient())
+        publisher.publish_str("last/words", "bye")
+        assert sent == []
+
+        await publisher.flush()
+
+        assert sent == ["saic/last/words"]
+
+    async def test_flush_gives_up_after_timeout(self) -> None:
+        class StuckClient:
+            async def publish(self, *_: Any, **__: Any) -> None:
+                await asyncio.sleep(10)
+
+        publisher = self._connected_publisher_with_client(StuckClient())
+        publisher.publish_str("stuck", "x")
+
+        with (
+            patch("publisher.mqtt_publisher._FLUSH_TIMEOUT", 0.05),
+            self.assertLogs("publisher.mqtt_publisher", level="WARNING"),
+        ):
+            await publisher.flush()
+
+        await asyncio.sleep(0)
+        for task in asyncio.all_tasks() - {asyncio.current_task()}:
+            task.cancel()
+
+    async def test_flush_without_pending_publishes_returns_immediately(self) -> None:
+        await self.mqtt_client.flush()
+
     async def test_plain_tcp_leaves_tls_insecure_unset(self) -> None:
         """tls_insecure must stay None without TLS, else paho raises ValueError."""
         config = Configuration()

@@ -15,6 +15,10 @@ class ConsolePublisher(Publisher):
         pass
 
     @override
+    async def flush(self) -> None:
+        pass
+
+    @override
     def is_connected(self) -> bool:
         return True
 
