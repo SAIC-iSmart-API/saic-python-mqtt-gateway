@@ -34,6 +34,10 @@
 * Upgrade development dependencies (ruff 0.17, mypy 2.4), bump the GitHub
   Actions and pre-commit hooks, and add Dependabot (#480).
 
+* Build the Docker image on the Poetry 2.5.1 base image, build the Arm images
+  on native Arm runners instead of QEMU, and run the tests on Python 3.15 as a
+  non-blocking check (#495, #496).
+
 ### Fixed
 
 * Exit immediately on permanent MQTT connection failures (bad credentials,
