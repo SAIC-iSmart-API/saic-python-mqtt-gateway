@@ -7,6 +7,8 @@ from typing import Any, override
 import unittest
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from configuration import Configuration, TransportProtocol
 from publisher.core import MqttCommandListener
 from publisher.mqtt_publisher import MqttPublisher
@@ -114,6 +116,10 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
     async def test_publish_str_default_is_retained(self) -> None:
         m = await self._call_and_flush(self.mqtt_client.publish_str, "foo", "bar")
         m.assert_called_once_with("saic/foo", "bar", retain=True, qos=0)
+
+    async def test_publish_str_outside_event_loop_raises_clear_error(self) -> None:
+        with pytest.raises(RuntimeError, match="outside the event loop thread"):
+            await asyncio.to_thread(self.mqtt_client.publish_str, "foo", "bar")
 
     async def test_publish_str_forwards_retain_false(self) -> None:
         m = await self._call_and_flush(

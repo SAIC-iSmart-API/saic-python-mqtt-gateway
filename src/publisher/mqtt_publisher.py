@@ -330,6 +330,14 @@ class MqttPublisher(Publisher):
         qos: int = 0,
     ) -> None:
         LOG.debug("Publishing to MQTT topic %s with payload %s", topic, payload)
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError as e:
+            msg = (
+                f"Cannot publish to MQTT topic {topic} outside the event loop thread. "
+                "Publish from a coroutine, e.g. register scheduler jobs as async functions"
+            )
+            raise RuntimeError(msg) from e
         asyncio.get_running_loop().create_task(
             self.__async_publish(topic, payload, retain=retain, qos=qos)
         )
