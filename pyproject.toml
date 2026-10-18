@@ -88,6 +88,7 @@ exclude_lines = [
 ignore_errors = true
 
 [tool.ruff]
+extend-exclude = [".claude"]
 include = [
     "src/**/*.py",
     "tests/**/*.py",
