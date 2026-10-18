@@ -284,6 +284,10 @@ class _MinimalPublisher(Publisher):
         pass
 
     @override
+    async def flush(self) -> None:
+        pass
+
+    @override
     def enable_commands(self) -> None:
         pass
 

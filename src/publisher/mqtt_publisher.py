@@ -23,6 +23,7 @@ LOG = logging.getLogger(__name__)
 # Reconnect backoff: starts at 5 s, doubles on each failure, caps at 5 min
 _RECONNECT_INTERVAL_MIN = 5
 _RECONNECT_INTERVAL_MAX = 300
+_FLUSH_TIMEOUT = 2.0
 
 # MQTT 3.1.1 spec section 3.2.2.3 — permanent connection refusal codes
 _CONNACK_REFUSED_PROTOCOL_VERSION = 1
@@ -183,6 +184,21 @@ class MqttPublisher(Publisher):
                 raise exc
             msg = "MQTT loop ended before connecting to the broker"
             raise RuntimeError(msg)
+
+    @override
+    async def flush(self) -> None:
+        pending = len(self.__background_tasks)
+        if pending == 0:
+            return
+        LOG.info("Waiting for %d pending MQTT publishes", pending)
+        try:
+            await asyncio.wait_for(self.__background_tasks.wait(), _FLUSH_TIMEOUT)
+        except TimeoutError:
+            LOG.warning(
+                "Gave up waiting for %d MQTT publishes after %.1fs",
+                len(self.__background_tasks),
+                _FLUSH_TIMEOUT,
+            )
 
     @override
     def connection_task(self) -> asyncio.Task[None] | None:

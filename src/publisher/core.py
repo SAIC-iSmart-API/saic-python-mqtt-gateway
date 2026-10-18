@@ -92,6 +92,10 @@ class Publisher(ABC):
     def enable_commands(self) -> None:
         pass
 
+    @abstractmethod
+    async def flush(self) -> None:
+        """Give publishes still in flight a chance to be delivered, e.g. on shutdown."""
+
     def connection_task(self) -> asyncio.Task[Any] | None:
         """Return the long-lived task that keeps the transport up, if there is one.
 

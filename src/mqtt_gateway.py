@@ -96,7 +96,12 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
     async def run(self) -> None:
         LOG.info("Connecting to MQTT Broker")
         await self.publisher.connect()
+        try:
+            await self.__start_and_supervise()
+        finally:
+            await self.__shutdown()
 
+    async def __start_and_supervise(self) -> None:
         self.__relogin_handler.add_post_login_callback(self.__on_login_success)
         self.__relogin_handler.add_post_login_callback(self.__refresh_account_data)
         self.__relogin_handler.add_login_failure_callback(self.__on_login_failure)
@@ -134,10 +139,20 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
         self.__scheduler.start()
 
         LOG.info("Entering main loop")
+        await self.__run_until_all_tasks_done()
+
+    async def __shutdown(self) -> None:
         try:
-            await self.__run_until_all_tasks_done()
+            await self.__flush_publisher()
         finally:
+            # A second cancellation during the flush must not skip the close
             await self.__close_saic_api()
+
+    async def __flush_publisher(self) -> None:
+        try:
+            await self.publisher.flush()
+        except Exception:
+            LOG.warning("Failed to flush pending MQTT publishes", exc_info=True)
 
     async def __close_saic_api(self) -> None:
         try:
