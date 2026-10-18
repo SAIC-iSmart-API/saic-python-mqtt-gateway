@@ -222,8 +222,12 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
         publisher = MqttPublisher(config)
         with patch("publisher.mqtt_publisher.aiomqtt.Client") as client_cls:
             client_cls.return_value.__aenter__.side_effect = RuntimeError("boom")
-            with pytest.raises(RuntimeError, match="boom"):
+            with (
+                self.assertLogs("background_tasks", level="ERROR") as logs,
+                pytest.raises(RuntimeError, match="boom"),
+            ):
                 await asyncio.wait_for(publisher.connect(), timeout=2)
+        assert "mqtt-loop" in logs.output[0]
 
     async def test_plain_tcp_leaves_tls_insecure_unset(self) -> None:
         """tls_insecure must stay None without TLS, else paho raises ValueError."""

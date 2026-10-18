@@ -10,6 +10,16 @@ if TYPE_CHECKING:
 LOG = logging.getLogger(__name__)
 
 
+def log_task_failure(task: asyncio.Task[Any]) -> None:
+    """Log the exception of a finished ``task``, if any.
+
+    Meant as a done-callback, so that a failure is reported when it happens
+    instead of when the task is garbage collected.
+    """
+    if not task.cancelled() and (exc := task.exception()) is not None:
+        LOG.error("Background task %r failed", task.get_name(), exc_info=exc)
+
+
 class BackgroundTasks:
     """Fire-and-forget tasks that are kept alive and whose failures are logged.
 
@@ -58,9 +68,4 @@ class BackgroundTasks:
 
     def __on_done(self, task: asyncio.Task[Any]) -> None:
         self.__tasks.discard(task)
-        if not task.cancelled() and (exc := task.exception()) is not None:
-            LOG.error(
-                "Background task %r failed",
-                task.get_name(),
-                exc_info=exc,
-            )
+        log_task_failure(task)
