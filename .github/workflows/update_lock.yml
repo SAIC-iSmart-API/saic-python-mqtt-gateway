@@ -30,11 +30,19 @@ jobs:
       - name: Update lock file
         run: poetry update --lock --no-interaction
 
+      # PRs opened with GITHUB_TOKEN do not trigger CI, so validate here before opening one
+      - name: Install dependencies
+        run: poetry install --no-root --no-interaction
+
+      - name: Type check
+        run: poetry run mypy
+
+      - name: Run tests
+        run: poetry run pytest tests
+
       - name: Open pull request
         uses: peter-evans/create-pull-request@v7
         with:
-          # A PAT lets CI run on the PR; PRs opened with GITHUB_TOKEN do not trigger workflows
-          token: ${{ secrets.UPDATE_LOCK_TOKEN || secrets.GITHUB_TOKEN }}
           base: develop
           branch: chore/update-lock
           commit-message: "chore: update lock file"
