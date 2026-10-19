@@ -376,12 +376,25 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
         LOG.debug("Completed publishing Home Assistant discovery messages")
 
     def __publish_drivetrain_charging_sensors(self) -> None:
+        charge_data_availability = HaCustomAvailabilityEntry(
+            topic=self.__get_vehicle_topic(
+                mqtt_topics.DRIVETRAIN_CHARGING_DATA_AVAILABLE
+            )
+        )
+        charge_data_availability_config = HaCustomAvailabilityConfig(
+            rules=[
+                self.__system_availability,
+                self.__vehicle_availability,
+                charge_data_availability,
+            ]
+        )
         self._publish_switch(mqtt_topics.DRIVETRAIN_CHARGING, "Charging")
         self._publish_binary_sensor(
             mqtt_topics.DRIVETRAIN_CHARGING,
             "Battery Charging",
             device_class="battery_charging",
             icon="mdi:battery-charging",
+            custom_availability=charge_data_availability_config,
         )
         self._publish_sensor(
             mqtt_topics.DRIVETRAIN_CHARGING_STOP_REASON,
@@ -444,6 +457,7 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             device_class="duration",
             state_class="measurement",
             unit_of_measurement="s",
+            custom_availability=charge_data_availability_config,
         )
         self._publish_sensor(
             mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME,
@@ -454,6 +468,7 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
                 rules=[
                     self.__system_availability,
                     self.__vehicle_availability,
+                    charge_data_availability,
                     HaCustomAvailabilityEntry(
                         topic=self.__get_vehicle_topic(
                             mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME

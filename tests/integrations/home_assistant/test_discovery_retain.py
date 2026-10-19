@@ -104,7 +104,7 @@ class TestDiscoveryRetainFlag(unittest.TestCase):
             assert payload is not None, (
                 f"No writable HA discovery payload found for topic {topic}"
             )
-            assert payload.get("retain") == "true", (
+            assert payload.get("retain") is True, (
                 f"Expected retain=true for {topic}, got {payload.get('retain')!r}"
             )
 
@@ -117,6 +117,6 @@ class TestDiscoveryRetainFlag(unittest.TestCase):
             payload = _payload_for_state_topic_suffix(payloads, topic)
             if payload is None:
                 continue  # entity not published for this vehicle config
-            assert payload.get("retain") in ("false", None), (
+            assert payload.get("retain") in (False, None), (
                 f"Expected retain!=true for {topic}, got {payload.get('retain')!r}"
             )

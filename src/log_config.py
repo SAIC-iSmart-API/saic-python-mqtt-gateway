@@ -7,7 +7,7 @@ from typing import Any
 
 MODULES_DEFAULT_LOG_LEVEL = {
     "asyncio": "WARNING",
-    "gmqtt": "WARNING",
+    "aiomqtt": "WARNING",
     "httpcore": "WARNING",
     "httpx": "WARNING",
     "saic_ismart_client_ng": "WARNING",

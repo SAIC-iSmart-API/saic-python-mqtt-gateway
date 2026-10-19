@@ -1,5 +1,105 @@
 # Change Log
 
+## 0.13.0
+
+### Added
+
+* Publish `drivetrain/chargingDataAvailable` (`online`/`offline`). The Battery
+  Charging sensor, Remaining charging time and Charging finished entities go
+  unavailable in Home Assistant after 3 consecutive failed charge status
+  requests, for example when the car falls into deep sleep right after a
+  charge, instead of showing a stale value. The Charging switch stays
+  available (#471).
+
+* Document the observed `chargingType` values and the availability topics in
+  the README (#472, #476).
+
+### Changed
+
+* Replace gmqtt with aiomqtt for MQTT connectivity. The new client uses a
+  pure-asyncio architecture — no more `run_coroutine_threadsafe` cross-thread
+  calls. Reconnect now uses exponential backoff (5 s → 10 s → … → 5 min)
+  instead of a fixed interval (#457).
+
+* Mark a vehicle `offline` only after 3 consecutive failed polls, so a single
+  "try again later" reply from the SAIC server no longer makes every entity
+  unavailable in Home Assistant (#475).
+
+* Require `saic-ismart-client-ng` 0.10.0 and close its HTTP client on shutdown
+  (#479).
+
+* Shut down gracefully on SIGTERM, so `docker stop` no longer ends in a
+  SIGKILL after 10 s (#481).
+
+* Upgrade development dependencies (ruff 0.17, mypy 2.4), bump the GitHub
+  Actions and pre-commit hooks, and add Dependabot (#480).
+
+* Build the Docker image on the Poetry 2.5.1 base image, build the Arm images
+  on native Arm runners instead of QEMU, and run the tests on Python 3.15 as a
+  non-blocking check (#495, #496).
+
+### Fixed
+
+* Exit immediately on permanent MQTT connection failures (bad credentials,
+  unknown protocol version, identifier rejected, not authorised) instead of
+  looping forever (#457).
+
+* Restore MQTT subscriptions and trigger HA re-discovery on broker reconnect
+  after a transient disconnect (#457).
+
+* Suppress spurious `WARNING: Could not extract a valid SoC kWh` log on every
+  poll for non-EV vehicles. The warning is preserved for EVs where the BMS
+  returns invalid data (#460).
+
+* Publish command result topics (`Success` / `Failed: …`) with `retain=False`
+  so a stale result from a previous session does not persist on the broker
+  across restarts (#461).
+
+* Emit `retain` as a JSON boolean (`true`/`false`) in Home Assistant MQTT
+  discovery payloads instead of the string `"true"`/`"false"` that the HA
+  schema requires (#459).
+
+* Do not publish the charging cable lock state for models that do not report
+  it, such as the MG ZS EV, instead of always publishing "unlocked". The
+  commanded state is published after a lock or unlock command (#477).
+
+* List what is missing when an ABRP update is skipped, instead of always
+  reporting a missing configuration (#470).
+
+* Log SAIC API timeouts and "try again later" replies as a short warning
+  without a traceback, and log failed commands on transient API errors at
+  ERROR level (#473, #474).
+
+* Fix the scheduled charging job failing with `no running event loop` since
+  the aiomqtt migration, which meant the gateway never switched to `force`
+  refresh at the scheduled charging start time (#484, #485).
+
+* Exit when the MQTT connection task ends, so Docker or Kubernetes can restart
+  the gateway instead of it running without MQTT. Running with MQTT disabled
+  is not affected (#491).
+
+* Do not hang at startup when the MQTT connection task crashes before the first
+  connection (#489), and log such crashes instead of leaving them unreported
+  (#488, #490).
+
+* Keep references to the tasks that publish to MQTT, so they cannot be
+  garbage collected before they finish, and report a clear error when
+  publishing from outside the event loop (#487, #488).
+
+* Wait up to 2 s for pending MQTT publishes on shutdown, including when the
+  shutdown happens during startup, instead of dropping them (#492).
+
+* Prefer the `RELEASE_VERSION` set at build time over the package metadata for
+  the reported gateway version (#493).
+
+* Install only the main dependency group in the Docker image (#469).
+
+* Warn when TLS hostname verification is disabled regardless of whether a
+  custom CA certificate is configured. Self-signed cert users (who typically
+  have no CA file) now see the warning too (#462).
+
+**Full Changelog**: https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/compare/0.12.0...0.13.0
+
 ## 0.12.0
 
 ### Added

@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import datetime
+import inspect
 import json
 from typing import Any
 import unittest
 from zoneinfo import ZoneInfo
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.schedulers.blocking import BlockingScheduler
 import pytest
 from saic_ismart_client_ng.api.vehicle.schema import VinInfo
 from saic_ismart_client_ng.api.vehicle_charging import (
     ChargeCurrentLimitCode,
+    ScheduledChargingMode,
     TargetBatteryCode,
 )
 from saic_ismart_client_ng.api.vehicle_charging.schema import (
@@ -50,6 +53,80 @@ class TestVehicleState(unittest.IsolatedAsyncioTestCase):
         self.vehicle_state = VehicleState(
             self.publisher, scheduler, account_prefix, vehicle_info
         )
+
+    def _charge_data_availability(self) -> str | None:
+        topic = f"/vehicles/{VIN}/{mqtt_topics.DRIVETRAIN_CHARGING_DATA_AVAILABLE}"
+        return self.publisher.map.get(topic)
+
+    def _cable_lock_topic(self) -> str:
+        return f"/vehicles/{VIN}/{mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK}"
+
+    def test_cable_lock_published_when_reported(self) -> None:
+        self.vehicle_state.handle_charge_status(get_mock_charge_management_data_resp())
+        assert self.publisher.map[self._cable_lock_topic()] is True
+
+    def test_cable_lock_not_published_when_not_reported(self) -> None:
+        resp = get_mock_charge_management_data_resp()
+        assert resp.chrgMgmtData is not None
+        resp.chrgMgmtData.ccuEleccLckCtrlDspCmd = None
+        self.vehicle_state.handle_charge_status(resp)
+        assert self._cable_lock_topic() not in self.publisher.map
+
+    def test_update_charging_cable_lock_publishes_commanded_state(self) -> None:
+        self.vehicle_state.update_charging_cable_lock(locked=True)
+        assert self.publisher.map[self._cable_lock_topic()] is True
+        self.vehicle_state.update_charging_cable_lock(locked=False)
+        assert self.publisher.map[self._cable_lock_topic()] is False
+
+    def _vehicle_availability(self) -> str | None:
+        return self.publisher.map.get(f"/vehicles/{VIN}/{mqtt_topics.AVAILABLE}")
+
+    def test_vehicle_offline_only_after_repeated_failures(self) -> None:
+        self.vehicle_state.mark_successful_refresh()
+        assert self._vehicle_availability() == "online"
+
+        self.vehicle_state.mark_failed_refresh()
+        self.vehicle_state.mark_failed_refresh()
+        assert self._vehicle_availability() == "online"
+
+        self.vehicle_state.mark_failed_refresh()
+        assert self._vehicle_availability() == "offline"
+
+    def test_successful_refresh_resets_vehicle_failure_count(self) -> None:
+        self.vehicle_state.mark_successful_refresh()
+        self.vehicle_state.mark_failed_refresh()
+        self.vehicle_state.mark_failed_refresh()
+        self.vehicle_state.mark_successful_refresh()
+        self.vehicle_state.mark_failed_refresh()
+        self.vehicle_state.mark_failed_refresh()
+        assert self._vehicle_availability() == "online"
+
+    def test_force_offline_is_immediate(self) -> None:
+        self.vehicle_state.mark_successful_refresh()
+        self.vehicle_state.mark_failed_refresh(force_offline=True)
+        assert self._vehicle_availability() == "offline"
+
+    def test_charge_data_unavailable_only_after_repeated_failures(self) -> None:
+        self.vehicle_state.mark_charge_data_received()
+        assert self._charge_data_availability() == "online"
+
+        self.vehicle_state.mark_charge_data_failed()
+        self.vehicle_state.mark_charge_data_failed()
+        assert self._charge_data_availability() == "online"
+
+        self.vehicle_state.mark_charge_data_failed()
+        assert self._charge_data_availability() == "offline"
+
+    def test_charge_data_recovers_and_resets_failure_count(self) -> None:
+        for _ in range(3):
+            self.vehicle_state.mark_charge_data_failed()
+        assert self._charge_data_availability() == "offline"
+
+        self.vehicle_state.mark_charge_data_received()
+        assert self._charge_data_availability() == "online"
+
+        self.vehicle_state.mark_charge_data_failed()
+        assert self._charge_data_availability() == "online"
 
     async def test_update_soc_with_no_bms_data(self) -> None:
         vehicle_status_resp = get_mock_vehicle_status_resp()
@@ -556,6 +633,29 @@ class TestVehicleState(unittest.IsolatedAsyncioTestCase):
         self.vehicle_state.should_refresh()
         assert self.publisher.map[phase_topic] == PollingPhase.OFF.value
         assert self.publisher.publish_count[phase_topic] == 3
+
+    async def test_scheduled_charging_job_runs_on_event_loop(self) -> None:
+        """Regression for #484: sync jobs run in a worker thread, not on the loop."""
+        scheduler = AsyncIOScheduler()
+        vin_info = VinInfo()
+        vin_info.vin = VIN
+        state = VehicleState(
+            self.publisher, scheduler, f"/vehicles/{VIN}", VehicleInfo(vin_info, None)
+        )
+        state.update_scheduled_charging(
+            datetime.time(hour=23, minute=10),
+            ScheduledChargingMode.UNTIL_CONFIGURED_TIME,
+        )
+        job = scheduler.get_job(f"{VIN}_scheduled_charging")
+        assert job is not None
+        assert inspect.iscoroutinefunction(job.func)
+
+        await job.func()
+
+        assert state.refresh_mode == RefreshMode.FORCE
+        assert self.publisher.map[self.get_topic(mqtt_topics.REFRESH_MODE)] == (
+            RefreshMode.FORCE.value
+        )
 
     @staticmethod
     def get_topic(sub_topic: str) -> str:

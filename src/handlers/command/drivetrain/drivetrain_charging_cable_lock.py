@@ -23,11 +23,15 @@ class DrivetrainChargingCableLockCommand(BooleanCommandHandler[None]):
     async def handle_true(self) -> None:
         LOG.info(f"Vehicle {self.vin} charging cable will be locked")
         await self.saic_api.control_charging_port_lock(self.vin, unlock=False)
+        # Some models never report the lock state, so publish the commanded one.
+        # Models that do report it overwrite it on the forced refresh.
+        self.vehicle_state.update_charging_cable_lock(locked=True)
 
     @override
     async def handle_false(self) -> None:
         LOG.info(f"Vehicle {self.vin} charging cable will be unlocked")
         await self.saic_api.control_charging_port_lock(self.vin, unlock=True)
+        self.vehicle_state.update_charging_cable_lock(locked=False)
 
     @override
     async def _get_action_result(self, _action_result: None) -> CommandProcessingResult:

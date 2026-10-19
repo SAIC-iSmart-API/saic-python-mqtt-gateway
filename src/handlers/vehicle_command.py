@@ -9,6 +9,7 @@ from saic_ismart_client_ng.exceptions import SaicApiException, SaicLogoutExcepti
 from exceptions import MqttGatewayException
 from handlers.command import ALL_COMMAND_HANDLERS, CommandHandlerBase
 import mqtt_topics
+from utils import is_transient_api_error, log_transient_api_error
 from vehicle import RefreshMode
 
 if TYPE_CHECKING:
@@ -65,12 +66,16 @@ class VehicleCommandHandler:
         detail: str,
         exc: Exception | None = None,
     ) -> None:
-        if exc is not None:
-            LOG.exception("Command %s failed: %s", command, detail, exc_info=exc)
+        if exc is not None and is_transient_api_error(exc):
+            log_transient_api_error(
+                LOG, f"Command {command} failed", exc, level=logging.ERROR
+            )
+        elif exc is not None:
+            LOG.error("Command %s failed: %s", command, detail, exc_info=exc)
         else:
             LOG.error("Command %s failed: %s", command, detail)
         try:
-            self.publisher.publish_str(result_topic, f"Failed: {detail}")
+            self.publisher.publish_str(result_topic, f"Failed: {detail}", retain=False)
         except Exception:
             LOG.warning(
                 "Failed to publish failure result for command %s",
@@ -138,7 +143,7 @@ class VehicleCommandHandler:
 
         try:
             execution_result = await handler.handle(payload, retained=retained)
-            self.publisher.publish_str(result_topic, "Success")
+            self.publisher.publish_str(result_topic, "Success", retain=False)
             if execution_result.force_refresh:
                 self.vehicle_state.set_refresh_mode(
                     RefreshMode.FORCE, f"after command execution on topic {topic}"
@@ -165,7 +170,7 @@ class VehicleCommandHandler:
                 return
             try:
                 execution_result = await handler.handle(payload, retained=retained)
-                self.publisher.publish_str(result_topic, "Success")
+                self.publisher.publish_str(result_topic, "Success", retain=False)
                 if execution_result.force_refresh:
                     self.vehicle_state.set_refresh_mode(
                         RefreshMode.FORCE,

@@ -73,7 +73,7 @@ The following are the known available endpoints:
 |-----------------------|----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | --ha-discovery        | HA_DISCOVERY_ENABLED | Home Assistant auto-discovery is enabled (True) by default. It can be disabled (False) with this parameter.                                                                         |
 | --ha-discovery-prefix | HA_DISCOVERY_PREFIX  | The default MQTT prefix for Home Assistant auto-discovery is 'homeassistant'. Another prefix can be configured with this parameter                                                  |
-| --ha-show-unavailable | HA_SHOW_UNAVAILABLE  | Show entities as Unavailable in Home Assistant when car polling fails. Enabled (True) by default. Can be disabled, to retain the pre 0.6.x behaviour, but do that at your own risk. |
+| --ha-show-unavailable | HA_SHOW_UNAVAILABLE  | Show entities as Unavailable in Home Assistant after 3 consecutive failed polls (a single failed poll is tolerated). Enabled (True) by default. Can be disabled, to retain the pre 0.6.x behaviour, but do that at your own risk. |
 
 ### A Better Route Planner (ABRP) integration
 
@@ -229,6 +229,27 @@ with the default vehicle prefix: `saic/<saic_user>/vehicles/<vehicle_id>`
 | /refresh/period/inActiveGrace/set        | grace period (sec)                                   | After the vehicle has been shutdown, the gateway continues to query the state for 600 seconds (default value). The duration of this extended query period can be modified with this topic.                                            |
 | /location/findMyCar/set                  | [activate,lights_only,horn_only,stop]                | Activate 'find my car' with lights and horn (activate), with lights only (lights_only), with horn only (horn_only) or deactivate it (stop).                                                                                           |
 
+## Charging type values
+
+The `/drivetrain/chargingType` topic publishes the raw `chargingType` value reported by the SAIC API. The API does not
+document it. The meanings below were reported by users in
+[#398](https://github.com/SAIC-iSmart-API/saic-python-mqtt-gateway/issues/398) and checked against about 89k logged
+API responses from one vehicle (Mar 2024 – Oct 2026). They may differ between models.
+
+| Value | Reported meaning                                   | Checked against logged data                                                      |
+|-------|----------------------------------------------------|----------------------------------------------------------------------------------|
+| 0     | Car in deep sleep                                  | Not supported: 31 isolated samples between values 1 and 3, not a sustained state |
+| 1     | Car just parked                                    | Consistent (near-zero battery current)                                           |
+| 3     | HV battery in use (driving, or remote A/C on)      | Consistent (battery current under load)                                          |
+| 6     | AC charging                                        | Confirmed (on-board charger input current present)                               |
+| 7     | DC charging                                        | Confirmed (about 200 A battery current, no AC input)                             |
+| 9     | Charging stopped from the infotainment             | Unclear: both samples follow DC charging while plugged in                        |
+| 10    | Charging ended                                     | Supported: 17 of 24 samples follow AC charging while plugged in                  |
+| 16    | Car unplugged while charging was still in progress | Never observed                                                                   |
+
+Values 2, 4 and 12 were seen only 1 to 3 times each. 4 and 12 appeared around the start or end of charging, which could
+mean a transition state. Their meaning is unknown.
+
 ## Home Assistant auto-discovery
 
 The gateway supports [Home Assistant MQTT discovery](https://www.home-assistant.io/integrations/mqtt#mqtt-discovery). It
@@ -252,3 +273,17 @@ This device provides visibility into the gateway's status even when no vehicles 
 ### Vehicle devices
 
 Each vehicle registered to your account appears as a separate device with sensors for drivetrain, climate, location, and more.
+
+#### Availability
+
+Two topics control when vehicle entities show as unavailable. Both publish `online` or `offline`, and both tolerate
+short glitches: they switch to `offline` only after 3 consecutive failures, and back to `online` on the next success.
+
+| Topic                                    | Goes `offline` when                                  | Entities affected                                                                       |
+|------------------------------------------|------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| `<vin>/available`                        | 3 consecutive polls of the vehicle API fail          | All vehicle entities (unless `HA_SHOW_UNAVAILABLE` is disabled)                         |
+| `<vin>/drivetrain/chargingDataAvailable` | 3 consecutive charge status requests fail            | Battery Charging, Remaining charging time and Charging finished                         |
+
+The charge status request is the one that fails when the car goes into deep sleep right after a charge. The vehicle stays
+`online` in that case, so the two topics are separate. Other entities keep their last known value. The **Charging**
+switch stays available, so you can still start or stop charging from Home Assistant while the car is asleep.

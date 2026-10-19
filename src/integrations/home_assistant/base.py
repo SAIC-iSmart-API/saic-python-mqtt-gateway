@@ -55,7 +55,7 @@ class HomeAssistantDiscoveryBase(metaclass=abc.ABCMeta):
             "command_topic": self._get_command_topic(topic),
             "value_template": value_template,
             "command_template": command_template,
-            "retain": str(retain).lower(),
+            "retain": retain,
             "options": options,
             "enabled_by_default": enabled,
         }
@@ -87,7 +87,7 @@ class HomeAssistantDiscoveryBase(metaclass=abc.ABCMeta):
             "command_topic": self._get_command_topic(topic),
             "value_template": value_template,
             "command_template": command_template,
-            "retain": str(retain).lower(),
+            "retain": retain,
             "enabled_by_default": enabled,
         }
         if min_value is not None:
@@ -153,7 +153,7 @@ class HomeAssistantDiscoveryBase(metaclass=abc.ABCMeta):
             "state_topic": self._get_state_topic(topic),
             "command_topic": self._get_command_topic(topic),
             "value_template": value_template,
-            "retain": str(retain).lower(),
+            "retain": retain,
             "mode": mode,
             "min": min_value,
             "max": max_value,

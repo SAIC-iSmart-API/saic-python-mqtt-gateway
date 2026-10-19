@@ -15,6 +15,10 @@ class ConsolePublisher(Publisher):
         pass
 
     @override
+    async def flush(self) -> None:
+        pass
+
+    @override
     def is_connected(self) -> bool:
         return True
 
@@ -30,36 +34,61 @@ class ConsolePublisher(Publisher):
         no_prefix: bool = False,
         *,
         retain: bool = True,
+        qos: int = 0,
     ) -> None:
         anonymized_json = self.dict_to_anonymized_json(data)
         self.internal_publish(key, anonymized_json, retain=retain)
 
     @override
     def publish_str(
-        self, key: str, value: str, no_prefix: bool = False, *, retain: bool = True
+        self,
+        key: str,
+        value: str,
+        no_prefix: bool = False,
+        *,
+        retain: bool = True,
+        qos: int = 0,
     ) -> None:
         self.internal_publish(key, value, retain=retain)
 
     @override
     def publish_int(
-        self, key: str, value: int, no_prefix: bool = False, *, retain: bool = True
+        self,
+        key: str,
+        value: int,
+        no_prefix: bool = False,
+        *,
+        retain: bool = True,
+        qos: int = 0,
     ) -> None:
         self.internal_publish(key, value, retain=retain)
 
     @override
     def publish_bool(
-        self, key: str, value: bool, no_prefix: bool = False, *, retain: bool = True
+        self,
+        key: str,
+        value: bool,
+        no_prefix: bool = False,
+        *,
+        retain: bool = True,
+        qos: int = 0,
     ) -> None:
         self.internal_publish(key, value, retain=retain)
 
     @override
     def publish_float(
-        self, key: str, value: float, no_prefix: bool = False, *, retain: bool = True
+        self,
+        key: str,
+        value: float,
+        no_prefix: bool = False,
+        *,
+        retain: bool = True,
+        qos: int = 0,
     ) -> None:
         self.internal_publish(key, value, retain=retain)
 
     @override
-    def clear_topic(self, key: str, no_prefix: bool = False) -> None:
+    def clear_topic(self, key: str, no_prefix: bool = False, qos: int = 0) -> None:
         self.internal_publish(key, None)
 
     def internal_publish(

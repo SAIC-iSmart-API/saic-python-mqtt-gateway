@@ -96,7 +96,12 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
     async def run(self) -> None:
         LOG.info("Connecting to MQTT Broker")
         await self.publisher.connect()
+        try:
+            await self.__start_and_supervise()
+        finally:
+            await self.__shutdown()
 
+    async def __start_and_supervise(self) -> None:
         self.__relogin_handler.add_post_login_callback(self.__on_login_success)
         self.__relogin_handler.add_post_login_callback(self.__refresh_account_data)
         self.__relogin_handler.add_login_failure_callback(self.__on_login_failure)
@@ -135,6 +140,25 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
 
         LOG.info("Entering main loop")
         await self.__run_until_all_tasks_done()
+
+    async def __shutdown(self) -> None:
+        try:
+            await self.__flush_publisher()
+        finally:
+            # A second cancellation during the flush must not skip the close
+            await self.__close_saic_api()
+
+    async def __flush_publisher(self) -> None:
+        try:
+            await self.publisher.flush()
+        except Exception:
+            LOG.warning("Failed to flush pending MQTT publishes", exc_info=True)
+
+    async def __close_saic_api(self) -> None:
+        try:
+            await self.saic_api.close()
+        except Exception:
+            LOG.warning("Failed to close the SAIC API client", exc_info=True)
 
     async def __fetch_user_timezone(self) -> ZoneInfo | None:
         try:
@@ -316,7 +340,7 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
         for vin in known_vins - api_vins:
             LOG.warning("Vehicle %s no longer in API vehicle list, stopping", vin)
             vh = self.vehicle_handlers.pop(vin)
-            vh.vehicle_state.mark_failed_refresh()
+            vh.vehicle_state.mark_failed_refresh(force_offline=True)
             task = self.__cancel_vehicle_task(vin)
             if task is not None:
                 with contextlib.suppress(asyncio.CancelledError):
@@ -433,23 +457,46 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
             return self.configuration.charging_stations_by_vin[vin]
         return None
 
+    @staticmethod
+    def __on_transport_task_done(task: asyncio.Task[Any]) -> None:
+        """Exit when the transport is gone: the gateway cannot work without it.
+
+        A cancelled task means we are shutting down, so that is not an error.
+        """
+        if task.cancelled():
+            LOG.debug(f"{task.get_name()!r} task was cancelled")
+        else:
+            # A crash is already logged with its traceback by log_task_failure
+            LOG.error(f"{task.get_name()!r} task terminated unexpectedly, exiting")
+            raise SystemExit(-1)
+
     async def __run_until_all_tasks_done(self) -> None:
         while True:
             # Clean up completed tasks
             self.__vehicle_tasks = [t for t in self.__vehicle_tasks if not t.done()]
-            if not self.__vehicle_tasks:
+            transport_task = self.publisher.connection_task()
+            if transport_task is not None and transport_task.done():
+                self.__on_transport_task_done(transport_task)
+                transport_task = None
+            watched: list[asyncio.Task[Any]] = list(self.__vehicle_tasks)
+            if transport_task is not None:
+                watched.append(transport_task)
+            if not watched:
                 await asyncio.sleep(1.0)
                 continue
 
+            # The timeout lets vehicle tasks started in the meantime get watched too
             done, _pending = await asyncio.wait(
-                self.__vehicle_tasks, return_when=asyncio.FIRST_COMPLETED
+                watched, timeout=1.0, return_when=asyncio.FIRST_COMPLETED
             )
             for task in done:
+                if task is transport_task:
+                    continue  # handled at the top of the next iteration
                 task_name = task.get_name()
                 if task.cancelled():
                     LOG.debug(f"{task_name!r} task was cancelled")
                 elif (exception := task.exception()) is not None:
-                    LOG.exception(
+                    LOG.error(
                         f"{task_name!r} task crashed with an exception",
                         exc_info=exception,
                     )

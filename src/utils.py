@@ -8,12 +8,40 @@ import re
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
+import httpx
 from saic_ismart_client_ng.api.schema import GpsStatus
+from saic_ismart_client_ng.exceptions import SaicApiRetryException
 
 if TYPE_CHECKING:
     from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 
 LOG = logging.getLogger(__name__)
+
+
+def is_transient_api_error(exc: BaseException) -> bool:
+    """Whether ``exc`` is a transient SAIC API failure.
+
+    That is an HTTP timeout, or the server asking the client to retry later.
+    """
+    return isinstance(exc, SaicApiRetryException) or isinstance(
+        exc.__cause__, httpx.TimeoutException
+    )
+
+
+def log_transient_api_error(
+    logger: logging.Logger,
+    context: str,
+    exc: BaseException,
+    level: int = logging.WARNING,
+) -> None:
+    """Log a transient API error as one line; keep the traceback for debug."""
+    logger.log(
+        level,
+        "%s: SAIC API is not answering or is busy: %s",
+        context,
+        exc,
+        exc_info=exc if logger.isEnabledFor(logging.DEBUG) else None,
+    )
 
 
 def parse_timezone(tz_str: str) -> ZoneInfo:
@@ -85,10 +113,14 @@ def get_update_timestamp(vehicle_status: VehicleStatusResp) -> datetime:
 
 
 def get_gateway_version() -> str:
+    # The release version set at build time wins over the package metadata,
+    # whose version in pyproject.toml is not kept in sync with the release tags
+    if release_version := os.environ.get("RELEASE_VERSION"):
+        return release_version
     try:
         return version("saic-python-mqtt-gateway")
     except PackageNotFoundError:
-        return os.environ.get("RELEASE_VERSION", "unknown")
+        return "unknown"
 
 
 def ensure_datetime_aware(dt: datetime) -> datetime:

@@ -18,6 +18,7 @@ from integrations.osmand.api import OsmAndApi
 import mqtt_topics
 from saic_api_listener import MqttGatewayAbrpListener, MqttGatewayOsmAndListener
 from status_publisher.vehicle_info import VehicleInfoPublisher
+from utils import is_transient_api_error, log_transient_api_error
 from vehicle import RefreshMode
 
 if TYPE_CHECKING:
@@ -168,9 +169,15 @@ class VehicleHandler:
                         self.relogin_handler.relogin()
                 except SaicApiException as e:
                     self.vehicle_state.mark_failed_refresh()
-                    LOG.exception(
-                        "handle_vehicle loop failed during SAIC API call", exc_info=e
-                    )
+                    if is_transient_api_error(e):
+                        log_transient_api_error(
+                            LOG, "Vehicle poll failed, will retry", e
+                        )
+                    else:
+                        LOG.exception(
+                            "handle_vehicle loop failed during SAIC API call",
+                            exc_info=e,
+                        )
                 except VehicleStatusDriftException as e:
                     self.vehicle_state.mark_failed_refresh()
                     LOG.error(
@@ -208,7 +215,9 @@ class VehicleHandler:
                     charge_status,
                     charge_status_processing_result,
                 ) = await self.update_charge_status()
+                self.vehicle_state.mark_charge_data_received()
             except Exception as e:
+                self.vehicle_state.mark_charge_data_failed()
                 LOG.exception("Error updating charge status", exc_info=e)
 
             try:

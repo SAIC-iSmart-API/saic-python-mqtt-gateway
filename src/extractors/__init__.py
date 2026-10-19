@@ -43,17 +43,17 @@ def extract_soc_kwh(
     charge_status: ChrgMgmtDataRespProcessingResult | None,
     soc: float | None,
 ) -> float | None:
-    if (
-        charge_status is not None
-        and (raw_soc_kwh := charge_status.soc_kwh) is not None
-        and (soc_kwh := __validate_and_convert_soc_kwh(raw_soc_kwh)) is not None
-    ):
+    if charge_status is None:
+        return None
+
+    if (raw_soc_kwh := charge_status.soc_kwh) is not None and (
+        soc_kwh := __validate_and_convert_soc_kwh(raw_soc_kwh)
+    ) is not None:
         LOG.debug("SoC kWh derived from realtimePower")
         return soc_kwh
 
     if (
         soc is not None
-        and charge_status is not None
         and (
             capacity := __validate_and_convert_soc_kwh(
                 charge_status.real_total_battery_capacity

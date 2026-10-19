@@ -1,14 +1,25 @@
 from __future__ import annotations
 
 import datetime
+from importlib.metadata import PackageNotFoundError
+import logging
 from unittest import TestCase
+from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
+import httpx
 import pytest
 from saic_ismart_client_ng.api.schema import GpsPosition, GpsStatus
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
+from saic_ismart_client_ng.exceptions import SaicApiException, SaicApiRetryException
 
-from utils import get_update_timestamp, parse_timezone
+from utils import (
+    get_gateway_version,
+    get_update_timestamp,
+    is_transient_api_error,
+    log_transient_api_error,
+    parse_timezone,
+)
 
 
 class Test(TestCase):
@@ -136,3 +147,75 @@ class TestParseTimezone(TestCase):
     def test_rejects_unknown_format(self) -> None:
         with pytest.raises(ValueError, match="Unrecognized timezone format"):
             parse_timezone("not-a-timezone")
+
+
+class TestApiTimeoutHelpers:
+    @staticmethod
+    def _wrapped(cause: BaseException | None) -> SaicApiException:
+        exc = SaicApiException("failed", return_code=500)
+        exc.__cause__ = cause
+        return exc
+
+    def test_is_transient_api_error_true_for_httpx_timeout_cause(self) -> None:
+        assert is_transient_api_error(self._wrapped(httpx.ReadTimeout("t")))
+
+    def test_is_transient_api_error_true_for_retry_exception(self) -> None:
+        exc = SaicApiRetryException("try again later", event_id="1", return_code=4)
+        assert is_transient_api_error(exc)
+
+    def test_is_transient_api_error_false_for_other_cause(self) -> None:
+        assert not is_transient_api_error(self._wrapped(httpx.ConnectError("c")))
+        assert not is_transient_api_error(self._wrapped(None))
+
+    def test_log_transient_api_error_traceback_only_in_debug(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        logger = logging.getLogger("test_api_timeout")
+        exc = self._wrapped(httpx.ReadTimeout("t"))
+        with caplog.at_level(logging.INFO, logger=logger.name):
+            log_transient_api_error(logger, "ctx", exc)
+        assert caplog.records[-1].exc_info is None
+        with caplog.at_level(logging.DEBUG, logger=logger.name):
+            log_transient_api_error(logger, "ctx", exc)
+        assert caplog.records[-1].exc_info is not None
+
+    def test_log_transient_api_error_level(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        logger = logging.getLogger("test_api_level")
+        exc = self._wrapped(httpx.ReadTimeout("t"))
+        with caplog.at_level(logging.INFO, logger=logger.name):
+            log_transient_api_error(logger, "ctx", exc)
+            assert caplog.records[-1].levelno == logging.WARNING
+            log_transient_api_error(logger, "ctx", exc, level=logging.ERROR)
+            assert caplog.records[-1].levelno == logging.ERROR
+
+
+class TestGetGatewayVersion:
+    def test_release_version_env_wins_over_package_metadata(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("RELEASE_VERSION", "1.2.3")
+        with patch("utils.version", return_value="0.11.0"):
+            assert get_gateway_version() == "1.2.3"
+
+    def test_falls_back_to_package_metadata(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("RELEASE_VERSION", raising=False)
+        with patch("utils.version", return_value="0.11.0"):
+            assert get_gateway_version() == "0.11.0"
+
+    def test_empty_release_version_is_ignored(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("RELEASE_VERSION", "")
+        with patch("utils.version", return_value="0.11.0"):
+            assert get_gateway_version() == "0.11.0"
+
+    def test_unknown_without_env_or_metadata(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("RELEASE_VERSION", raising=False)
+        with patch("utils.version", side_effect=PackageNotFoundError):
+            assert get_gateway_version() == "unknown"

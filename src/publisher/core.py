@@ -4,15 +4,15 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 import json
 import re
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any
 
 import mqtt_topics
 from utils import datetime_to_str
 
 if TYPE_CHECKING:
-    from configuration import Configuration
+    import asyncio
 
-T = TypeVar("T")
+    from configuration import Configuration
 
 type Publishable = bool | int | float | str | dict[str, Any] | datetime
 """Closed union of value types this gateway knows how to publish to MQTT.
@@ -91,6 +91,18 @@ class Publisher(ABC):
         pass
 
     @abstractmethod
+    async def flush(self) -> None:
+        """Give publishes still in flight a chance to be delivered, e.g. on shutdown."""
+
+    def connection_task(self) -> asyncio.Task[Any] | None:
+        """Return the long-lived task that keeps the transport up, if there is one.
+
+        The gateway watches it and exits when it ends, since it cannot work
+        without its transport. Publishers without a transport return ``None``.
+        """
+        return None
+
+    @abstractmethod
     def is_connected(self) -> bool:
         raise NotImplementedError
 
@@ -102,30 +114,55 @@ class Publisher(ABC):
         no_prefix: bool = False,
         *,
         retain: bool = True,
+        qos: int = 0,
     ) -> None:
         raise NotImplementedError
 
     @abstractmethod
     def publish_str(
-        self, key: str, value: str, no_prefix: bool = False, *, retain: bool = True
+        self,
+        key: str,
+        value: str,
+        no_prefix: bool = False,
+        *,
+        retain: bool = True,
+        qos: int = 0,
     ) -> None:
         raise NotImplementedError
 
     @abstractmethod
     def publish_int(
-        self, key: str, value: int, no_prefix: bool = False, *, retain: bool = True
+        self,
+        key: str,
+        value: int,
+        no_prefix: bool = False,
+        *,
+        retain: bool = True,
+        qos: int = 0,
     ) -> None:
         raise NotImplementedError
 
     @abstractmethod
     def publish_bool(
-        self, key: str, value: bool, no_prefix: bool = False, *, retain: bool = True
+        self,
+        key: str,
+        value: bool,
+        no_prefix: bool = False,
+        *,
+        retain: bool = True,
+        qos: int = 0,
     ) -> None:
         raise NotImplementedError
 
     @abstractmethod
     def publish_float(
-        self, key: str, value: float, no_prefix: bool = False, *, retain: bool = True
+        self,
+        key: str,
+        value: float,
+        no_prefix: bool = False,
+        *,
+        retain: bool = True,
+        qos: int = 0,
     ) -> None:
         raise NotImplementedError
 
@@ -173,7 +210,7 @@ class Publisher(ABC):
             raise TypeError(msg)
 
     @abstractmethod
-    def clear_topic(self, key: str, no_prefix: bool = False) -> None:
+    def clear_topic(self, key: str, no_prefix: bool = False, qos: int = 0) -> None:
         raise NotImplementedError
 
     def get_mqtt_account_prefix(self) -> str:
@@ -200,7 +237,7 @@ class Publisher(ABC):
                         self.__remove_byte_strings(item)
         return data
 
-    def __anonymize(self, data: T) -> T:
+    def __anonymize[T](self, data: T) -> T:
         if isinstance(data, dict):
             for key in data:
                 if isinstance(data[key], str):
@@ -249,7 +286,9 @@ class Publisher(ABC):
         return data
 
     def keepalive(self) -> None:
-        self.publish_str(mqtt_topics.INTERNAL_LWT, "online", False)
+        self.publish_str(
+            mqtt_topics.INTERNAL_LWT, "online", no_prefix=False, retain=True, qos=1
+        )
 
     @staticmethod
     def anonymize_str(value: str) -> str:
