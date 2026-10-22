@@ -16,6 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 3. Tag `develop` as `<version>-rc<N>` (e.g. `0.13.0-rc1`) and push the tag — **RC tags live on `develop`, not `main`**.
 4. After the RC is validated, open a PR from `develop` → `main` and merge it.
 5. Tag the resulting `main` commit as the final release (e.g. `0.13.0`) and push the tag.
+6. Create a GitHub release for every tag, RC or final, with generated notes (`gh release create <tag> --verify-tag --generate-notes`). Add `--prerelease` for RCs and `--latest` for the final release. `/release` does this.
 
 ## Commands
 

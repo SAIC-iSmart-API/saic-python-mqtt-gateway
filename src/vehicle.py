@@ -44,6 +44,10 @@ if TYPE_CHECKING:
 
 DEFAULT_AC_TEMP = 22
 PRESSURE_TO_BAR_FACTOR = 0.04
+# Consecutive failed polls before the vehicle is marked offline
+VEHICLE_FAILURES_BEFORE_OFFLINE = 3
+# Consecutive charge data failures before charging entities are marked unavailable
+CHARGE_DATA_FAILURES_BEFORE_UNAVAILABLE = 3
 
 LOG = logging.getLogger(__name__)
 
@@ -113,6 +117,9 @@ class VehicleState:
         )
         self.__last_failed_refresh: datetime.datetime | None = None
         self.__failed_refresh_counter = 0
+        self.__consecutive_failed_refreshes = 0
+        self.__failed_charge_data_counter = 0
+        self.__charge_data_available: bool | None = None
         self.__refresh_period_error = 30
         self.last_car_shutdown: datetime.datetime = datetime.datetime.now(
             tz=datetime.UTC
@@ -272,10 +279,8 @@ class VehicleState:
                 )
             else:
                 self.__scheduler.add_job(
-                    func=self.set_refresh_mode,
-                    args=[RefreshMode.FORCE, "check for scheduled charging start"],
+                    func=self.__force_refresh_for_scheduled_charging,
                     trigger=trigger,
-                    kwargs={},
                     name=scheduled_charging_job_id,
                     id=scheduled_charging_job_id,
                     replace_existing=True,
@@ -319,6 +324,11 @@ class VehicleState:
         self.hv_battery_active = self.is_charging
         self.publisher.publish_bool(
             self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING), self.is_charging
+        )
+
+    def update_charging_cable_lock(self, *, locked: bool) -> None:
+        self.publisher.publish_bool(
+            self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK), locked
         )
 
     def handle_vehicle_status(
@@ -472,11 +482,36 @@ class VehicleState:
     def mark_successful_refresh(self) -> None:
         self.last_successful_refresh = datetime.datetime.now(tz=datetime.UTC)
         self.last_failed_refresh = None
+        self.__consecutive_failed_refreshes = 0
         self.publisher.publish_str(self.get_topic(mqtt_topics.AVAILABLE), "online")
 
-    def mark_failed_refresh(self) -> None:
+    def mark_charge_data_received(self) -> None:
+        self.__failed_charge_data_counter = 0
+        self.__publish_charge_data_available(available=True)
+
+    def mark_charge_data_failed(self) -> None:
+        self.__failed_charge_data_counter += 1
+        if self.__failed_charge_data_counter >= CHARGE_DATA_FAILURES_BEFORE_UNAVAILABLE:
+            self.__publish_charge_data_available(available=False)
+
+    def __publish_charge_data_available(self, *, available: bool) -> None:
+        if self.__charge_data_available == available:
+            return
+        self.__charge_data_available = available
+        self.publisher.publish_str(
+            self.get_topic(mqtt_topics.DRIVETRAIN_CHARGING_DATA_AVAILABLE),
+            "online" if available else "offline",
+        )
+
+    def mark_failed_refresh(self, *, force_offline: bool = False) -> None:
         self.last_failed_refresh = datetime.datetime.now(tz=datetime.UTC)
-        self.publisher.publish_str(self.get_topic(mqtt_topics.AVAILABLE), "offline")
+        self.__consecutive_failed_refreshes += 1
+        # Tolerate a few intermittent failures before flipping entities to unavailable
+        if (
+            force_offline
+            or self.__consecutive_failed_refreshes >= VEHICLE_FAILURES_BEFORE_OFFLINE
+        ):
+            self.publisher.publish_str(self.get_topic(mqtt_topics.AVAILABLE), "offline")
 
     @property
     def refresh_period_error(self) -> int:
@@ -725,6 +760,11 @@ class VehicleState:
         self.publisher.publish_str(
             self.get_topic(mqtt_topics.REFRESH_POLLING_PHASE), phase.value
         )
+
+    async def __force_refresh_for_scheduled_charging(self) -> None:
+        # Must be a coroutine: AsyncIOScheduler runs sync jobs in a worker thread,
+        # where we can't touch the MQTT publisher or the polling state safely.
+        self.set_refresh_mode(RefreshMode.FORCE, "check for scheduled charging start")
 
     def set_refresh_mode(self, mode: RefreshMode, cause: str) -> None:
         if mode is not None and (

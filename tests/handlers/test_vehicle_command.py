@@ -282,7 +282,9 @@ class TestRetainedReplay(unittest.IsolatedAsyncioTestCase):
         )
 
         vehicle_state.set_refresh_mode.assert_not_called()
-        pub.publish_str.assert_any_call(REFRESH_MODE_RESULT_TOPIC, "Success", retain=False)
+        pub.publish_str.assert_any_call(
+            REFRESH_MODE_RESULT_TOPIC, "Success", retain=False
+        )
 
     async def test_retained_charging_detection_refresh_mode_dropped(self) -> None:
         handler, pub = _build()
@@ -295,7 +297,9 @@ class TestRetainedReplay(unittest.IsolatedAsyncioTestCase):
         )
 
         vehicle_state.set_refresh_mode.assert_not_called()
-        pub.publish_str.assert_any_call(REFRESH_MODE_RESULT_TOPIC, "Success", retain=False)
+        pub.publish_str.assert_any_call(
+            REFRESH_MODE_RESULT_TOPIC, "Success", retain=False
+        )
 
     async def test_retained_periodic_refresh_mode_applied(self) -> None:
         handler, _pub = _build()

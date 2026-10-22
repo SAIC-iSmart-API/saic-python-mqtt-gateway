@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, override
 import aiomqtt
 from aiomqtt.exceptions import MqttConnectError
 
+from background_tasks import BackgroundTasks, log_task_failure
 import mqtt_topics
 from publisher.core import Publisher
 
@@ -22,6 +23,7 @@ LOG = logging.getLogger(__name__)
 # Reconnect backoff: starts at 5 s, doubles on each failure, caps at 5 min
 _RECONNECT_INTERVAL_MIN = 5
 _RECONNECT_INTERVAL_MAX = 300
+_FLUSH_TIMEOUT = 2.0
 
 # MQTT 3.1.1 spec section 3.2.2.3 — permanent connection refusal codes
 _CONNACK_REFUSED_PROTOCOL_VERSION = 1
@@ -51,8 +53,9 @@ class MqttPublisher(Publisher):
         self.vin_by_charger_connected_topic: dict[str, str] = {}
         self.vin_by_imported_energy_topic: dict[str, str] = {}
         self.first_connection = True
-        self.client: None | aiomqtt.Client = None
+        self.client: aiomqtt.Client | None = None
         self.__running: asyncio.Task[None] | None = None
+        self.__background_tasks = BackgroundTasks()
         self.__connected = asyncio.Event()
         self.__fatal_connect_error: SystemExit | None = None
 
@@ -164,10 +167,42 @@ class MqttPublisher(Publisher):
         if not self.host:
             LOG.info("MQTT host is not configured")
             return
-        self.__running = asyncio.create_task(self.__run_loop())
-        await self.__connected.wait()
+        self.__running = asyncio.create_task(self.__run_loop(), name="mqtt-loop")
+        self.__running.add_done_callback(log_task_failure)
+        connected = asyncio.create_task(self.__connected.wait())
+        try:
+            # Also stop waiting if the loop dies, else connect() would hang forever
+            await asyncio.wait(
+                {self.__running, connected}, return_when=asyncio.FIRST_COMPLETED
+            )
+        finally:
+            connected.cancel()
         if self.__fatal_connect_error is not None:
             raise self.__fatal_connect_error
+        if not self.__connected.is_set():
+            if (exc := self.__running.exception()) is not None:
+                raise exc
+            msg = "MQTT loop ended before connecting to the broker"
+            raise RuntimeError(msg)
+
+    @override
+    async def flush(self) -> None:
+        pending = len(self.__background_tasks)
+        if pending == 0:
+            return
+        LOG.info("Waiting for %d pending MQTT publishes", pending)
+        try:
+            await asyncio.wait_for(self.__background_tasks.wait(), _FLUSH_TIMEOUT)
+        except TimeoutError:
+            LOG.warning(
+                "Gave up waiting for %d MQTT publishes after %.1fs",
+                len(self.__background_tasks),
+                _FLUSH_TIMEOUT,
+            )
+
+    @override
+    def connection_task(self) -> asyncio.Task[None] | None:
+        return self.__running
 
     async def __on_connect(self) -> None:
         LOG.info("Connected to MQTT broker")
@@ -180,12 +215,7 @@ class MqttPublisher(Publisher):
 
     @override
     def enable_commands(self) -> None:
-        task = asyncio.get_running_loop().create_task(self.__enable_commands())
-        task.add_done_callback(self.__on_enable_commands_done)
-
-    def __on_enable_commands_done(self, task: asyncio.Task[None]) -> None:
-        if not task.cancelled() and (exc := task.exception()):
-            LOG.error("Failed to enable MQTT command subscriptions: %s", exc)
+        self.__background_tasks.spawn(self.__enable_commands(), name="enable_commands")
 
     async def __enable_commands(self) -> None:
         if not self.__connected.is_set() or not self.client:
@@ -330,8 +360,9 @@ class MqttPublisher(Publisher):
         qos: int = 0,
     ) -> None:
         LOG.debug("Publishing to MQTT topic %s with payload %s", topic, payload)
-        asyncio.get_running_loop().create_task(
-            self.__async_publish(topic, payload, retain=retain, qos=qos)
+        self.__background_tasks.spawn(
+            self.__async_publish(topic, payload, retain=retain, qos=qos),
+            name=f"publish {topic}",
         )
 
     async def __async_publish(

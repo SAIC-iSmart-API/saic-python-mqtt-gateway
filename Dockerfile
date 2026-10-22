@@ -1,4 +1,4 @@
-ARG POETRY_VERSION=2.3.2
+ARG POETRY_VERSION=2.5.1
 ARG PYTHON_VERSION=3.14
 
 FROM nanomad/poetry:${POETRY_VERSION}-python-${PYTHON_VERSION} AS builder
@@ -12,7 +12,7 @@ COPY pyproject.toml poetry.lock /usr/src/app/
 
 # Install the dependencies and clear the cache afterwards.
 #   This may save some MBs.
-RUN poetry install --no-root && rm -rf $POETRY_CACHE_DIR
+RUN poetry install --no-root --only main && rm -rf $POETRY_CACHE_DIR
 
 # Now let's build the runtime image from the builder.
 #   We'll just copy the env and the PATH reference.

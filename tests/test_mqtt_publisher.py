@@ -7,6 +7,8 @@ from typing import Any, override
 import unittest
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from configuration import Configuration, TransportProtocol
 from publisher.core import MqttCommandListener
 from publisher.mqtt_publisher import MqttPublisher
@@ -115,6 +117,28 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
         m = await self._call_and_flush(self.mqtt_client.publish_str, "foo", "bar")
         m.assert_called_once_with("saic/foo", "bar", retain=True, qos=0)
 
+    async def test_publish_runs_as_background_task(self) -> None:
+        pending = self.mqtt_client._MqttPublisher__background_tasks  # type: ignore[attr-defined]
+        with patch.object(
+            self.mqtt_client, "_MqttPublisher__async_publish", AsyncMock()
+        ) as publish:
+            self.mqtt_client.publish_str("foo", "bar")
+            assert len(pending) == 1
+            await pending.wait()
+        publish.assert_awaited_once()
+        assert len(pending) == 0
+
+    async def test_enable_commands_runs_as_background_task(self) -> None:
+        pending = self.mqtt_client._MqttPublisher__background_tasks  # type: ignore[attr-defined]
+        self.mqtt_client.enable_commands()
+        assert len(pending) == 1
+        await pending.wait()
+        assert len(pending) == 0
+
+    async def test_publish_str_outside_event_loop_raises_clear_error(self) -> None:
+        with pytest.raises(RuntimeError, match="outside the event loop thread"):
+            await asyncio.to_thread(self.mqtt_client.publish_str, "foo", "bar")
+
     async def test_publish_str_forwards_retain_false(self) -> None:
         m = await self._call_and_flush(
             self.mqtt_client.publish_str, "foo", "bar", retain=False
@@ -189,6 +213,87 @@ class TestMqttPublisher(unittest.IsolatedAsyncioTestCase, MqttCommandListener):
                 await connect_task
             assert client_cls.call_args is not None
             return dict(client_cls.call_args.kwargs)
+
+    async def test_connect_raises_when_loop_crashes_before_connecting(self) -> None:
+        """An unexpected error in the MQTT loop must not hang connect() forever."""
+        config = Configuration()
+        config.mqtt_host = "localhost"
+        config.mqtt_transport_protocol = TransportProtocol.TCP
+        publisher = MqttPublisher(config)
+        with patch("publisher.mqtt_publisher.aiomqtt.Client") as client_cls:
+            client_cls.return_value.__aenter__.side_effect = RuntimeError("boom")
+            with (
+                self.assertLogs("background_tasks", level="ERROR") as logs,
+                pytest.raises(RuntimeError, match="boom"),
+            ):
+                await asyncio.wait_for(publisher.connect(), timeout=2)
+        assert "mqtt-loop" in logs.output[0]
+
+    async def test_connection_task_is_the_mqtt_loop_task(self) -> None:
+        config = Configuration()
+        config.mqtt_host = "localhost"
+        config.mqtt_transport_protocol = TransportProtocol.TCP
+        publisher = MqttPublisher(config)
+        assert publisher.connection_task() is None
+        with patch("publisher.mqtt_publisher.aiomqtt.Client") as client_cls:
+            client_cls.return_value.__aenter__.side_effect = asyncio.CancelledError
+            connect_task = asyncio.get_running_loop().create_task(publisher.connect())
+            await asyncio.sleep(0)
+            task = publisher.connection_task()
+            connect_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await connect_task
+        assert task is not None
+        assert task.get_name() == "mqtt-loop"
+
+    def _connected_publisher_with_client(self, client: Any) -> MqttPublisher:
+        publisher = MqttPublisher(Configuration())
+        publisher.client = client
+        publisher._MqttPublisher__connected.set()  # type: ignore[attr-defined]
+        return publisher
+
+    async def test_flush_waits_for_in_flight_publishes(self) -> None:
+        sent: list[str] = []
+
+        class SlowClient:
+            async def publish(self, topic: str, *_: Any, **__: Any) -> None:
+                await asyncio.sleep(0.05)
+                sent.append(topic)
+
+        publisher = self._connected_publisher_with_client(SlowClient())
+        publisher.publish_str("last/words", "bye")
+        assert sent == []
+
+        await publisher.flush()
+
+        assert sent == ["saic/last/words"]
+
+    async def test_flush_gives_up_after_timeout(self) -> None:
+        release = asyncio.Event()
+        sent: list[str] = []
+
+        class StuckClient:
+            async def publish(self, topic: str, *_: Any, **__: Any) -> None:
+                await release.wait()
+                sent.append(topic)
+
+        publisher = self._connected_publisher_with_client(StuckClient())
+        publisher.publish_str("stuck", "x")
+
+        with (
+            patch("publisher.mqtt_publisher._FLUSH_TIMEOUT", 0.05),
+            self.assertLogs("publisher.mqtt_publisher", level="WARNING"),
+        ):
+            await publisher.flush()
+        assert sent == []
+
+        # The publish was not cancelled: it still completes once unblocked
+        release.set()
+        await publisher.flush()
+        assert sent == ["saic/stuck"]
+
+    async def test_flush_without_pending_publishes_returns_immediately(self) -> None:
+        await self.mqtt_client.flush()
 
     async def test_plain_tcp_leaves_tls_insecure_unset(self) -> None:
         """tls_insecure must stay None without TLS, else paho raises ValueError."""
