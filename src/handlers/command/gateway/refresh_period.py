@@ -76,3 +76,20 @@ class RefreshPeriodAfterShutdownCommand(IntCommandHandler):
     async def handle_typed_payload(self, payload: int) -> CommandProcessingResult:
         self.vehicle_state.set_refresh_period_after_shutdown(payload)
         return RESULT_DO_NOTHING
+
+
+class RefreshPeriodCachedStatusCommand(IntCommandHandler):
+    @classmethod
+    @override
+    def is_replayable_when_retained(cls) -> bool:
+        return True
+
+    @classmethod
+    @override
+    def topic(cls) -> str:
+        return mqtt_topics.REFRESH_PERIOD_CACHED_STATUS_SET
+
+    @override
+    async def handle_typed_payload(self, payload: int) -> CommandProcessingResult:
+        self.vehicle_state.set_refresh_period_cached_status(max(payload, 0))
+        return RESULT_DO_NOTHING

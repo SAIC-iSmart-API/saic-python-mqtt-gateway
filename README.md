@@ -43,6 +43,8 @@ When using combinations of configuration methods, the order of precedence is as 
 | --account-refresh-interval  | ACCOUNT_REFRESH_INTERVAL     | Interval in seconds for refreshing account-level data (vehicle list, timezone). Default is 86400 (24 hours).                                                                        |
 | --saic-user-timezone        | SAIC_USER_TIMEZONE           | Force the account timezone instead of trusting the SAIC API value. Accepts an IANA name (e.g. `Australia/Sydney`) or `GMT+HH:MM`. Mismatches with the API offset are logged.        |
 | --publish-raw-api-data      | PUBLISH_RAW_API_DATA_ENABLED | Publish raw SAIC API request/response to MQTT. Disabled (False) by default.                                                                                                         |
+| --cached-status-interval    | CACHED_STATUS_INTERVAL       | Default interval (sec) for reading the status SAIC has cached. Does not wake the car. 0 (default) disables it. Can be changed via MQTT.                                             |
+| --debug-cached-status-ignore-vehicle-state| DEBUG_CACHED_STATUS_IGNORE_VEHICLE_STATE| Debug: read the cached status in every polling phase, also while driving or charging, and with refresh mode off. Disabled by default.                                               |
 
 #### API Endpoints
 
@@ -227,6 +229,7 @@ with the default vehicle prefix: `saic/<saic_user>/vehicles/<vehicle_id>`
 | /refresh/period/inActive/set             | refresh interval (sec)                               | Vehicle and charge status are queried once per day (default value: 86400) independently from any event. Changing this to a lower value might affect the 12V battery of your vehicle. Be very careful!                                 |
 | /refresh/period/afterShutdown/set        | refresh interval (sec)                               | After the vehicle has been shutdown, the gateway queries the status every 120 seconds (default value). The refresh interval can be modified with this topic.                                                                          |
 | /refresh/period/inActiveGrace/set        | grace period (sec)                                   | After the vehicle has been shutdown, the gateway continues to query the state for 600 seconds (default value). The duration of this extended query period can be modified with this topic.                                            |
+| /refresh/period/cachedStatus/set         | refresh interval (sec), 0 to disable                 | How often the gateway reads the vehicle status SAIC has cached. This does not wake the car, but the cache is only updated by the car on plug-in, charge start, switch-off and about every 4 hours while parked, so there is little point in going much below 15 minutes. Only done while the car is inactive. The default comes from `CACHED_STATUS_INTERVAL` (0 = disabled).                                            |
 | /location/findMyCar/set                  | [activate,lights_only,horn_only,stop]                | Activate 'find my car' with lights and horn (activate), with lights only (lights_only), with horn only (horn_only) or deactivate it (stop).                                                                                           |
 
 ## Charging type values

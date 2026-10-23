@@ -13,6 +13,7 @@ from configuration.argparse_extensions import (
     EnvDefault,
     cfg_value_to_dict,
     check_bool,
+    check_non_negative,
     check_positive,
     check_positive_float,
     check_timezone,
@@ -140,6 +141,12 @@ def __setup_home_assistant(args: Namespace, config: Configuration) -> None:
         config.ha_discovery_enabled = args.ha_discovery_enabled
     if args.publish_raw_api_data is not None:
         config.publish_raw_api_data = args.publish_raw_api_data
+    if args.cached_status_interval is not None:
+        config.cached_status_interval = args.cached_status_interval
+    if args.debug_cached_status_ignore_vehicle_state is not None:
+        config.debug_cached_status_ignore_vehicle_state = (
+            args.debug_cached_status_ignore_vehicle_state
+        )
     if args.ha_show_unavailable is not None:
         config.ha_show_unavailable = args.ha_show_unavailable
     if args.ha_discovery_prefix:
@@ -416,6 +423,29 @@ def __add_saic_api_argument_group(
         required=False,
         action=EnvDefault,
         envvar="PUBLISH_RAW_API_DATA_ENABLED",
+        default=False,
+        type=check_bool,
+    )
+    saic_api.add_argument(
+        "--cached-status-interval",
+        help="""Default interval (seconds) for reading the vehicle status SAIC has cached.
+                This does not wake the car. 0 disables it (default).
+                Can be changed at runtime via MQTT.""",
+        dest="cached_status_interval",
+        required=False,
+        action=EnvDefault,
+        envvar="CACHED_STATUS_INTERVAL",
+        default=0,
+        type=check_non_negative,
+    )
+    saic_api.add_argument(
+        "--debug-cached-status-ignore-vehicle-state",
+        help="""Debug: read the cached vehicle status in every polling phase,
+                including while driving or charging, instead of only when the car is inactive.""",
+        dest="debug_cached_status_ignore_vehicle_state",
+        required=False,
+        action=EnvDefault,
+        envvar="DEBUG_CACHED_STATUS_IGNORE_VEHICLE_STATE",
         default=False,
         type=check_bool,
     )

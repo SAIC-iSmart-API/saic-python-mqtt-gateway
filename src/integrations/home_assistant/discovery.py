@@ -737,6 +737,18 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             retain=True,
             custom_availability=self.__system_availability_config,
         )
+        self._publish_number(
+            mqtt_topics.REFRESH_PERIOD_CACHED_STATUS,
+            "Gateway cached status refresh period",
+            entity_category="config",
+            unit_of_measurement="s",
+            icon="mdi:timer",
+            min_value=0,
+            max_value=24 * 60 * 60,
+            step=1,
+            retain=True,
+            custom_availability=self.__system_availability_config,
+        )
         self._publish_sensor(
             mqtt_topics.REFRESH_PERIOD_CHARGING,
             "Gateway charging refresh period",

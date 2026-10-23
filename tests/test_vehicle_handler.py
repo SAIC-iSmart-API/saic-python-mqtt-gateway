@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import datetime
+import time
 from typing import Any
 import unittest
 from unittest.mock import patch
@@ -7,6 +9,10 @@ from unittest.mock import patch
 from apscheduler.schedulers.blocking import BlockingScheduler
 import pytest
 from saic_ismart_client_ng import SaicApi
+from saic_ismart_client_ng.api.vehicle import (
+    BasicVehicleStatus,
+    VehicleStatusCacheResp,
+)
 from saic_ismart_client_ng.api.vehicle.schema import (
     VehicleModelConfiguration,
     VinInfo,
@@ -454,3 +460,39 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
     @staticmethod
     def get_topic(sub_topic: str) -> str:
         return f"/vehicles/{VIN}/{sub_topic}"
+
+    async def test_cached_status_polling_publishes_without_live_poll(self) -> None:
+        cached = VehicleStatusCacheResp(
+            statusTime=int(time.time()),
+            basicVehicleStatus=BasicVehicleStatus(
+                mileage=1234500, extendedData1=70, fuelRangeElec=2800
+            ),
+        )
+        with (
+            patch.object(
+                self.saicapi, "get_vehicle_status_cached", return_value=cached
+            ) as mock_cached,
+            patch.object(self.saicapi, "get_vehicle_status") as mock_live,
+        ):
+            await self.vehicle_handler.poll_cached_status()
+        mock_cached.assert_called_once_with(VIN)
+        mock_live.assert_not_called()
+        assert (
+            self.publisher.map[f"/vehicles/{VIN}/{mqtt_topics.DRIVETRAIN_SOC}"] == 70.0
+        )
+        assert (
+            self.vehicle_state.last_cached_status_poll
+            > datetime.datetime.min.replace(tzinfo=datetime.UTC)
+        )
+
+    async def test_cached_status_polling_survives_api_errors(self) -> None:
+        with patch.object(
+            self.saicapi,
+            "get_vehicle_status_cached",
+            side_effect=RuntimeError("boom"),
+        ):
+            await self.vehicle_handler.poll_cached_status()
+        assert (
+            self.vehicle_state.last_cached_status_poll
+            > datetime.datetime.min.replace(tzinfo=datetime.UTC)
+        )
