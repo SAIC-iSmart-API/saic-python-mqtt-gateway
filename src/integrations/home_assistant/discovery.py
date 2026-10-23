@@ -787,6 +787,13 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             custom_availability=self.__system_availability_config,
         )
         self._publish_sensor(
+            mqtt_topics.REFRESH_LAST_STATUS_TIME,
+            "Last vehicle status time",
+            device_class="timestamp",
+            entity_category="diagnostic",
+            custom_availability=self.__system_availability_config,
+        )
+        self._publish_sensor(
             mqtt_topics.REFRESH_LAST_CACHED_STATE,
             "Last cached vehicle state",
             device_class="timestamp",

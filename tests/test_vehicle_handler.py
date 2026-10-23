@@ -271,6 +271,7 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
             "/vehicles/vin10000000000000/climate/heatedSeatsFrontRightLevel",
             "/vehicles/vin10000000000000/drivetrain/mileage",
             "/vehicles/vin10000000000000/refresh/lastVehicleState",
+            "/vehicles/vin10000000000000/refresh/lastStatusTime",
         }
         assert expected_topics == set(self.publisher.map.keys())
 

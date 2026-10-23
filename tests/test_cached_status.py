@@ -24,7 +24,7 @@ from status_publisher.vehicle.cached_status import (
 from vehicle import RefreshMode, VehicleState
 from vehicle_info import VehicleInfo
 
-from .common_mocks import VIN
+from .common_mocks import VIN, get_mock_vehicle_status_resp
 from .mocks import MessageCapturingConsolePublisher
 
 NOW = int(time.time())
@@ -299,6 +299,67 @@ class TestVehicleStateCachedStatus(unittest.TestCase):
         self.vehicle_state.handle_cached_status(make_cached(soc=0))
         assert (
             self.topic(mqtt_topics.REFRESH_LAST_CACHED_STATE) not in self.publisher.map
+        )
+
+
+class TestLastStatusTime(unittest.TestCase):
+    def setUp(self) -> None:
+        config = Configuration()
+        config.anonymized_publishing = False
+        self.publisher = MessageCapturingConsolePublisher(config)
+        vin_info = VinInfo()
+        vin_info.vin = VIN
+        self.vehicle_state = VehicleState(
+            self.publisher,
+            BlockingScheduler(),
+            f"/vehicles/{VIN}",
+            VehicleInfo(vin_info, None),
+        )
+        self.topic = f"/vehicles/{VIN}/{mqtt_topics.REFRESH_LAST_STATUS_TIME}"
+
+    def published_time(self) -> datetime.datetime:
+        value = self.publisher.map[self.topic]
+        return (
+            value
+            if isinstance(value, datetime.datetime)
+            else datetime.datetime.fromisoformat(value)
+        )
+
+    def test_live_poll_publishes_status_time(self) -> None:
+        live = get_mock_vehicle_status_resp()
+        self.vehicle_state.handle_vehicle_status(live)
+        assert self.published_time() == datetime.datetime.fromtimestamp(
+            live.statusTime or 0, tz=datetime.UTC
+        )
+
+    def test_accepted_cached_status_publishes_status_time(self) -> None:
+        self.vehicle_state.handle_cached_status(make_cached(status_time=NOW - 3600))
+        assert self.published_time() == datetime.datetime.fromtimestamp(
+            NOW - 3600, tz=datetime.UTC
+        )
+
+    def test_rejected_cached_status_publishes_nothing(self) -> None:
+        self.vehicle_state.handle_cached_status(make_cached(soc=0))
+        assert self.topic not in self.publisher.map
+
+    def test_never_moves_backwards(self) -> None:
+        self.vehicle_state.handle_cached_status(make_cached(status_time=NOW))
+        live = get_mock_vehicle_status_resp()
+        live.statusTime = NOW - 600
+        self.vehicle_state.handle_vehicle_status(live)
+        assert self.publisher.publish_count[self.topic] == 1
+        assert self.published_time() == datetime.datetime.fromtimestamp(
+            NOW, tz=datetime.UTC
+        )
+
+    def test_newer_status_time_is_published(self) -> None:
+        self.vehicle_state.handle_cached_status(make_cached(status_time=NOW - 600))
+        live = get_mock_vehicle_status_resp()
+        live.statusTime = NOW
+        self.vehicle_state.handle_vehicle_status(live)
+        assert self.publisher.publish_count[self.topic] == 2
+        assert self.published_time() == datetime.datetime.fromtimestamp(
+            NOW, tz=datetime.UTC
         )
 
 

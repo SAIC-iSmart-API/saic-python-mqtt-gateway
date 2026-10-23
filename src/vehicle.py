@@ -155,6 +155,7 @@ class VehicleState:
             tzinfo=datetime.UTC
         )
         self.last_live_status_time: int | None = None
+        self.__last_published_status_time: int | None = None
         self.last_cached_status_time: int | None = None
         self.last_known_mileage: int | None = None
         self.target_soc: TargetBatteryCode | None = None
@@ -385,7 +386,20 @@ class VehicleState:
                 processing_result.raw_mileage, self.last_known_mileage or 0
             )
         self.last_live_status_time = vehicle_status.statusTime
+        if vehicle_status.statusTime is not None:
+            self.__publish_status_time(vehicle_status.statusTime)
         return processing_result
+
+    def __publish_status_time(self, status_time: int) -> None:
+        """Publish when SAIC last heard from the car, never moving backwards."""
+        last = self.__last_published_status_time
+        if last is not None and status_time <= last:
+            return
+        self.__last_published_status_time = status_time
+        self.__publish(
+            topic=mqtt_topics.REFRESH_LAST_STATUS_TIME,
+            value=datetime.datetime.fromtimestamp(status_time, tz=datetime.UTC),
+        )
 
     def should_refresh_cached_status(self, *, ignore_vehicle_state: bool) -> bool:
         """Whether it is time to read the status SAIC has cached.
@@ -441,6 +455,7 @@ class VehicleState:
 
         processed = self.__cached_status_publisher.publish(cached)
         self.last_cached_status_time = processed.status_time
+        self.__publish_status_time(processed.status_time)
         if processed.result.raw_mileage is not None:
             self.last_known_mileage = max(
                 processed.result.raw_mileage, self.last_known_mileage or 0
