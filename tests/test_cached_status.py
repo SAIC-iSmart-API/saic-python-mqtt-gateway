@@ -288,6 +288,19 @@ class TestVehicleStateCachedStatus(unittest.TestCase):
             self.topic(mqtt_topics.REFRESH_LAST_VEHICLE_STATE) not in self.publisher.map
         )
 
+    def test_accepted_status_updates_last_cached_state_only(self) -> None:
+        self.vehicle_state.handle_cached_status(make_cached())
+        assert self.topic(mqtt_topics.REFRESH_LAST_CACHED_STATE) in self.publisher.map
+        assert (
+            self.topic(mqtt_topics.REFRESH_LAST_VEHICLE_STATE) not in self.publisher.map
+        )
+
+    def test_rejected_status_does_not_update_last_cached_state(self) -> None:
+        self.vehicle_state.handle_cached_status(make_cached(soc=0))
+        assert (
+            self.topic(mqtt_topics.REFRESH_LAST_CACHED_STATE) not in self.publisher.map
+        )
+
 
 class TestRefreshPeriodCachedStatusCommand(unittest.IsolatedAsyncioTestCase):
     def test_topic(self) -> None:

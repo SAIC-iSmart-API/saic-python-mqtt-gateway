@@ -9,6 +9,7 @@ from saic_ismart_client_ng.api.vehicle import (
     VehicleStatusCacheResp,
 )
 
+import mqtt_topics
 from status_publisher import VehicleDataPublisher
 from status_publisher.vehicle.basic_vehicle_status import BasicVehicleStatusPublisher
 from status_publisher.vehicle.gps_position import GpsPositionPublisher
@@ -126,6 +127,12 @@ class VehicleStatusCachePublisher(
         basic_result = self.__basic_vehicle_status_publisher.publish(basic)
         if data.gpsPosition:
             self.__gps_position_publisher.publish(data.gpsPosition)
+
+        # Not REFRESH_LAST_VEHICLE_STATE: that one tells when the car was last polled live
+        self._publish(
+            topic=mqtt_topics.REFRESH_LAST_CACHED_STATE,
+            value=datetime.datetime.now(tz=datetime.UTC),
+        )
 
         return CachedStatusProcessingResult(
             status_time=status_time,
