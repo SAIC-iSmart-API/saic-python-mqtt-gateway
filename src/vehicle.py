@@ -23,6 +23,11 @@ from status_publisher.charge.chrg_mgmt_data_resp import (
     ChrgMgmtDataRespPublisher,
 )
 from status_publisher.message import MessagePublisher
+from status_publisher.vehicle.cached_status import (
+    CachedStatusState,
+    VehicleStatusCachePublisher,
+    check_cached_status,
+)
 from status_publisher.vehicle.vehicle_status_resp import (
     VehicleStatusRespProcessingResult,
     VehicleStatusRespPublisher,
@@ -36,6 +41,7 @@ if TYPE_CHECKING:
     from apscheduler.schedulers.base import BaseScheduler
     from saic_ismart_client_ng.api.message.schema import MessageEntity
     from saic_ismart_client_ng.api.vehicle import (
+        VehicleStatusCacheResp,
         VehicleStatusResp,
     )
 
@@ -98,6 +104,7 @@ class VehicleState:
         vin_info: VehicleInfo,
         charge_polling_min_percent: float = 1.0,
         user_timezone: ZoneInfo | None = None,
+        default_refresh_period_cached_status: int = 0,
     ) -> None:
         self.publisher = publisher
         self.__message_publisher = MessagePublisher(vin_info, publisher, account_prefix)
@@ -105,6 +112,9 @@ class VehicleState:
             vin_info, publisher, account_prefix
         )
         self.__charge_response_publisher = ChrgMgmtDataRespPublisher(
+            vin_info, publisher, account_prefix
+        )
+        self.__cached_status_publisher = VehicleStatusCachePublisher(
             vin_info, publisher, account_prefix
         )
         self.vehicle: Final[VehicleInfo] = vin_info
@@ -136,6 +146,18 @@ class VehicleState:
         self.refresh_period_inactive = -1
         self.refresh_period_after_shutdown = -1
         self.refresh_period_inactive_grace = -1
+        # 0 disables reading the cached status, -1 means not configured yet
+        self.refresh_period_cached_status = -1
+        self.__default_refresh_period_cached_status = (
+            default_refresh_period_cached_status
+        )
+        self.last_cached_status_poll: datetime.datetime = datetime.datetime.min.replace(
+            tzinfo=datetime.UTC
+        )
+        self.last_live_status_time: int | None = None
+        self.__last_published_status_time: int | None = None
+        self.last_cached_status_time: int | None = None
+        self.last_known_mileage: int | None = None
         self.target_soc: TargetBatteryCode | None = None
         self.charge_current_limit: ChargeCurrentLimitCode | None = None
         self.refresh_period_charging = 0
@@ -219,6 +241,17 @@ class VehicleState:
                 refresh_period_inactive_grace,
             )
             self.refresh_period_inactive_grace = refresh_period_inactive_grace
+
+    def set_refresh_period_cached_status(self, seconds: int) -> None:
+        if seconds != self.refresh_period_cached_status:
+            self.publisher.publish_int(
+                self.get_topic(mqtt_topics.REFRESH_PERIOD_CACHED_STATUS), seconds
+            )
+            LOG.info(
+                f"Setting cached status query interval in vehicle handler for VIN {self.vin} to "
+                f"{'disabled' if seconds <= 0 else str(datetime.timedelta(seconds=seconds))}"
+            )
+            self.refresh_period_cached_status = seconds
 
     def update_target_soc(self, target_soc: TargetBatteryCode) -> None:
         if self.target_soc != target_soc and target_soc is not None:
@@ -349,7 +382,93 @@ class VehicleState:
             self.__charge_response_publisher.update_total_mileage(
                 processing_result.raw_mileage
             )
+            self.last_known_mileage = max(
+                processing_result.raw_mileage, self.last_known_mileage or 0
+            )
+        self.last_live_status_time = vehicle_status.statusTime
+        if vehicle_status.statusTime is not None:
+            self.__publish_status_time(vehicle_status.statusTime)
         return processing_result
+
+    def __publish_status_time(self, status_time: int) -> None:
+        """Publish when SAIC last heard from the car, never moving backwards."""
+        last = self.__last_published_status_time
+        if last is not None and status_time <= last:
+            return
+        self.__last_published_status_time = status_time
+        self.__publish(
+            topic=mqtt_topics.REFRESH_LAST_STATUS_TIME,
+            value=datetime.datetime.fromtimestamp(status_time, tz=datetime.UTC),
+        )
+
+    def should_refresh_cached_status(self, *, ignore_vehicle_state: bool) -> bool:
+        """Whether it is time to read the status SAIC has cached.
+
+        The read does not wake the car, so it is normally done only while the
+        car is inactive. `ignore_vehicle_state` is a debug aid that also reads
+        while driving, charging or with the refresh mode OFF.
+        """
+        period = self.refresh_period_cached_status
+        if period <= 0:
+            return False
+        now = datetime.datetime.now(tz=datetime.UTC)
+        if now - self.last_cached_status_poll < datetime.timedelta(seconds=period):
+            return False
+        if ignore_vehicle_state:
+            return True
+        return (
+            self.refresh_mode != RefreshMode.OFF
+            and not self.is_charging
+            and not self.hv_battery_active
+            and self.last_car_shutdown
+            + datetime.timedelta(seconds=max(self.refresh_period_inactive_grace, 0))
+            <= now
+        )
+
+    def mark_cached_status_poll(self) -> None:
+        self.last_cached_status_poll = datetime.datetime.now(tz=datetime.UTC)
+
+    def handle_cached_status(self, cached: VehicleStatusCacheResp) -> bool:
+        """Publish the cached status if it is plausible and newer than what we have.
+
+        Returns True if something was published.
+        """
+        basic = cached.basicVehicleStatus
+        LOG.info(
+            f"Cached status for VIN {self.vin}: statusTime={cached.statusTime}, "
+            f"mileage={basic.mileage if basic else None}, "
+            f"soc={basic.extendedData1 if basic else None}, "
+            f"charging={basic.extendedData2 if basic else None}, "
+            f"engineStatus={basic.engineStatus if basic else None}"
+        )
+        rejection = check_cached_status(
+            cached,
+            CachedStatusState(
+                last_live_status_time=self.last_live_status_time,
+                last_cached_status_time=self.last_cached_status_time,
+                last_known_mileage=self.last_known_mileage,
+            ),
+        )
+        if rejection is not None:
+            LOG.info(f"Ignoring cached status for VIN {self.vin}: {rejection}")
+            return False
+
+        processed = self.__cached_status_publisher.publish(cached)
+        self.last_cached_status_time = processed.status_time
+        self.__publish_status_time(processed.status_time)
+        if processed.result.raw_mileage is not None:
+            self.last_known_mileage = max(
+                processed.result.raw_mileage, self.last_known_mileage or 0
+            )
+
+        # The cache only holds vehicle status values, so no BMS values here
+        if (
+            electric_range := extract_electric_range(processed.result, None)
+        ) is not None:
+            self.__publish(topic=mqtt_topics.DRIVETRAIN_RANGE, value=electric_range)
+        if (soc := extract_soc(processed.result, None)) is not None:
+            self.__publish(topic=mqtt_topics.DRIVETRAIN_SOC, value=soc)
+        return True
 
     @property
     def hv_battery_active(self) -> bool:
@@ -553,6 +672,10 @@ class VehicleState:
             self.set_refresh_period_inactive(86400)
         if self.refresh_period_inactive_grace == -1:
             self.set_refresh_period_inactive_grace(600)
+        if self.refresh_period_cached_status == -1:
+            self.set_refresh_period_cached_status(
+                self.__default_refresh_period_cached_status
+            )
         if self.__remote_ac_temp is None:
             self.set_ac_temperature(DEFAULT_AC_TEMP)
         # Make sure the only refresh mode that is not supported at start is RefreshMode.PERIODIC
@@ -587,6 +710,11 @@ class VehicleState:
             self.publisher.publish_int(
                 self.get_topic(mqtt_topics.REFRESH_PERIOD_INACTIVE_GRACE),
                 self.refresh_period_inactive_grace,
+            )
+        if self.refresh_period_cached_status != -1:
+            self.publisher.publish_int(
+                self.get_topic(mqtt_topics.REFRESH_PERIOD_CACHED_STATUS),
+                self.refresh_period_cached_status,
             )
         if self.refresh_period_charging > 0:
             self.publisher.publish_int(

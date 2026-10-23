@@ -198,6 +198,8 @@ class VehicleHandler:
                 finally:
                     self.publish_ha_discovery_messages(force=False)
             else:
+                if self.__should_poll_cached_status():
+                    await self.poll_cached_status()
                 # car not active, wait a second
                 await asyncio.sleep(1.0)
 
@@ -241,6 +243,35 @@ class VehicleHandler:
         )
         await self.__refresh_abrp(charge_status, vehicle_status)
         await self.__refresh_osmand(charge_status, vehicle_status)
+
+    def __should_poll_cached_status(self) -> bool:
+        return (
+            not self.relogin_handler.relogin_in_progress
+            and self.vehicle_state.is_complete()
+            and self.vehicle_state.should_refresh_cached_status(
+                ignore_vehicle_state=self.configuration.debug_cached_status_ignore_vehicle_state
+            )
+        )
+
+    async def poll_cached_status(self) -> None:
+        # Mark first so a failing read is not retried every second
+        self.vehicle_state.mark_cached_status_poll()
+        try:
+            LOG.debug("Reading cached vehicle status")
+            cached = await self.saic_api.get_vehicle_status_cached(self.vin_info.vin)
+            self.vehicle_state.handle_cached_status(cached)
+        except SaicLogoutException as e:
+            LOG.warning(
+                "API Client was logged out, scheduling delayed relogin", exc_info=e
+            )
+            self.relogin_handler.relogin()
+        except SaicApiException as e:
+            if is_transient_api_error(e):
+                log_transient_api_error(LOG, "Cached status read failed, will retry", e)
+            else:
+                LOG.exception("Cached status read failed", exc_info=e)
+        except Exception as e:
+            LOG.exception("Cached status read failed unexpectedly", exc_info=e)
 
     def __should_poll(self) -> bool:
         return (

@@ -98,6 +98,14 @@ def check_positive(value: str) -> int:
     return ivalue
 
 
+def check_non_negative(value: str) -> int:
+    ivalue = int(value)
+    if ivalue < 0:
+        msg = f"{ivalue} is an invalid non-negative int value"
+        raise argparse.ArgumentTypeError(msg)
+    return ivalue
+
+
 def check_positive_float(value: str) -> float:
     fvalue = float(value)
     if fvalue <= 0:

@@ -6,6 +6,7 @@ from handlers.command.gateway.refresh_mode import RefreshModeCommand
 from handlers.command.gateway.refresh_period import (
     RefreshPeriodActiveCommand,
     RefreshPeriodAfterShutdownCommand,
+    RefreshPeriodCachedStatusCommand,
     RefreshPeriodInactiveCommand,
     RefreshPeriodInactiveGraceCommand,
 )
@@ -19,4 +20,5 @@ ALL_COMMAND_HANDLERS: list[type[CommandHandlerBase]] = [
     RefreshPeriodInactiveCommand,
     RefreshPeriodInactiveGraceCommand,
     RefreshPeriodAfterShutdownCommand,
+    RefreshPeriodCachedStatusCommand,
 ]

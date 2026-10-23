@@ -53,6 +53,10 @@ class Configuration:
         self.ha_show_unavailable: bool = True
         self.charge_dynamic_polling_min_percentage: float = 1.0
         self.publish_raw_api_data: bool = False
+        # Default interval (seconds) for reading SAIC's cached vehicle status.
+        # 0 disables it. Can be changed at runtime via MQTT.
+        self.cached_status_interval: int = 0
+        self.debug_cached_status_ignore_vehicle_state: bool = False
 
         # ABRP Integration
         self.abrp_token_map: dict[str, str] = {}
