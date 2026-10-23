@@ -1,5 +1,37 @@
 # Change Log
 
+## 0.14.0
+
+### Added
+
+* Optionally read the vehicle status SAIC has cached (`GET /vehicle/status/cache`),
+  which does not wake the car. It runs on its own timer while the car is
+  inactive, so SoC, range, mileage, locks and tyre pressures stay fresher
+  between the daily live polls. It is off by default. Set the default interval
+  with `CACHED_STATUS_INTERVAL` (seconds, 0 = off) or change it at runtime with
+  `refresh/period/cachedStatus/set`, also available as a Home Assistant number.
+  Implausible responses (bad odometer, SoC or range, unchanged or stale
+  `statusTime`) are dropped, cached data never replaces newer live data, and it
+  does not change the activity or charging state (#505, #506).
+
+* Publish `refresh/lastStatusTime` (Home Assistant: "Last vehicle status time"),
+  the time SAIC last heard from the car, from both live polls and cached reads.
+  It never moves backwards (#505, #506).
+
+* Publish `refresh/lastCachedState` (Home Assistant: "Last cached vehicle
+  state"), the time the gateway last read an accepted cached status. This is a
+  debug aid; `refresh/lastVehicleState` still shows live polls only (#505, #506).
+
+* Add `DEBUG_CACHED_STATUS_IGNORE_VEHICLE_STATE` to read the cached status in
+  every polling phase, including while driving or charging and with the
+  refresh mode `off`, to check when the cache is updated (#505, #506).
+
+### Changed
+
+* Require `saic-ismart-client-ng` 0.12.0 (#506).
+
+* Update certifi, coverage, ruff and tzlocal (#507).
+
 ## 0.13.0
 
 ### Added
