@@ -30,6 +30,7 @@ class Configuration:
         self.saic_rest_uri: str = "https://gateway-mg-eu.soimt.com/api.app/v1/"
         self.saic_region: str = "eu"
         self.saic_tenant_id: str = "459771"
+        self.saic_device_app_id: str = "com.saicmotor.europecar"
         self.saic_relogin_delay: int = 15 * 60  # in seconds
         self.saic_read_timeout: float = 10.0  # in seconds
         self.saic_user_timezone: ZoneInfo | None = None

@@ -125,6 +125,7 @@ def __setup_saic_api(args: Namespace, config: Configuration) -> None:
     config.saic_rest_uri = args.saic_rest_uri
     config.saic_region = args.saic_region
     config.saic_tenant_id = str(args.saic_tenant_id)
+    config.saic_device_app_id = args.saic_device_app_id
     config.saic_user = args.saic_user
     config.saic_password = args.saic_password
     config.saic_phone_country_code = args.saic_phone_country_code
@@ -343,6 +344,16 @@ def __add_saic_api_argument_group(
         required=False,
         action=EnvDefault,
         envvar="SAIC_TENANT_ID",
+        type=str,
+    )
+    saic_api.add_argument(
+        "--saic-device-app-id",
+        help="""The SAIC app id sent as the deviceId suffix at login.""",
+        default="com.saicmotor.europecar",
+        dest="saic_device_app_id",
+        required=False,
+        action=EnvDefault,
+        envvar="SAIC_DEVICE_APP_ID",
         type=str,
     )
     saic_api.add_argument(
