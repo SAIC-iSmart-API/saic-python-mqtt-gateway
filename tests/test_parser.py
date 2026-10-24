@@ -90,4 +90,44 @@ def test_process_command_line_defaults_device_app_id(
         ["prog", "--saic-user", "user@example.com", "--saic-password", "secret"],
     )
     config = process_command_line()
-    assert config.saic_device_app_id == "com.saicmotor.europecar"
+    assert config.saic_device_app_id is None
+    assert config.saic_preset == "mg_eu"
+
+
+def test_process_command_line_sets_preset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "prog",
+            "--saic-user",
+            "user@example.com",
+            "--saic-password",
+            "secret",
+            "--saic-preset",
+            "maxus_eu",
+        ],
+    )
+    config = process_command_line()
+    assert config.saic_preset == "maxus_eu"
+    assert config.saic_rest_uri is None
+
+
+def test_process_command_line_rejects_unknown_preset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "prog",
+            "--saic-user",
+            "user@example.com",
+            "--saic-password",
+            "secret",
+            "--saic-preset",
+            "nope",
+        ],
+    )
+    with pytest.raises(SystemExit):
+        process_command_line()

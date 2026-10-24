@@ -56,17 +56,25 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
         if not self.configuration.saic_user or not self.configuration.saic_password:
             raise MqttGatewayException("Please configure saic username and password")
 
+        overrides = {
+            key: value
+            for key, value in {
+                "base_uri": self.configuration.saic_rest_uri,
+                "region": self.configuration.saic_region,
+                "tenant_id": self.configuration.saic_tenant_id,
+                "device_app_id": self.configuration.saic_device_app_id,
+            }.items()
+            if value is not None
+        }
+        preset = getattr(SaicApiConfiguration, self.configuration.saic_preset)
         self.saic_api = SaicApi(
-            configuration=SaicApiConfiguration(
-                username=self.configuration.saic_user,
-                password=self.configuration.saic_password,
+            configuration=preset(
+                self.configuration.saic_user,
+                self.configuration.saic_password,
                 username_is_email=config.username_is_email,
                 phone_country_code=config.saic_phone_country_code,
-                base_uri=self.configuration.saic_rest_uri,
-                region=self.configuration.saic_region,
-                tenant_id=self.configuration.saic_tenant_id,
-                device_app_id=self.configuration.saic_device_app_id,
                 read_timeout=self.configuration.saic_read_timeout,
+                **overrides,
             ),
             listener=listener,
         )
