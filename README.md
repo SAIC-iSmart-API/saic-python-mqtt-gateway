@@ -33,9 +33,11 @@ When using combinations of configuration methods, the order of precedence is as 
 | -u or --saic-user           | SAIC_USER                    | SAIC user name - **required**                                                                                                                                                       |
 | -p or --saic-password       | SAIC_PASSWORD                | SAIC password - **required**                                                                                                                                                        |
 | --saic-phone-country-code   | SAIC_PHONE_COUNTRY_CODE      | Phone country code, used if the username is not an email address                                                                                                                    |
-| --saic-rest-uri             | SAIC_REST_URI                | SAIC API URI. Default is the European Production endpoint: https://gateway-mg-eu.soimt.com/api.app/v1/                                                                              |
-| --saic-region               | SAIC_REGION                  | SAIC API region. Default is eu.                                                                                                                                                     |
-| --saic-tenant-id            | SAIC_TENANT_ID               | SAIC API tenant ID. Default is 459771.                                                                                                                                              |
+| --saic-preset               | SAIC_PRESET                  | Preset for the SAIC API: mg_eu (default), mg_au, mg_tr or maxus_eu. Sets the URI, region, tenant ID and app ID. The options below override single values.                         |
+| --saic-rest-uri             | SAIC_REST_URI                | SAIC API URI. Default comes from the preset (mg_eu: https://gateway-mg-eu.soimt.com/api.app/v1/)                                                                                  |
+| --saic-region               | SAIC_REGION                  | SAIC API region. Default comes from the preset.                                                                                                                                    |
+| --saic-tenant-id            | SAIC_TENANT_ID               | SAIC API tenant ID. Default comes from the preset (459771 for MG, 590224 for MAXUS).                                                                                              |
+| --saic-device-app-id        | SAIC_DEVICE_APP_ID           | SAIC app ID sent as the deviceId suffix at login. Default comes from the preset (com.saicmotor.europecar for MG, com.saicmaxus.ismarteu for MAXUS).                              |
 | --saic-relogin-delay        | SAIC_RELOGIN_DELAY           | The gateway detects logins from other devices (e.g. the iSMART app). It then pauses it's activity for 900 seconds (default value). The delay can be configured with this parameter. |
 | --messages-request-interval | MESSAGES_REQUEST_INTERVAL    | The interval for retrieving messages in seconds. Default is 60 seconds.                                                                                                             |
 | --battery-capacity-mapping  | BATTERY_CAPACITY_MAPPING     | Mapping of VIN to full battery capacity. Multiple mappings can be provided separated by ',' Example: LSJXXXX=54.0,LSJYYYY=64.0                                                      |
@@ -55,6 +57,7 @@ The following are the known available endpoints:
 | https://gateway-mg-au.soimt.com/api.app/v1/ | au          | This endpoint is not used by the iSmart app for Australia and New Zealand but has been tested and proven to work in these countries. |
 | https://gateway-mg-eu.soimt.com/api.app/v1/ | eu          |                                                                                                                                      |
 | https://gateway-mg-tr.soimt.com/api.app/v1/ | tr          | This endpoint is valid for the country of Türkiye.                                                                                   |
+| https://gateway-maxus-eu.soimt.com/api.app/v1/ | eu       | MAXUS Europe app. Use SAIC_PRESET=maxus_eu. Values confirmed by capture.                                                                              |
 
 ### MQTT Broker
 

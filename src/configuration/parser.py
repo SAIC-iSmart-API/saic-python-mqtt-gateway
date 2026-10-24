@@ -122,9 +122,13 @@ def __parse_mqtt_transport(args: Namespace, config: Configuration) -> None:
 
 
 def __setup_saic_api(args: Namespace, config: Configuration) -> None:
+    config.saic_preset = args.saic_preset
     config.saic_rest_uri = args.saic_rest_uri
     config.saic_region = args.saic_region
-    config.saic_tenant_id = str(args.saic_tenant_id)
+    config.saic_tenant_id = (
+        str(args.saic_tenant_id) if args.saic_tenant_id is not None else None
+    )
+    config.saic_device_app_id = args.saic_device_app_id
     config.saic_user = args.saic_user
     config.saic_password = args.saic_password
     config.saic_phone_country_code = args.saic_phone_country_code
@@ -288,8 +292,8 @@ def __add_saic_api_argument_group(
     saic_api.add_argument(
         "-s",
         "--saic-rest-uri",
-        help="""The SAIC uri. Default is European Production Endpoint""",
-        default="https://gateway-mg-eu.soimt.com/api.app/v1/",
+        help="""The SAIC uri. Overrides the preset. Default comes from the preset""",
+        default=None,
         dest="saic_rest_uri",
         required=False,
         action=EnvDefault,
@@ -326,9 +330,20 @@ def __add_saic_api_argument_group(
         type=str,
     )
     saic_api.add_argument(
+        "--saic-preset",
+        help="""The SAIC API preset: mg_eu, mg_au, mg_tr or maxus_eu.""",
+        default="mg_eu",
+        choices=["mg_eu", "mg_au", "mg_tr", "maxus_eu"],
+        dest="saic_preset",
+        required=False,
+        action=EnvDefault,
+        envvar="SAIC_PRESET",
+        type=str,
+    )
+    saic_api.add_argument(
         "--saic-region",
-        help="""The SAIC API region.""",
-        default="eu",
+        help="""The SAIC API region. Overrides the preset.""",
+        default=None,
         dest="saic_region",
         required=False,
         action=EnvDefault,
@@ -337,12 +352,22 @@ def __add_saic_api_argument_group(
     )
     saic_api.add_argument(
         "--saic-tenant-id",
-        help="""The SAIC API tenant id.""",
-        default="459771",
+        help="""The SAIC API tenant id. Overrides the preset.""",
+        default=None,
         dest="saic_tenant_id",
         required=False,
         action=EnvDefault,
         envvar="SAIC_TENANT_ID",
+        type=str,
+    )
+    saic_api.add_argument(
+        "--saic-device-app-id",
+        help="""The SAIC app id sent as the deviceId suffix at login. Overrides the preset.""",
+        default=None,
+        dest="saic_device_app_id",
+        required=False,
+        action=EnvDefault,
+        envvar="SAIC_DEVICE_APP_ID",
         type=str,
     )
     saic_api.add_argument(

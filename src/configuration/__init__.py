@@ -27,9 +27,12 @@ class Configuration:
         self.saic_user: str | None = None
         self.saic_password: str | None = None
         self.__saic_phone_country_code: str | None = None
-        self.saic_rest_uri: str = "https://gateway-mg-eu.soimt.com/api.app/v1/"
-        self.saic_region: str = "eu"
-        self.saic_tenant_id: str = "459771"
+        self.saic_preset: str = "mg_eu"
+        # None means: use the value from the selected preset
+        self.saic_rest_uri: str | None = None
+        self.saic_region: str | None = None
+        self.saic_tenant_id: str | None = None
+        self.saic_device_app_id: str | None = None
         self.saic_relogin_delay: int = 15 * 60  # in seconds
         self.saic_read_timeout: float = 10.0  # in seconds
         self.saic_user_timezone: ZoneInfo | None = None
