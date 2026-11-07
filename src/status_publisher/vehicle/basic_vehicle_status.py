@@ -193,6 +193,13 @@ class BasicVehicleStatusPublisher(
             transform=lambda x: "off" if x == 0 else "on",
         )
 
+        self._transform_and_publish(
+            topic=mqtt_topics.CLIMATE_STEERING_WHEEL_HEAT,
+            value=basic_vehicle_status.steeringHeatLevel,
+            validator=lambda x: x in (0, 1),
+            transform=lambda x: "on" if x == 1 else "off",
+        )
+
         _, front_left_seat_level = self._publish(
             topic=mqtt_topics.CLIMATE_HEATED_SEATS_FRONT_LEFT_LEVEL,
             value=basic_vehicle_status.frontLeftSeatHeatLevel,

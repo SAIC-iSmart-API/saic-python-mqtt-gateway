@@ -18,12 +18,16 @@ from handlers.command.climate.climate_remote_climate_state import (
 from handlers.command.climate.climate_remote_temperature import (
     ClimateRemoteTemperatureCommand,
 )
+from handlers.command.climate.climate_steering_wheel_heat import (
+    ClimateSteeringWheelHeatCommand,
+)
 
 if TYPE_CHECKING:
     from handlers.command import CommandHandlerBase
 
 ALL_COMMAND_HANDLERS: list[type[CommandHandlerBase]] = [
     ClimateBackWindowHeatCommand,
+    ClimateSteeringWheelHeatCommand,
     ClimateFrontWindowHeatCommand,
     ClimateRemoteClimateStateCommand,
     ClimateRemoteTemperatureCommand,
