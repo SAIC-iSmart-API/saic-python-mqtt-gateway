@@ -26,11 +26,23 @@
   every polling phase, including while driving or charging and with the
   refresh mode `off`, to check when the cache is updated (#505, #506).
 
+* Add steering-wheel heating. Switch it on or off with
+  `climate/steeringWheelHeating/set` (`on`/`off`). The state is published on
+  `climate/steeringWheelHeating`, where any heating level above 0 counts as
+  `on`, and a Home Assistant switch is added (#513).
+
+* Support MAXUS Europe. Select an API preset with `--saic-preset`
+  (`SAIC_PRESET`: `mg_eu`, `mg_au`, `mg_tr` or `maxus_eu`) and override the
+  app ID sent at login with `--saic-device-app-id` (`SAIC_DEVICE_APP_ID`)
+  (#508, #509).
+
 ### Changed
 
-* Require `saic-ismart-client-ng` 0.12.0 (#506).
+* Require `saic-ismart-client-ng` 0.14.0 (#506, #515).
 
 * Update certifi, coverage, ruff and tzlocal (#507).
+
+* Update the development dependencies (#514).
 
 ## 0.13.0
 
