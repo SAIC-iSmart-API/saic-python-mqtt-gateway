@@ -37,6 +37,12 @@ class TestSteeringWheelHeatStatus(unittest.TestCase):
 
         assert self.capturing.map[STATE_TOPIC] == "off"
 
+    def test_reports_heating_on_for_levels_above_one(self) -> None:
+        # The car reports 3 while the heater is on
+        self.publisher.publish(BasicVehicleStatus(steeringHeatLevel=3))
+
+        assert self.capturing.map[STATE_TOPIC] == "on"
+
     def test_missing_status_is_not_published(self) -> None:
         self.publisher.publish(BasicVehicleStatus())
 
@@ -45,7 +51,7 @@ class TestSteeringWheelHeatStatus(unittest.TestCase):
     def test_unknown_status_preserves_previous_state(self) -> None:
         self.publisher.publish(BasicVehicleStatus(steeringHeatLevel=1))
 
-        for level in (None, -1, 2, 255):
+        for level in (None, -1):
             with self.subTest(level=level):
                 self.publisher.publish(BasicVehicleStatus(steeringHeatLevel=level))
 

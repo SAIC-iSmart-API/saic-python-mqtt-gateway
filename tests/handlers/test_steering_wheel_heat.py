@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import asdict
 import unittest
 from unittest.mock import AsyncMock, MagicMock
 
@@ -35,7 +34,7 @@ class TestSteeringWheelHeatCommand(unittest.IsolatedAsyncioTestCase):
     async def test_on_sends_heating_request_and_refreshes(self) -> None:
         await self.handler.handle_mqtt_command(topic=SET_TOPIC, payload="on")
 
-        self._assert_request("AQ==")
+        self._assert_request(enable=True)
         self.publisher.publish_str.assert_any_call(
             RESULT_TOPIC, "Success", retain=False
         )
@@ -50,10 +49,10 @@ class TestSteeringWheelHeatCommand(unittest.IsolatedAsyncioTestCase):
     async def test_off_sends_heating_request(self) -> None:
         await self.handler.handle_mqtt_command(topic=SET_TOPIC, payload="off")
 
-        self._assert_request("AA==")
+        self._assert_request(enable=False)
 
     async def test_failed_command_does_not_refresh(self) -> None:
-        self.saic_api.send_vehicle_control_command.side_effect = SaicApiException(
+        self.saic_api.control_heated_steering_wheel.side_effect = SaicApiException(
             "unsupported"
         )
 
@@ -65,12 +64,7 @@ class TestSteeringWheelHeatCommand(unittest.IsolatedAsyncioTestCase):
         self.publisher.clear_topic.assert_not_called()
         self.vehicle_state.set_refresh_mode.assert_not_called()
 
-    def _assert_request(self, encoded: str) -> None:
-        self.saic_api.send_vehicle_control_command.assert_awaited_once()
-        request, vin = self.saic_api.send_vehicle_control_command.call_args.args
-        assert vin == VIN
-        assert asdict(request) == {
-            "vin": VIN,
-            "rvcReqType": "8",
-            "rvcParams": [{"paramId": 24, "paramValue": encoded}],
-        }
+    def _assert_request(self, *, enable: bool) -> None:
+        self.saic_api.control_heated_steering_wheel.assert_awaited_once_with(
+            VIN, enable=enable
+        )

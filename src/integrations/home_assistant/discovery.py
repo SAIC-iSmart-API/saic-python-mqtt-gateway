@@ -819,6 +819,7 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
         self.__publish_remote_ac()
         self.__publish_heated_seats()
         self.__publish_back_window_heat()
+        self.__publish_steering_wheel_heat()
         self._publish_sensor(
             mqtt_topics.CLIMATE_INTERIOR_TEMPERATURE,
             "Interior temperature",
@@ -850,6 +851,15 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             mqtt_topics.CLIMATE_BACK_WINDOW_HEAT,
             "Rear window defroster heating",
             icon="mdi:car-defrost-rear",
+        )
+
+    def __publish_steering_wheel_heat(self) -> None:
+        self._publish_switch(
+            mqtt_topics.CLIMATE_STEERING_WHEEL_HEAT,
+            "Steering wheel heating",
+            icon="mdi:steering",
+            payload_on="on",
+            payload_off="off",
         )
 
     def __publish_vehicle_tracker(self) -> None:
