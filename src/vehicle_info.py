@@ -87,20 +87,26 @@ class VehicleInfo:
         normalized_property_name = str(property_name).strip().upper()
         return self.__properties_by_code.get(normalized_property_name)
 
-    def __get_int_property_by_code(self, property_name: str) -> int:
-        # Absent or non-numeric codes read as 0, i.e. "feature not available"
+    def __get_int_property_by_code(self, property_name: str) -> int | None:
+        # None means the code is absent or not numeric, i.e. unknown
         try:
-            return int(self.__get_property_by_code(property_name) or 0)
+            return int(self.__get_property_by_code(property_name) or "")
         except ValueError:
-            return 0
+            return None
 
     def __is_feature_enabled(self, property_name: str) -> bool:
-        return self.__get_int_property_by_code(property_name) != 0
+        # Only a code that is present and 0 means "not available". An unknown
+        # code keeps the feature: some vehicles omit codes but send the data.
+        value = self.__get_int_property_by_code(property_name)
+        return value is None or value != 0
 
     def __get_mask_by_code(self, property_name: str, index: int) -> bool:
-        # 4-char positional mask: driver, passenger, rear left, rear right
+        # 4-char positional mask: driver, passenger, rear left, rear right.
+        # A missing or malformed mask is unknown and keeps the feature.
         mask = self.__get_property_by_code(property_name) or ""
-        return len(mask) == 4 and mask[index] == "1"
+        if len(mask) != 4 or set(mask) - {"0", "1"}:
+            return True
+        return mask[index] == "1"
 
     @property
     def is_ev(self) -> bool:
@@ -113,7 +119,8 @@ class VehicleInfo:
     @property
     def has_sunroof(self) -> bool:
         # The value 2 alone does not denote a sunroof
-        return self.__get_int_property_by_code("S35") & ~2 != 0
+        value = self.__get_int_property_by_code("S35")
+        return value is None or value & ~2 != 0
 
     @property
     def has_driver_door(self) -> bool:

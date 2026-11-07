@@ -84,8 +84,16 @@ def test_entity_published_when_supported(component: str, name: str) -> None:
 
 
 @pytest.mark.parametrize(("component", "name"), GATED_ENTITIES)
-def test_entity_unpublished_when_code_absent(component: str, name: str) -> None:
+def test_entity_published_when_code_absent(component: str, name: str) -> None:
     published = _publish_discovery({})
+    assert published[_topic(component, name)] != ""
+
+
+@pytest.mark.parametrize(("component", "name"), GATED_ENTITIES)
+def test_entity_unpublished_when_code_disabled(component: str, name: str) -> None:
+    published = _publish_discovery(
+        {"DOOR": "0000", "BOOT": "0", "J17": "0", "INTEMP": "0"}
+    )
     assert published[_topic(component, name)] == ""
 
 

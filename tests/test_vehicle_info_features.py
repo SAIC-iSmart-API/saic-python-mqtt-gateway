@@ -45,16 +45,26 @@ def _real_vehicle_info(fixture: dict[str, Any]) -> VehicleInfo:
 
 @pytest.mark.parametrize(
     ("value", "expected"),
-    [("0", False), ("1", True), ("2", False), ("3", True), ("X", False)],
+    [("0", False), ("1", True), ("2", False), ("3", True), ("X", True)],
 )
 def test_has_sunroof(value: str, expected: bool) -> None:
     assert _vehicle_info(S35=value).has_sunroof is expected
 
 
-def test_absent_codes_disable_features() -> None:
+def test_absent_codes_keep_features() -> None:
+    # Some vehicles omit codes while still sending the data
     vehicle_info = _vehicle_info()
+    assert vehicle_info.has_sunroof
+    assert vehicle_info.has_driver_door
+    assert vehicle_info.has_rear_right_door
+    assert vehicle_info.has_boot_status
+    assert vehicle_info.has_tyre_pressure
+    assert vehicle_info.has_interior_temperature
+
+
+def test_zero_codes_disable_features() -> None:
+    vehicle_info = _vehicle_info(BOOT="0", J17="0", INTEMP="0", S35="0")
     assert not vehicle_info.has_sunroof
-    assert not vehicle_info.has_driver_door
     assert not vehicle_info.has_boot_status
     assert not vehicle_info.has_tyre_pressure
     assert not vehicle_info.has_interior_temperature
@@ -68,9 +78,15 @@ def test_door_mask_is_positional() -> None:
     assert not vehicle_info.has_rear_right_door
 
 
-@pytest.mark.parametrize("mask", ["1", "111", "11111", ""])
-def test_door_mask_with_wrong_length_disables_all(mask: str) -> None:
+@pytest.mark.parametrize("mask", ["1", "111", "11111", "", "abcd", "11x1"])
+def test_malformed_door_mask_keeps_all_doors(mask: str) -> None:
     vehicle_info = _vehicle_info(DOOR=mask)
+    assert vehicle_info.has_driver_door
+    assert vehicle_info.has_rear_right_door
+
+
+def test_all_zero_door_mask_disables_all_doors() -> None:
+    vehicle_info = _vehicle_info(DOOR="0000")
     assert not vehicle_info.has_driver_door
     assert not vehicle_info.has_rear_right_door
 
