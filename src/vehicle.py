@@ -27,6 +27,7 @@ from status_publisher.vehicle.vehicle_status_resp import (
     VehicleStatusRespProcessingResult,
     VehicleStatusRespPublisher,
 )
+from utils import value_in_range
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -48,6 +49,17 @@ PRESSURE_TO_BAR_FACTOR = 0.04
 VEHICLE_FAILURES_BEFORE_OFFLINE = 3
 # Consecutive charge data failures before charging entities are marked unavailable
 CHARGE_DATA_FAILURES_BEFORE_UNAVAILABLE = 3
+# Pack power below this (kW, negative = charging) is a real charge. Anything
+# milder is a plugged-in car, a taper, or a stale BMS sample.
+SIGNIFICANT_CHARGE_POWER_KW = 1.0
+# The HV DC-DC holds the auxiliary battery near 14 V while it is charging.
+# Below this the 12 V battery is at rest, so a charging BMS status is not live.
+RESTING_AUX_BATTERY_VOLTAGE = 13.0
+# BMS-charging polls with no live charge before we give up. A real charge
+# shows pack power and a raised 12 V voltage within a couple of polls; a
+# status stuck after the schedule ends does not. Leaving the old interval in
+# place wakes the car all day and drains the auxiliary battery.
+STALE_CHARGING_POLLS = 3
 
 LOG = logging.getLogger(__name__)
 
@@ -132,6 +144,12 @@ class VehicleState:
         self.__hv_battery_active_from_car = True
         self.__is_charging = False
         self._had_significant_charging_power = False
+        self._auxiliary_battery_voltage: float | None = None
+        # True once this car has reported an aux voltage high enough that the
+        # DC-DC is clearly running. Until then a low reading is not evidence
+        # the charge is fake (some samples arrive before the DC-DC comes up).
+        self._seen_aux_charging_voltage = False
+        self._charging_polls_without_live_charge = 0
         self.refresh_period_active = -1
         self.refresh_period_inactive = -1
         self.refresh_period_after_shutdown = -1
@@ -320,6 +338,11 @@ class VehicleState:
         self.__is_charging = new_state
 
     def set_is_charging(self, is_charging: bool) -> None:
+        if is_charging:
+            # An external charger (for example openWB) is reporting a new
+            # session. Allow a few polls to confirm it, even if an earlier
+            # stuck BMS status had exhausted the watchdog.
+            self._charging_polls_without_live_charge = 0
         self.is_charging = is_charging
         self.hv_battery_active = self.is_charging
         self.publisher.publish_bool(
@@ -335,6 +358,7 @@ class VehicleState:
         self, vehicle_status: VehicleStatusResp
     ) -> VehicleStatusRespProcessingResult:
         processing_result = self.__vehicle_response_publisher.publish(vehicle_status)
+        self.__remember_auxiliary_battery_voltage(vehicle_status)
         self.hv_battery_active_from_car = processing_result.hv_battery_active_from_car
         self.__remote_ac_running = processing_result.remote_ac_running
         if processing_result.remote_heated_seats_front_left_level is not None:
@@ -630,20 +654,63 @@ class VehicleState:
         if result.target_soc is not None:
             self.update_target_soc(result.target_soc)
 
-        # We are charging if the BMS tells us so
+        # We are charging if the BMS tells us so. The poll schedule below may
+        # still ignore that flag: it stays set while the cable is plugged in
+        # outside the charging window, and the last computed interval then
+        # wakes the car all day.
         self.is_charging = result.is_charging or False
+        self.__update_charging_poll_schedule(result)
 
-        if self.is_charging and result.power is not None and result.power < -1:
-            # Mark that we've seen significant charging power (> 1kW)
+        return result
+
+    def __remember_auxiliary_battery_voltage(
+        self, vehicle_status: VehicleStatusResp
+    ) -> None:
+        basic = vehicle_status.basicVehicleStatus
+        raw_voltage = None if basic is None else basic.batteryVoltage
+        if raw_voltage is not None and value_in_range(raw_voltage, 1, 65535):
+            self._auxiliary_battery_voltage = raw_voltage / 10.0
+        else:
+            self._auxiliary_battery_voltage = None
+
+    def __update_charging_poll_schedule(
+        self, result: ChrgMgmtDataRespProcessingResult
+    ) -> None:
+        significant_power = (
+            result.power is not None and result.power < -SIGNIFICANT_CHARGE_POWER_KW
+        )
+        power_known_idle = (
+            result.power is not None and result.power >= -SIGNIFICANT_CHARGE_POWER_KW
+        )
+        aux_voltage = self._auxiliary_battery_voltage
+        if aux_voltage is not None and aux_voltage >= RESTING_AUX_BATTERY_VOLTAGE:
+            self._seen_aux_charging_voltage = True
+        # Only trust a low aux reading after this car has shown the DC-DC
+        # actually raises it. Otherwise the first samples of a real charge
+        # (DC-DC not up yet) look the same as a stuck status.
+        aux_at_rest = (
+            self._seen_aux_charging_voltage
+            and aux_voltage is not None
+            and aux_voltage < RESTING_AUX_BATTERY_VOLTAGE
+        )
+        if (
+            self.is_charging
+            and significant_power
+            and not aux_at_rest
+            and result.power is not None
+        ):
             self._had_significant_charging_power = True
-            # Only compute a dynamic refresh period if we have detected at least 1kW of power during charging
+            self._charging_polls_without_live_charge = 0
+            # Only compute a dynamic refresh period if we have detected at
+            # least 1kW of power during charging.
             time_for_1pct = (
                 36.0 * result.real_total_battery_capacity / abs(result.power)
             )
             time_for_min_pct = math.ceil(
                 self.charge_polling_min_percent * time_for_1pct
             )
-            # It doesn't make sense to refresh less often than the estimated time for completion
+            # It doesn't make sense to refresh less often than the estimated
+            # time for completion.
             if (
                 result.remaining_charging_time is not None
                 and result.remaining_charging_time > 0
@@ -655,15 +722,56 @@ class VehicleState:
                 computed_refresh_period = time_for_1pct
             self.set_refresh_period_charging(computed_refresh_period)
         elif not self.is_charging:
-            # Reset the charging refresh period if we detected we are no longer charging
+            self._charging_polls_without_live_charge = 0
             self.set_refresh_period_charging(0)
-        elif self.refresh_period_charging < self.refresh_period_after_shutdown:
-            # Charging with insignificant power (< 1kW, e.g. OBC trickle/maintenance).
-            # Use at least the after-shutdown period to avoid polling at the active rate (30s)
-            # indefinitely, which wastes API quota and can drain the 12V battery.
-            self.set_refresh_period_charging(self.refresh_period_after_shutdown)
+        elif (
+            self._had_significant_charging_power
+            and result.power is None
+            and not aux_at_rest
+        ):
+            # Invalid pack current while the DC-DC is still up. Keep the
+            # interval from the last good sample instead of dropping the charge.
+            return
+        elif self._charging_polls_without_live_charge >= STALE_CHARGING_POLLS or (
+            self._had_significant_charging_power and (power_known_idle or aux_at_rest)
+        ):
+            # The previous interval was computed while power was flowing.
+            # Keeping it after the pack (or the 12 V DC-DC) has stopped is
+            # what leaves the car waking on that same cadence all day.
+            reason = (
+                "auxiliary battery is at rest"
+                if aux_at_rest
+                else "pack is not drawing charge current"
+            )
+            self.__leave_charging_poll(
+                reason,
+                log=self._charging_polls_without_live_charge < STALE_CHARGING_POLLS,
+            )
+        else:
+            self._charging_polls_without_live_charge += 1
+            if self._charging_polls_without_live_charge >= STALE_CHARGING_POLLS:
+                self.__leave_charging_poll(
+                    "BMS still reports charging without a live charge",
+                    log=True,
+                )
+            elif self.refresh_period_after_shutdown > 0:
+                # Not a live charge yet (ramp-up, or power not yet valid).
+                # Check again at the after-shutdown period, which also
+                # replaces a leftover dynamic interval that is much longer.
+                self.set_refresh_period_charging(self.refresh_period_after_shutdown)
 
-        return result
+    def __leave_charging_poll(self, reason: str, *, log: bool) -> None:
+        if log:
+            LOG.info(
+                "VIN %s left the charging poll schedule (%s). "
+                "A plugged-in car often keeps a charging BMS status after "
+                "the schedule ends; keeping that interval drains the 12V battery.",
+                self.vin,
+                reason,
+            )
+        self._charging_polls_without_live_charge = STALE_CHARGING_POLLS
+        self.is_charging = False
+        self.set_refresh_period_charging(0)
 
     def update_data_conflicting_in_vehicle_and_bms(
         self,
@@ -764,6 +872,9 @@ class VehicleState:
     async def __force_refresh_for_scheduled_charging(self) -> None:
         # Must be a coroutine: AsyncIOScheduler runs sync jobs in a worker thread,
         # where we can't touch the MQTT publisher or the polling state safely.
+        # Re-arm the watchdog so this check can confirm a real charge even if
+        # an earlier stuck BMS status had stopped the charging poll.
+        self._charging_polls_without_live_charge = 0
         self.set_refresh_mode(RefreshMode.FORCE, "check for scheduled charging start")
 
     def set_refresh_mode(self, mode: RefreshMode, cause: str) -> None:
