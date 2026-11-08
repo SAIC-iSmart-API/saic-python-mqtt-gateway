@@ -17,6 +17,7 @@ from saic_ismart_client_ng.api.vehicle_charging import (
     TargetBatteryCode,
 )
 from saic_ismart_client_ng.api.vehicle_charging.schema import (
+    ChrgMgmtDataResp,
     ScheduledBatteryHeatingResp,
 )
 
@@ -633,6 +634,143 @@ class TestVehicleState(unittest.IsolatedAsyncioTestCase):
         self.vehicle_state.should_refresh()
         assert self.publisher.map[phase_topic] == PollingPhase.OFF.value
         assert self.publisher.publish_count[phase_topic] == 3
+
+    def _charge_resp_with_power(
+        self, *, current_amps: float, voltage: float = 400.0, charging: bool = True
+    ) -> ChrgMgmtDataResp:
+        resp = get_mock_charge_management_data_resp()
+        assert resp.chrgMgmtData is not None
+        resp.chrgMgmtData.bmsChrgSts = 1 if charging else 0
+        resp.chrgMgmtData.bmsPackCrntV = 0
+        resp.chrgMgmtData.bmsPackCrnt = int((current_amps + 1000.0) * 20)
+        resp.chrgMgmtData.bmsPackVol = int(voltage * 4)
+        return resp
+
+    def _asleep_after_refresh(self) -> None:
+        """Park the car and mark a refresh just completed, so the next decision is periodic."""
+        self.vehicle_state.configure_missing()
+        self.vehicle_state.hv_battery_active = False
+        self.vehicle_state.hv_battery_active_from_car = False
+        now = datetime.datetime.now(tz=datetime.UTC)
+        self.vehicle_state.last_successful_refresh = now
+        self.vehicle_state.last_car_activity = datetime.datetime.min.replace(
+            tzinfo=datetime.UTC
+        )
+
+    def test_live_charge_uses_charging_poll_interval(self) -> None:
+        self.vehicle_state.configure_missing()
+        # 10 A into a 400 V pack is 4 kW.
+        self.vehicle_state.handle_charge_status(
+            self._charge_resp_with_power(current_amps=-10)
+        )
+        assert self.vehicle_state.refresh_period_charging > (
+            self.vehicle_state.refresh_period_after_shutdown
+        )
+
+    def test_charging_poll_stops_when_pack_current_stops(self) -> None:
+        """A plugged-in car keeps bmsChrgSts=charging after the window ends.
+
+        The last dynamic interval must not keep waking it (issue #510).
+        """
+        self._asleep_after_refresh()
+        self.vehicle_state.handle_charge_status(
+            self._charge_resp_with_power(current_amps=-10)
+        )
+        assert self.vehicle_state.refresh_period_charging > 0
+
+        self.vehicle_state.handle_charge_status(
+            self._charge_resp_with_power(current_amps=0)
+        )
+        assert self.vehicle_state.is_charging is False
+        assert self.vehicle_state.refresh_period_charging == 0
+
+        # Further stuck "charging" samples must not bring the interval back.
+        for _ in range(5):
+            self.vehicle_state.handle_charge_status(
+                self._charge_resp_with_power(current_amps=0)
+            )
+        assert self.vehicle_state.is_charging is False
+        assert self.vehicle_state.refresh_period_charging == 0
+
+        self.vehicle_state.hv_battery_active = False
+        self.vehicle_state.last_car_shutdown = datetime.datetime.min.replace(
+            tzinfo=datetime.UTC
+        )
+        self.publisher.map.clear()
+        assert self.vehicle_state.should_refresh() is False
+        self.assert_mqtt_topic(
+            self.get_topic(mqtt_topics.REFRESH_POLLING_PHASE),
+            PollingPhase.INACTIVE.value,
+        )
+
+    def test_invalid_pack_current_keeps_live_charge_interval(self) -> None:
+        self.vehicle_state.configure_missing()
+        self.vehicle_state._auxiliary_battery_voltage = 14.4
+        self.vehicle_state.handle_charge_status(
+            self._charge_resp_with_power(current_amps=-10)
+        )
+        period = self.vehicle_state.refresh_period_charging
+        assert period > 0
+
+        invalid = self._charge_resp_with_power(current_amps=-10)
+        assert invalid.chrgMgmtData is not None
+        invalid.chrgMgmtData.bmsPackCrntV = 1
+        self.vehicle_state.handle_charge_status(invalid)
+        assert self.vehicle_state.is_charging is True
+        assert self.vehicle_state.refresh_period_charging == period
+
+    def test_stale_charge_power_with_resting_aux_stops_polling(self) -> None:
+        """Cached pack current still looks like a charge, but the 12 V battery is at rest."""
+        self.vehicle_state.configure_missing()
+        self.vehicle_state._auxiliary_battery_voltage = 14.4
+        self.vehicle_state.handle_charge_status(
+            self._charge_resp_with_power(current_amps=-10)
+        )
+        assert self.vehicle_state.refresh_period_charging > 0
+
+        self.vehicle_state._auxiliary_battery_voltage = 12.4
+        self.vehicle_state.handle_charge_status(
+            self._charge_resp_with_power(current_amps=-10)
+        )
+        assert self.vehicle_state.is_charging is False
+        assert self.vehicle_state.refresh_period_charging == 0
+
+    def test_low_aux_before_dc_dc_seen_does_not_reject_a_charge(self) -> None:
+        self.vehicle_state.configure_missing()
+        self.vehicle_state._auxiliary_battery_voltage = 12.4
+        self.vehicle_state.handle_charge_status(
+            self._charge_resp_with_power(current_amps=-10)
+        )
+        assert self.vehicle_state.refresh_period_charging > 0
+
+    def test_stuck_charging_status_without_power_stops_after_a_few_polls(
+        self,
+    ) -> None:
+        self.vehicle_state.configure_missing()
+        for _ in range(2):
+            self.vehicle_state.handle_charge_status(
+                self._charge_resp_with_power(current_amps=0)
+            )
+            assert (
+                self.vehicle_state.refresh_period_charging
+                == self.vehicle_state.refresh_period_after_shutdown
+            )
+        self.vehicle_state.handle_charge_status(
+            self._charge_resp_with_power(current_amps=0)
+        )
+        assert self.vehicle_state.is_charging is False
+        assert self.vehicle_state.refresh_period_charging == 0
+
+    def test_vehicle_status_records_auxiliary_voltage(self) -> None:
+        resp = get_mock_vehicle_status_resp()
+        assert resp.basicVehicleStatus is not None
+        resp.basicVehicleStatus.batteryVoltage = 124
+        self.vehicle_state.handle_vehicle_status(resp)
+        assert self.vehicle_state._auxiliary_battery_voltage == pytest.approx(12.4)
+
+        resp.basicVehicleStatus.batteryVoltage = 0
+        self.vehicle_state.handle_vehicle_status(resp)
+        assert self.vehicle_state._auxiliary_battery_voltage is None
 
     async def test_scheduled_charging_job_runs_on_event_loop(self) -> None:
         """Regression for #484: sync jobs run in a worker thread, not on the loop."""
