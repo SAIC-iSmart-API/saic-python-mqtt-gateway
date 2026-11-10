@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import datetime
 import time
 from typing import Any
 import unittest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 import pytest
@@ -116,6 +117,34 @@ class TestVehicleHandler(unittest.IsolatedAsyncioTestCase):
             vehicle_info,
             self.vehicle_state,
         )
+
+    async def test_polling_waits_for_command_lock(self) -> None:
+        command_handler = self.vehicle_handler._VehicleHandler__command_handler  # type: ignore[attr-defined]
+        polled = asyncio.Event()
+
+        async def poll() -> None:
+            polled.set()
+            await asyncio.Future()
+
+        with (
+            patch.object(
+                self.vehicle_handler, "_VehicleHandler__should_poll", return_value=True
+            ),
+            patch.object(
+                self.vehicle_handler,
+                "_VehicleHandler__polling",
+                new=AsyncMock(side_effect=poll),
+            ) as polling,
+        ):
+            async with command_handler.operation_lock:
+                task = asyncio.create_task(self.vehicle_handler.handle_vehicle())
+                await asyncio.sleep(0)
+                polling.assert_not_awaited()
+            await asyncio.wait_for(polled.wait(), timeout=1)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+            polling.assert_awaited_once()
 
     async def test_update_vehicle_status(self) -> None:
         with patch.object(

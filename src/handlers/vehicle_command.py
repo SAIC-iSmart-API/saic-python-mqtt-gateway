@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
+import json
 import logging
 from typing import TYPE_CHECKING, Any, Final
 
@@ -44,6 +46,7 @@ class VehicleCommandHandler:
         mqtt_topic: str,
         vehicle_prefix: str,
     ) -> None:
+        self.operation_lock = asyncio.Lock()
         self.vehicle_state: Final[VehicleState] = vehicle_state
         self.saic_api: Final[SaicApi] = saic_api
         self.relogin_handler: Final[ReloginHandler] = relogin_handler
@@ -99,6 +102,16 @@ class VehicleCommandHandler:
     async def handle_mqtt_command(
         self, *, topic: str, payload: str, retained: bool = False
     ) -> None:
+        async with self.operation_lock:
+            analyzed_topic = self.__get_command_topics(topic)
+            if analyzed_topic.command_no_vin == mqtt_topics.COMMAND_BATCH_SET:
+                await self.__execute_batch(analyzed_topic, payload, retained=retained)
+                return
+            await self.__handle_single(topic=topic, payload=payload, retained=retained)
+
+    async def __handle_single(
+        self, *, topic: str, payload: str, retained: bool
+    ) -> None:
         analyzed_topic = self.__get_command_topics(topic)
         handler = self.__command_handlers.get(analyzed_topic.command_no_vin)
         if not handler:
@@ -115,6 +128,95 @@ class VehicleCommandHandler:
                 analyzed_topic=analyzed_topic,
                 retained=retained,
             )
+
+    def __parse_batch(self, payload: str) -> tuple[str | None, list[tuple[str, str]]]:
+        if len(payload.encode("utf-8")) > 65536:
+            raise ValueError("Batch exceeds 64 KiB")
+        data = json.loads(payload)
+        if not isinstance(data, dict) or set(data) - {"requestId", "commands"}:
+            raise ValueError("Expected commands and optional requestId")
+        request_id = data.get("requestId")
+        if request_id is not None and (
+            not isinstance(request_id, str) or not 1 <= len(request_id) <= 128
+        ):
+            raise ValueError("requestId must be a string of 1 to 128 characters")
+        commands = data.get("commands")
+        if not isinstance(commands, list) or not 1 <= len(commands) <= 32:
+            raise ValueError("Batch must contain 1 to 32 commands")
+        result = []
+        for command in commands:
+            if not isinstance(command, dict) or set(command) != {"topic", "payload"}:
+                raise ValueError("Each command requires topic and payload")
+            topic, value = command["topic"], command["payload"]
+            if (
+                not isinstance(topic, str)
+                or topic not in self.__command_handlers
+                or topic.startswith("refresh/")
+            ):
+                raise ValueError(
+                    "Batch contains an unsupported topic or refresh configuration command"
+                )
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError("Command payloads must be nonempty strings")
+            result.append((topic, value))
+        return request_id, result
+
+    async def __execute_batch(
+        self, analyzed: _MqttCommandTopic, payload: str, *, retained: bool
+    ) -> None:
+        # Empty messages clear retained MQTT commands; never execute replays.
+        if retained or not payload.strip():
+            return
+        try:
+            request_id, commands = self.__parse_batch(payload)
+        except ValueError as exc:
+            self.publisher.publish_json(
+                analyzed.response_no_global,
+                {"status": "invalid", "error": str(exc), "results": []},
+                retain=False,
+            )
+            return
+        results: list[dict[str, Any]] = [
+            {"topic": topic, "status": "skipped"} for topic, _ in commands
+        ]
+        status = "success"
+        current = 0
+        try:
+            async with asyncio.timeout(300):
+                for current, (topic, value) in enumerate(commands):
+                    handler = self.__command_handlers[topic]
+                    try:
+                        await handler.handle(value, retained=False)
+                    except SaicLogoutException:
+                        await self.relogin_handler.force_login()
+                        await handler.handle(value, retained=False)
+                    results[current]["status"] = "success"
+        except TimeoutError:
+            status = "failed"
+            results[current].update(
+                status="unknown", error="Batch timed out; command outcome unknown"
+            )
+        except asyncio.CancelledError:
+            status = "cancelled"
+            results[current].update(
+                status="unknown", error="Batch cancelled; command outcome unknown"
+            )
+            raise
+        except Exception as exc:
+            status = "failed"
+            results[current].update(status="failed", error=str(exc))
+        finally:
+            # Handler refresh flags are intentionally deferred. Polling uses the
+            # same lock, so no status poll can run between these commands.
+            self.vehicle_state.set_refresh_mode(
+                RefreshMode.FORCE, "after batch execution"
+            )
+            self.publisher.publish_json(
+                analyzed.response_no_global,
+                {"requestId": request_id, "status": status, "results": results},
+                retain=False,
+            )
+            self.publisher.clear_topic(analyzed.command_no_global)
 
     async def __execute_mqtt_command_handler(
         self,

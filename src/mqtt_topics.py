@@ -193,3 +193,5 @@ EVENTS = "events"
 EVENTS_VEHICLE_MESSAGE = EVENTS + "/vehicleMessage"
 
 VEHICLES = "vehicles"
+
+COMMAND_BATCH_SET = "commands/batch/set"

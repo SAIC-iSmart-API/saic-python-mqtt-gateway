@@ -142,66 +142,67 @@ class VehicleHandler:
                 )
                 self.vehicle_state.configure_missing()
 
-            if self.__should_poll():
-                try:
-                    LOG.debug("Polling vehicle status")
-                    await self.__polling()
-                except SaicLogoutException as e:
-                    self.vehicle_state.mark_failed_refresh()
-                    if self.vehicle_state.refresh_mode == RefreshMode.FORCE:
-                        LOG.warning(
-                            "API Client was logged out during forced refresh,"
-                            " attempting immediate relogin",
-                            exc_info=e,
-                        )
-                        try:
-                            await self.relogin_handler.force_login()
-                        except Exception:
+            async with self.__command_handler.operation_lock:
+                if self.__should_poll():
+                    try:
+                        LOG.debug("Polling vehicle status")
+                        await self.__polling()
+                    except SaicLogoutException as e:
+                        self.vehicle_state.mark_failed_refresh()
+                        if self.vehicle_state.refresh_mode == RefreshMode.FORCE:
                             LOG.warning(
-                                "Immediate relogin failed, scheduling delayed relogin"
+                                "API Client was logged out during forced refresh,"
+                                " attempting immediate relogin",
+                                exc_info=e,
+                            )
+                            try:
+                                await self.relogin_handler.force_login()
+                            except Exception:
+                                LOG.warning(
+                                    "Immediate relogin failed, scheduling delayed relogin"
+                                )
+                                self.relogin_handler.relogin()
+                        else:
+                            LOG.warning(
+                                "API Client was logged out, scheduling delayed relogin",
+                                exc_info=e,
                             )
                             self.relogin_handler.relogin()
-                    else:
-                        LOG.warning(
-                            "API Client was logged out, scheduling delayed relogin",
-                            exc_info=e,
+                    except SaicApiException as e:
+                        self.vehicle_state.mark_failed_refresh()
+                        if is_transient_api_error(e):
+                            log_transient_api_error(
+                                LOG, "Vehicle poll failed, will retry", e
+                            )
+                        else:
+                            LOG.exception(
+                                "handle_vehicle loop failed during SAIC API call",
+                                exc_info=e,
+                            )
+                    except VehicleStatusDriftException as e:
+                        self.vehicle_state.mark_failed_refresh()
+                        LOG.error(
+                            "Skipping vehicle status update: %s",
+                            e,
                         )
-                        self.relogin_handler.relogin()
-                except SaicApiException as e:
-                    self.vehicle_state.mark_failed_refresh()
-                    if is_transient_api_error(e):
-                        log_transient_api_error(
-                            LOG, "Vehicle poll failed, will retry", e
-                        )
-                    else:
+                    except IntegrationException as ae:
                         LOG.exception(
-                            "handle_vehicle loop failed during SAIC API call",
+                            "handle_vehicle loop failed during integration processing",
+                            exc_info=ae,
+                        )
+                    except Exception as e:
+                        self.vehicle_state.mark_failed_refresh()
+                        LOG.exception(
+                            "handle_vehicle loop failed with an unexpected exception",
                             exc_info=e,
                         )
-                except VehicleStatusDriftException as e:
-                    self.vehicle_state.mark_failed_refresh()
-                    LOG.error(
-                        "Skipping vehicle status update: %s",
-                        e,
-                    )
-                except IntegrationException as ae:
-                    LOG.exception(
-                        "handle_vehicle loop failed during integration processing",
-                        exc_info=ae,
-                    )
-                except Exception as e:
-                    self.vehicle_state.mark_failed_refresh()
-                    LOG.exception(
-                        "handle_vehicle loop failed with an unexpected exception",
-                        exc_info=e,
-                    )
-                finally:
-                    self.publish_ha_discovery_messages(force=False)
-            else:
-                if self.__should_poll_cached_status():
-                    await self.poll_cached_status()
-                # car not active, wait a second
-                await asyncio.sleep(1.0)
+                    finally:
+                        self.publish_ha_discovery_messages(force=False)
+                else:
+                    if self.__should_poll_cached_status():
+                        await self.poll_cached_status()
+                    # Car not active, wait a second.
+                    await asyncio.sleep(1.0)
 
     async def __polling(self) -> None:
         (
