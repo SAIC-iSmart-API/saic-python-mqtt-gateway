@@ -128,6 +128,34 @@ class TestVehicleState(unittest.IsolatedAsyncioTestCase):
         self.vehicle_state.mark_charge_data_failed()
         assert self._charge_data_availability() == "online"
 
+    def test_charging_poll_stops_after_repeated_charge_data_failures(self) -> None:
+        """Regression for #510: stale charging interval kept after BMS data stops."""
+        self.vehicle_state.configure_missing()
+        self.vehicle_state.is_charging = True
+        self.vehicle_state.set_refresh_period_charging(1440)
+
+        self.vehicle_state.mark_charge_data_failed()
+        self.vehicle_state.mark_charge_data_failed()
+        assert self.vehicle_state.refresh_period_charging == 1440
+
+        self.vehicle_state.mark_charge_data_failed()
+        assert self.vehicle_state.is_charging is False
+        assert self.vehicle_state.refresh_period_charging == 0
+
+    def test_charge_data_success_resets_charging_failure_count(self) -> None:
+        self.vehicle_state.configure_missing()
+        self.vehicle_state.is_charging = True
+        self.vehicle_state.set_refresh_period_charging(1440)
+
+        self.vehicle_state.mark_charge_data_failed()
+        self.vehicle_state.mark_charge_data_failed()
+        self.vehicle_state.mark_charge_data_received()
+        self.vehicle_state.mark_charge_data_failed()
+        self.vehicle_state.mark_charge_data_failed()
+
+        assert self.vehicle_state.is_charging is True
+        assert self.vehicle_state.refresh_period_charging == 1440
+
     async def test_update_soc_with_no_bms_data(self) -> None:
         vehicle_status_resp = get_mock_vehicle_status_resp()
         result = self.vehicle_state.handle_vehicle_status(vehicle_status_resp)

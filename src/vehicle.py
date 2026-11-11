@@ -612,6 +612,19 @@ class VehicleState:
         self.__failed_charge_data_counter += 1
         if self.__failed_charge_data_counter >= CHARGE_DATA_FAILURES_BEFORE_UNAVAILABLE:
             self.__publish_charge_data_available(available=False)
+            # The vehicle status keeps answering but the BMS data does not, so
+            # we can no longer tell the car is charging. Keeping the last
+            # charging interval would wake the car on that cadence until the
+            # BMS answers again, which drains the 12V battery (issue #510).
+            if self.is_charging or self.refresh_period_charging > 0:
+                LOG.warning(
+                    "VIN %s: no charge data for %d consecutive polls, "
+                    "assuming charging has stopped",
+                    self.vin,
+                    self.__failed_charge_data_counter,
+                )
+                self.is_charging = False
+                self.set_refresh_period_charging(0)
 
     def __publish_charge_data_available(self, *, available: bool) -> None:
         if self.__charge_data_available == available:
