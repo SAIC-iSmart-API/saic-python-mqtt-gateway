@@ -52,6 +52,14 @@
   the last charging interval and woke the car all day, draining the 12V battery
   (#510).
 
+* Read message times in the SAIC server's timezone instead of UTC. SAIC sends
+  `messageTime` in server local time without a timezone, so
+  `info/lastMessage/messageTime` and the check for new messages were off by one
+  or two hours. `createTime` is
+  used when present. Set the server timezone with `--saic-message-timezone`
+  (`SAIC_MESSAGE_TIMEZONE`, default `Europe/Rome`). Messages without a time are
+  still read, but no longer count as the newest message.
+
 ## 0.13.0
 
 ### Added
