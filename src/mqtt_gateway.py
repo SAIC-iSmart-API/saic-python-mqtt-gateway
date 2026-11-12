@@ -119,7 +119,10 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
         await self.__do_initial_login(message_request_interval)
 
         message_handler = MessageHandler(
-            gateway=self, relogin_handler=self.__relogin_handler, saicapi=self.saic_api
+            gateway=self,
+            relogin_handler=self.__relogin_handler,
+            saicapi=self.saic_api,
+            message_timezone=self.configuration.saic_message_timezone,
         )
 
         self.__scheduler.add_job(
@@ -299,6 +302,7 @@ class MqttGateway(MqttCommandListener, VehicleHandlerLocator):
             charge_polling_min_percent=self.configuration.charge_dynamic_polling_min_percentage,
             user_timezone=self.__user_timezone,
             default_refresh_period_cached_status=self.configuration.cached_status_interval,
+            message_timezone=self.configuration.saic_message_timezone,
         )
         return VehicleHandler(
             self.configuration,

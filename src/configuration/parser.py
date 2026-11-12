@@ -138,6 +138,8 @@ def __setup_saic_api(args: Namespace, config: Configuration) -> None:
         config.saic_read_timeout = args.saic_read_timeout
     if args.saic_user_timezone is not None:
         config.saic_user_timezone = args.saic_user_timezone
+    if args.saic_message_timezone is not None:
+        config.saic_message_timezone = args.saic_message_timezone
 
 
 def __setup_home_assistant(args: Namespace, config: Configuration) -> None:
@@ -409,6 +411,17 @@ def __add_saic_api_argument_group(
         required=False,
         action=EnvDefault,
         envvar="SAIC_USER_TIMEZONE",
+        type=check_timezone,
+    )
+    saic_api.add_argument(
+        "--saic-message-timezone",
+        help="""The timezone the SAIC server uses for message times, which it
+                sends without one. Accepts an IANA timezone name or the
+                GMT+HH:MM format. Default is Europe/Rome (the EU servers).""",
+        dest="saic_message_timezone",
+        required=False,
+        action=EnvDefault,
+        envvar="SAIC_MESSAGE_TIMEZONE",
         type=check_timezone,
     )
     saic_api.add_argument(

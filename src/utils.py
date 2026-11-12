@@ -13,9 +13,14 @@ from saic_ismart_client_ng.api.schema import GpsStatus
 from saic_ismart_client_ng.exceptions import SaicApiRetryException
 
 if TYPE_CHECKING:
+    from saic_ismart_client_ng.api.message.schema import MessageEntity
     from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 
 LOG = logging.getLogger(__name__)
+
+# SAIC sends messageTime in the server's local time without a timezone.
+# The EU servers use CET/CEST.
+DEFAULT_MESSAGE_TIMEZONE = ZoneInfo("Europe/Rome")
 
 
 def is_transient_api_error(exc: BaseException) -> bool:
@@ -123,11 +128,19 @@ def get_gateway_version() -> str:
         return "unknown"
 
 
-def ensure_datetime_aware(dt: datetime) -> datetime:
-    """Return *dt* with UTC tzinfo if it is naive, otherwise unchanged."""
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=UTC)
-    return dt
+def message_time_utc(
+    message: MessageEntity, server_tz: ZoneInfo = DEFAULT_MESSAGE_TIMEZONE
+) -> datetime | None:
+    """Return the time of *message* as an aware UTC datetime, or None.
+
+    ``createTime`` is used when present, as it is a Unix timestamp. Otherwise
+    the naive ``messageTime`` is read in *server_tz* and converted to UTC.
+    """
+    if (create_time := message.create_time_utc) is not None:
+        return create_time
+    if (local_time := message.message_time_or_none) is not None:
+        return local_time.replace(tzinfo=server_tz).astimezone(UTC)
+    return None
 
 
 def datetime_to_str(dt: datetime) -> str:

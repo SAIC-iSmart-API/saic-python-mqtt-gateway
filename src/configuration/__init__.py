@@ -3,6 +3,8 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING, Literal
 
+from utils import DEFAULT_MESSAGE_TIMEZONE
+
 if TYPE_CHECKING:
     from zoneinfo import ZoneInfo
 
@@ -36,6 +38,8 @@ class Configuration:
         self.saic_relogin_delay: int = 15 * 60  # in seconds
         self.saic_read_timeout: float = 10.0  # in seconds
         self.saic_user_timezone: ZoneInfo | None = None
+        # Timezone of the naive messageTime sent by the SAIC server
+        self.saic_message_timezone: ZoneInfo = DEFAULT_MESSAGE_TIMEZONE
         self.battery_capacity_map: dict[str, float] = {}
         self.mqtt_host: str | None = None
         self.mqtt_port: int = 1883
