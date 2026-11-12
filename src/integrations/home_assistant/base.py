@@ -232,6 +232,44 @@ class HomeAssistantDiscoveryBase(metaclass=abc.ABCMeta):
             "lock", name, payload, custom_availability
         )
 
+    def _publish_cover(
+        self,
+        state_topic: str,
+        command_topic: str,
+        name: str,
+        *,
+        enabled: bool = True,
+        device_class: str | None = None,
+        icon: str | None = None,
+        payload_open: str = "open",
+        payload_close: str = "close",
+        state_open: str = "True",
+        state_closed: str = "False",
+        custom_availability: HaCustomAvailabilityConfig | None = None,
+    ) -> str:
+        # State and command use different topics: the state comes from a
+        # read-only status topic, the command goes to command_topic + /set.
+        payload: dict[str, Any] = {
+            "state_topic": self._get_state_topic(state_topic),
+            "command_topic": self._get_command_topic(command_topic),
+            "payload_open": payload_open,
+            "payload_close": payload_close,
+            # None disables the stop button
+            "payload_stop": None,
+            "state_open": state_open,
+            "state_closed": state_closed,
+            "optimistic": False,
+            "qos": 0,
+            "enabled_by_default": enabled,
+        }
+        if device_class is not None:
+            payload["device_class"] = device_class
+        if icon is not None:
+            payload["icon"] = icon
+        return self._publish_ha_discovery_message(
+            "cover", name, payload, custom_availability
+        )
+
     def _publish_event(
         self,
         topic: str,

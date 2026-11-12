@@ -37,6 +37,7 @@ class Configuration:
         self.saic_read_timeout: float = 10.0  # in seconds
         self.saic_user_timezone: ZoneInfo | None = None
         self.battery_capacity_map: dict[str, float] = {}
+        self.power_tailgate_vins: set[str] = set()
         self.mqtt_host: str | None = None
         self.mqtt_port: int = 1883
         self.mqtt_transport_protocol: TransportProtocol = TransportProtocol.TCP
