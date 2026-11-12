@@ -95,8 +95,7 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             "Battery heating",
             icon="mdi:heat-wave",
         )
-        self.__publish_windows_sensors()
-        self.__publish_doors_sensors()
+        self.__publish_body_sensors()
         self.__publish_drivetrain_charging_sensors()
 
         # Target SoC — only offer the entity if the vehicle actually supports it
@@ -633,6 +632,11 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             icon="mdi:tire",
         )
 
+    def __publish_body_sensors(self) -> None:
+        self.__publish_windows_sensors()
+        self.__publish_doors_sensors()
+        self.__publish_power_tailgate()
+
     def __publish_doors_sensors(self) -> None:
         self._publish_lock(
             mqtt_topics.DOORS_LOCKED, "Doors Lock", icon="mdi:car-door-lock"
@@ -674,6 +678,18 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
         self._publish_binary_sensor(
             mqtt_topics.DOORS_BOOT, "Boot", device_class="door", icon="mdi:car-door"
         )
+
+    def __publish_power_tailgate(self) -> None:
+        if self.__vin_info.has_power_tailgate:
+            self._publish_cover(
+                mqtt_topics.DOORS_BOOT,
+                mqtt_topics.DOORS_BOOT_POWER_TAILGATE,
+                "Power Tailgate",
+                # No static icon: HA then shows an open or closed door icon
+                device_class="door",
+            )
+        else:
+            self.__unpublish_ha_discovery_message("cover", "Power Tailgate")
 
     def __publish_gateway_sensors(self) -> None:
         options = [m.value for m in RefreshMode]
