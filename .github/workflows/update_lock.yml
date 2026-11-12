@@ -5,19 +5,22 @@ on:
     - cron: '0 6 1 * *'
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
+  # Installs and runs the freshly updated dependencies, so it gets a read-only
+  # token and no stored git credentials.
   update-lock:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
           ref: develop
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -30,9 +33,13 @@ jobs:
       - name: Update lock file
         run: poetry update --lock --no-interaction
 
-      # PRs opened with GITHUB_TOKEN do not trigger CI, so validate here before opening one
+      # Quick check on one Python version before opening a PR. The full matrix
+      # runs on the PR branch via the dispatch job below.
       - name: Install dependencies
         run: poetry install --no-root --no-interaction
+
+      - name: Lint
+        run: poetry run ruff check .
 
       - name: Type check
         run: poetry run mypy
@@ -40,7 +47,51 @@ jobs:
       - name: Run tests
         run: poetry run pytest tests
 
+      - name: Upload lock file
+        uses: actions/upload-artifact@v4
+        with:
+          name: poetry-lock
+          path: poetry.lock
+          retention-days: 1
+
+  # Runs no project code: it only commits the checked lock file.
+  open-pr:
+    needs: update-lock
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      operation: ${{ steps.cpr.outputs.pull-request-operation }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: develop
+          persist-credentials: false
+
+      # The artifact comes from the job that ran the updated dependencies, so
+      # take only a regular poetry.lock file from it.
+      - name: Download lock file
+        uses: actions/download-artifact@v4
+        with:
+          name: poetry-lock
+          path: ${{ runner.temp }}/lock
+
+      - name: Copy lock file
+        env:
+          LOCK_DIR: ${{ runner.temp }}/lock
+        run: |
+          files=$(find "$LOCK_DIR" -mindepth 1)
+          if [ "$files" != "$LOCK_DIR/poetry.lock" ] || [ -L "$LOCK_DIR/poetry.lock" ] || [ ! -f "$LOCK_DIR/poetry.lock" ]; then
+            echo "::error::Unexpected artifact content: $files"
+            exit 1
+          fi
+          cp "$LOCK_DIR/poetry.lock" poetry.lock
+
       - name: Open pull request
+        id: cpr
         uses: peter-evans/create-pull-request@v7
         with:
           base: develop
@@ -50,3 +101,19 @@ jobs:
           body: "Monthly `poetry update`. Review the lock file diff and wait for CI."
           add-paths: poetry.lock
           delete-branch: true
+
+  # Pushes made with GITHUB_TOKEN don't trigger CI, so start it by hand.
+  # Its checks are reported on the PR's head commit.
+  run-ci:
+    needs: open-pr
+    if: needs.open-pr.outputs.operation == 'created' || needs.open-pr.outputs.operation == 'updated'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+
+    steps:
+      - name: Run CI on the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run build_and_test_python.yml --ref chore/update-lock

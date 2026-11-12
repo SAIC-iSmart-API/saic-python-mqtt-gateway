@@ -8,6 +8,9 @@ on:
     types: [ opened, synchronize, reopened ]
     branches:
       - '*'
+  # Lets update_lock.yml run the tests on the PR it opens: pushes and PRs made
+  # with GITHUB_TOKEN don't trigger workflows, but workflow_dispatch does.
+  workflow_dispatch:
 
 permissions:
   checks: write
