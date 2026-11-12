@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 import inflection
 
@@ -9,6 +10,11 @@ LOG = logging.getLogger(__name__)
 
 def snake_case(s: str) -> str:
     return inflection.underscore(s.lower()).replace(" ", "_")
+
+
+def gateway_device_id(account_prefix: str) -> str:
+    """Home Assistant identifier of the gateway device for an account."""
+    return re.sub(r"[^a-z0-9_]", "_", snake_case(account_prefix))
 
 
 def decode_as_utf8(

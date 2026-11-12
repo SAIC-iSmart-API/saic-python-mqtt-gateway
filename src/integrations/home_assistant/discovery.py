@@ -14,7 +14,11 @@ from integrations.home_assistant.availability import (
     HaCustomAvailabilityEntry,
 )
 from integrations.home_assistant.base import _ORIGIN, HomeAssistantDiscoveryBase
-from integrations.home_assistant.utils import decode_as_utf8, snake_case
+from integrations.home_assistant.utils import (
+    decode_as_utf8,
+    gateway_device_id,
+    snake_case,
+)
 import mqtt_topics
 from publisher.mqtt_publisher import MqttPublisher
 from vehicle import RefreshMode, VehicleState
@@ -36,6 +40,7 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
         self.__vehicle_state = vehicle_state
         self.__vin_info = vin_info
         self.__discovery_prefix = configuration.ha_discovery_prefix
+        self.__saic_user = configuration.saic_user
         self.__system_availability = HaCustomAvailabilityEntry(
             topic=self.__get_system_topic(mqtt_topics.INTERNAL_LWT)
         )
@@ -983,13 +988,17 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
         final_model_name = f"{model_name} {model_year} {color_name}".strip().replace(
             "  ", " "
         )
-        return {
+        device: dict[str, Any] = {
             "name": f"{brand_name} {model_name} {vin}",
             "manufacturer": brand_name,
             "model": final_model_name,
             "hw_version": series,
             "identifiers": [vin],
         }
+        if self.__saic_user is not None:
+            # Links the car to the gateway device, which shows the gateway version
+            device["via_device"] = gateway_device_id(self.__saic_user)
+        return device
 
     @property
     def vin(self) -> str:
