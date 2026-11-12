@@ -1,0 +1,52 @@
+name: Update lock file
+
+on:
+  schedule:
+    - cron: '0 6 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-lock:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: develop
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Update lock file
+        run: poetry update --lock --no-interaction
+
+      # PRs opened with GITHUB_TOKEN do not trigger CI, so validate here before opening one
+      - name: Install dependencies
+        run: poetry install --no-root --no-interaction
+
+      - name: Type check
+        run: poetry run mypy
+
+      - name: Run tests
+        run: poetry run pytest tests
+
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          base: develop
+          branch: chore/update-lock
+          commit-message: "chore: update lock file"
+          title: "chore: update lock file"
+          body: "Monthly `poetry update`. Review the lock file diff and wait for CI."
+          add-paths: poetry.lock
+          delete-branch: true
