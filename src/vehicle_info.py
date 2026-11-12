@@ -16,8 +16,6 @@ class VehicleInfo:
         self,
         vin_info: VinInfo,
         custom_battery_capacity: float | None,
-        *,
-        has_power_tailgate: bool = False,
     ) -> None:
         if not vin_info.vin:
             raise MqttGatewayException("Could not handle a car without a vin")
@@ -34,13 +32,6 @@ class VehicleInfo:
             self.__properties_from_configuration(self.configuration)
         )
         self.__custom_battery_capacity: float | None = custom_battery_capacity
-        # No model configuration flag tells us if the car has a power tailgate,
-        # so the user opts in per VIN (POWER_TAILGATE_VINS).
-        self.__has_power_tailgate: Final[bool] = has_power_tailgate
-
-    @property
-    def has_power_tailgate(self) -> bool:
-        return self.__has_power_tailgate
 
     @property
     def custom_battery_capacity(self) -> float | None:
