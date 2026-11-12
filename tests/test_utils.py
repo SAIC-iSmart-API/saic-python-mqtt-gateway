@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 import httpx
 import pytest
+from saic_ismart_client_ng.api.message import MessageEntity
 from saic_ismart_client_ng.api.schema import GpsPosition, GpsStatus
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
 from saic_ismart_client_ng.exceptions import SaicApiException, SaicApiRetryException
@@ -18,6 +19,7 @@ from utils import (
     get_update_timestamp,
     is_transient_api_error,
     log_transient_api_error,
+    message_time_utc,
     parse_timezone,
 )
 
@@ -147,6 +149,46 @@ class TestParseTimezone(TestCase):
     def test_rejects_unknown_format(self) -> None:
         with pytest.raises(ValueError, match="Unrecognized timezone format"):
             parse_timezone("not-a-timezone")
+
+
+class TestMessageTimeUtc(TestCase):
+    def test_prefers_create_time(self) -> None:
+        create_time = datetime.datetime(2026, 3, 14, 8, 30, tzinfo=datetime.UTC)
+        message = MessageEntity(
+            createTime=int(create_time.timestamp() * 1000),
+            messageTime="2026-03-14 20:00:00",
+        )
+
+        assert message_time_utc(message) == create_time
+
+    def test_converts_message_time_from_cet(self) -> None:
+        message = MessageEntity(messageTime="2026-01-15 10:00:00")
+
+        result = message_time_utc(message)
+
+        assert result == datetime.datetime(2026, 1, 15, 9, 0, tzinfo=datetime.UTC)
+        assert result is not None
+        assert result.utcoffset() == datetime.timedelta(0)
+
+    def test_converts_message_time_from_cest(self) -> None:
+        message = MessageEntity(messageTime="2026-07-15 10:00:00")
+
+        result = message_time_utc(message)
+
+        assert result == datetime.datetime(2026, 7, 15, 8, 0, tzinfo=datetime.UTC)
+
+    def test_uses_the_given_server_timezone(self) -> None:
+        message = MessageEntity(messageTime="2026-07-15 10:00:00")
+
+        result = message_time_utc(message, ZoneInfo("Australia/Sydney"))
+
+        assert result == datetime.datetime(2026, 7, 15, 0, 0, tzinfo=datetime.UTC)
+
+    def test_returns_none_without_any_time(self) -> None:
+        assert message_time_utc(MessageEntity()) is None
+
+    def test_returns_none_for_unparseable_message_time(self) -> None:
+        assert message_time_utc(MessageEntity(messageTime="yesterday")) is None
 
 
 class TestApiTimeoutHelpers:

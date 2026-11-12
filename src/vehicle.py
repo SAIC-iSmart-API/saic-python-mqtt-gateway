@@ -32,6 +32,7 @@ from status_publisher.vehicle.vehicle_status_resp import (
     VehicleStatusRespProcessingResult,
     VehicleStatusRespPublisher,
 )
+from utils import DEFAULT_MESSAGE_TIMEZONE
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -105,9 +106,12 @@ class VehicleState:
         charge_polling_min_percent: float = 1.0,
         user_timezone: ZoneInfo | None = None,
         default_refresh_period_cached_status: int = 0,
+        message_timezone: ZoneInfo = DEFAULT_MESSAGE_TIMEZONE,
     ) -> None:
         self.publisher = publisher
-        self.__message_publisher = MessagePublisher(vin_info, publisher, account_prefix)
+        self.__message_publisher = MessagePublisher(
+            vin_info, publisher, account_prefix, message_timezone
+        )
         self.__vehicle_response_publisher = VehicleStatusRespPublisher(
             vin_info, publisher, account_prefix
         )

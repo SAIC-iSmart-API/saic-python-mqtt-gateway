@@ -120,6 +120,39 @@ class TestMessageEventPublished(unittest.TestCase):
         assert EVENT_TOPIC not in capturing.map
 
 
+class TestMessageTime(unittest.TestCase):
+    TIME_TOPIC = f"{VEHICLE_PREFIX}/{mqtt_topics.INFO_LAST_MESSAGE_TIME}"
+
+    def test_message_time_published_in_utc(self) -> None:
+        publisher, capturing = _make_publisher()
+
+        publisher.publish(_make_message(message_time="2026-07-15 10:00:00"))
+
+        assert capturing.map[self.TIME_TOPIC] == "2026-07-15T08:00:00+00:00"
+
+    def test_message_without_time_not_published(self) -> None:
+        publisher, capturing = _make_publisher()
+
+        result = publisher.publish(MessageEntity(messageId="msg_no_time"))
+
+        assert result.processed is False
+        assert capturing.map == {}
+
+    def test_message_without_time_does_not_replace_last_message(self) -> None:
+        publisher, capturing = _make_publisher()
+        publisher.publish(_make_message(message_time="2026-03-14 10:00:00"))
+        capturing.map.clear()
+
+        result = publisher.publish(MessageEntity(messageId="msg_no_time"))
+
+        assert result.processed is False
+        assert capturing.map == {}
+        result = publisher.publish(
+            _make_message(message_id="msg_002", message_time="2026-03-14 10:30:00")
+        )
+        assert result.processed is True
+
+
 class TestMessageEventPayload(unittest.TestCase):
     def test_none_fields_become_empty_strings(self) -> None:
         publisher, capturing = _make_publisher()
