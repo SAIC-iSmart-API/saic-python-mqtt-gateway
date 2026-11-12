@@ -5,20 +5,22 @@ on:
     - cron: '0 6 1 * *'
   workflow_dispatch:
 
-permissions:
-  actions: write
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
+  # Installs and runs the freshly updated dependencies, so it gets a read-only
+  # token and no stored git credentials.
   update-lock:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
           ref: develop
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -32,7 +34,7 @@ jobs:
         run: poetry update --lock --no-interaction
 
       # Quick check on one Python version before opening a PR. The full matrix
-      # runs on the PR branch via the dispatch step below.
+      # runs on the PR branch via the dispatch job below.
       - name: Install dependencies
         run: poetry install --no-root --no-interaction
 
@@ -44,6 +46,34 @@ jobs:
 
       - name: Run tests
         run: poetry run pytest tests
+
+      - name: Upload lock file
+        uses: actions/upload-artifact@v4
+        with:
+          name: poetry-lock
+          path: poetry.lock
+          retention-days: 1
+
+  # Runs no project code: it only commits the checked lock file.
+  open-pr:
+    needs: update-lock
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      operation: ${{ steps.cpr.outputs.pull-request-operation }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: develop
+
+      - name: Download lock file
+        uses: actions/download-artifact@v4
+        with:
+          name: poetry-lock
 
       - name: Open pull request
         id: cpr
@@ -57,10 +87,18 @@ jobs:
           add-paths: poetry.lock
           delete-branch: true
 
-      # Pushes made with GITHUB_TOKEN don't trigger CI, so start it by hand.
-      # Its checks are reported on the PR's head commit.
+  # Pushes made with GITHUB_TOKEN don't trigger CI, so start it by hand.
+  # Its checks are reported on the PR's head commit.
+  run-ci:
+    needs: open-pr
+    if: needs.open-pr.outputs.operation == 'created' || needs.open-pr.outputs.operation == 'updated'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+
+    steps:
       - name: Run CI on the pull request
-        if: steps.cpr.outputs.pull-request-operation == 'created' || steps.cpr.outputs.pull-request-operation == 'updated'
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: gh workflow run build_and_test_python.yml --ref chore/update-lock
