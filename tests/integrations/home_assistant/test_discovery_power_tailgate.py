@@ -15,7 +15,7 @@ from vehicle_info import VehicleInfo
 COVER_TOPIC = f"homeassistant/cover/{VIN}_mg/{VIN}_power_tailgate/config"
 
 
-def _publish_discovery(*, has_power_tailgate: bool) -> MessageCapturingConsolePublisher:
+def _publish_discovery() -> MessageCapturingConsolePublisher:
     config = Configuration()
     config.anonymized_publishing = False
     config.ha_discovery_prefix = "homeassistant"
@@ -25,7 +25,7 @@ def _publish_discovery(*, has_power_tailgate: bool) -> MessageCapturingConsolePu
     vin_info.series = "EH32 S"
     vin_info.modelName = "MG4 Electric"
     vin_info.modelYear = "2022"
-    vehicle_info = VehicleInfo(vin_info, None, has_power_tailgate=has_power_tailgate)
+    vehicle_info = VehicleInfo(vin_info, None)
     vehicle_state = VehicleState(
         publisher, BlockingScheduler(), f"/vehicles/{VIN}", vehicle_info
     )
@@ -40,8 +40,8 @@ def _publish_discovery(*, has_power_tailgate: bool) -> MessageCapturingConsolePu
     return publisher
 
 
-def test_power_tailgate_cover_published_when_enabled() -> None:
-    publisher = _publish_discovery(has_power_tailgate=True)
+def test_power_tailgate_cover_published_for_every_car() -> None:
+    publisher = _publish_discovery()
 
     assert COVER_TOPIC in publisher.map
     payload = json.loads(publisher.map[COVER_TOPIC])
@@ -54,17 +54,11 @@ def test_power_tailgate_cover_published_when_enabled() -> None:
     assert payload["state_open"] == "True"
     assert payload["state_closed"] == "False"
     assert payload["optimistic"] is False
+    assert payload["enabled_by_default"] is False
 
 
-def test_power_tailgate_cover_unpublished_when_disabled() -> None:
-    publisher = _publish_discovery(has_power_tailgate=False)
-
-    assert COVER_TOPIC in publisher.map
-    assert publisher.map[COVER_TOPIC] == ""
-
-
-def test_boot_lock_unchanged_when_power_tailgate_enabled() -> None:
-    publisher = _publish_discovery(has_power_tailgate=True)
+def test_boot_lock_unchanged() -> None:
+    publisher = _publish_discovery()
 
     lock_topic = f"homeassistant/lock/{VIN}_mg/{VIN}_boot_lock/config"
     payload = json.loads(publisher.map[lock_topic])

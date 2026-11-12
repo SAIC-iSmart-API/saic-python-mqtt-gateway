@@ -15,10 +15,10 @@ import mqtt_topics
 from vehicle_info import VehicleInfo
 
 
-def _make_vehicle_state(*, has_power_tailgate: bool) -> MagicMock:
+def _make_vehicle_state() -> MagicMock:
     vin_info = VinInfo()
     vin_info.vin = "vin_test_000000000"
-    vehicle_info = VehicleInfo(vin_info, None, has_power_tailgate=has_power_tailgate)
+    vehicle_info = VehicleInfo(vin_info, None)
 
     vehicle_state = MagicMock()
     vehicle_state.vehicle = vehicle_info
@@ -36,7 +36,7 @@ class TestDoorsPowerTailgateCommand(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_open(self) -> None:
-        vehicle_state = _make_vehicle_state(has_power_tailgate=True)
+        vehicle_state = _make_vehicle_state()
         saic_api = AsyncMock()
         handler = DoorsPowerTailgateCommand(saic_api, vehicle_state)
 
@@ -48,7 +48,7 @@ class TestDoorsPowerTailgateCommand(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_close(self) -> None:
-        vehicle_state = _make_vehicle_state(has_power_tailgate=True)
+        vehicle_state = _make_vehicle_state()
         saic_api = AsyncMock()
         handler = DoorsPowerTailgateCommand(saic_api, vehicle_state)
 
@@ -59,18 +59,8 @@ class TestDoorsPowerTailgateCommand(unittest.IsolatedAsyncioTestCase):
             vehicle_state.vin, action=TailgateAction.CLOSE
         )
 
-    async def test_reject_when_not_enabled(self) -> None:
-        vehicle_state = _make_vehicle_state(has_power_tailgate=False)
-        saic_api = AsyncMock()
-        handler = DoorsPowerTailgateCommand(saic_api, vehicle_state)
-
-        with pytest.raises(MqttGatewayException, match="POWER_TAILGATE_VINS"):
-            await handler.handle("open")
-
-        saic_api.control_tailgate.assert_not_called()
-
     async def test_reject_unknown_payload(self) -> None:
-        vehicle_state = _make_vehicle_state(has_power_tailgate=True)
+        vehicle_state = _make_vehicle_state()
         saic_api = AsyncMock()
         handler = DoorsPowerTailgateCommand(saic_api, vehicle_state)
 
@@ -80,7 +70,7 @@ class TestDoorsPowerTailgateCommand(unittest.IsolatedAsyncioTestCase):
         saic_api.control_tailgate.assert_not_called()
 
     async def test_empty_payload_does_nothing(self) -> None:
-        vehicle_state = _make_vehicle_state(has_power_tailgate=True)
+        vehicle_state = _make_vehicle_state()
         saic_api = AsyncMock()
         handler = DoorsPowerTailgateCommand(saic_api, vehicle_state)
 
@@ -92,7 +82,7 @@ class TestDoorsPowerTailgateCommand(unittest.IsolatedAsyncioTestCase):
 
 class TestDoorsBootCommandUnchanged(unittest.IsolatedAsyncioTestCase):
     async def test_false_still_unlocks_the_latch(self) -> None:
-        vehicle_state = _make_vehicle_state(has_power_tailgate=True)
+        vehicle_state = _make_vehicle_state()
         saic_api = AsyncMock()
         handler = DoorsBootCommand(saic_api, vehicle_state)
 

@@ -680,16 +680,17 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
         )
 
     def __publish_power_tailgate(self) -> None:
-        if self.__vin_info.has_power_tailgate:
-            self._publish_cover(
-                mqtt_topics.DOORS_BOOT,
-                mqtt_topics.DOORS_BOOT_POWER_TAILGATE,
-                "Power Tailgate",
-                # No static icon: HA then shows an open or closed door icon
-                device_class="door",
-            )
-        else:
-            self.__unpublish_ha_discovery_message("cover", "Power Tailgate")
+        # Nothing in the vehicle data tells which cars have a power tailgate,
+        # so the cover is offered to every car but disabled by default. Cars
+        # without one are expected to refuse the command.
+        self._publish_cover(
+            mqtt_topics.DOORS_BOOT,
+            mqtt_topics.DOORS_BOOT_POWER_TAILGATE,
+            "Power Tailgate",
+            enabled=False,
+            # No static icon: HA then shows an open or closed door icon
+            device_class="door",
+        )
 
     def __publish_gateway_sensors(self) -> None:
         options = [m.value for m in RefreshMode]
