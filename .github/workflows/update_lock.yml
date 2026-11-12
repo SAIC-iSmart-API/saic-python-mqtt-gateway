@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
@@ -30,9 +31,13 @@ jobs:
       - name: Update lock file
         run: poetry update --lock --no-interaction
 
-      # PRs opened with GITHUB_TOKEN do not trigger CI, so validate here before opening one
+      # Quick check on one Python version before opening a PR. The full matrix
+      # runs on the PR branch via the dispatch step below.
       - name: Install dependencies
         run: poetry install --no-root --no-interaction
+
+      - name: Lint
+        run: poetry run ruff check .
 
       - name: Type check
         run: poetry run mypy
@@ -41,6 +46,7 @@ jobs:
         run: poetry run pytest tests
 
       - name: Open pull request
+        id: cpr
         uses: peter-evans/create-pull-request@v7
         with:
           base: develop
@@ -50,3 +56,11 @@ jobs:
           body: "Monthly `poetry update`. Review the lock file diff and wait for CI."
           add-paths: poetry.lock
           delete-branch: true
+
+      # Pushes made with GITHUB_TOKEN don't trigger CI, so start it by hand.
+      # Its checks are reported on the PR's head commit.
+      - name: Run CI on the pull request
+        if: steps.cpr.outputs.pull-request-operation == 'created' || steps.cpr.outputs.pull-request-operation == 'updated'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run build_and_test_python.yml --ref chore/update-lock
