@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import re
 from typing import TYPE_CHECKING, Any, override
 
 from integrations.home_assistant.availability import (
@@ -13,7 +12,7 @@ from integrations.home_assistant.base import (
     _ORIGIN,
     HomeAssistantDiscoveryBase,
 )
-from integrations.home_assistant.utils import snake_case
+from integrations.home_assistant.utils import gateway_device_id, snake_case
 import mqtt_topics
 from publisher.mqtt_publisher import MqttPublisher
 
@@ -112,7 +111,7 @@ class HomeAssistantGatewayDiscovery(HomeAssistantDiscoveryBase):
 
     @property
     def __gateway_id(self) -> str:
-        return re.sub(r"[^a-z0-9_]", "_", snake_case(self.__account_prefix))
+        return gateway_device_id(self.__account_prefix)
 
     def __get_device_node(self) -> dict[str, Any]:
         return {

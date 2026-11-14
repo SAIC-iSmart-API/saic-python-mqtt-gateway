@@ -48,7 +48,7 @@ jobs:
         run: poetry run pytest tests
 
       - name: Upload lock file
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: poetry-lock
           path: poetry.lock
@@ -74,7 +74,7 @@ jobs:
       # The artifact comes from the job that ran the updated dependencies, so
       # take only a regular poetry.lock file from it.
       - name: Download lock file
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: poetry-lock
           path: ${{ runner.temp }}/lock
@@ -92,7 +92,7 @@ jobs:
 
       - name: Open pull request
         id: cpr
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           base: develop
           branch: chore/update-lock

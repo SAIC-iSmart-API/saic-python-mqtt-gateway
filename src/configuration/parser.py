@@ -66,10 +66,6 @@ def __setup_gateway_features(args: Namespace, config: Configuration) -> None:
             config.battery_capacity_map,
             value_type=check_positive_float,
         )
-    if args.power_tailgate_vins:
-        config.power_tailgate_vins = {
-            vin.strip() for vin in args.power_tailgate_vins.split(",") if vin.strip()
-        }
     try:
         config.messages_request_interval = int(args.messages_request_interval)
     except ValueError as ve:
@@ -335,9 +331,9 @@ def __add_saic_api_argument_group(
     )
     saic_api.add_argument(
         "--saic-preset",
-        help="""The SAIC API preset: mg_eu, mg_au, mg_tr or maxus_eu.""",
+        help="""The SAIC API preset: mg_eu, mg_au, mg_tr, mg_br or maxus_eu.""",
         default="mg_eu",
-        choices=["mg_eu", "mg_au", "mg_tr", "maxus_eu"],
+        choices=["mg_eu", "mg_au", "mg_tr", "mg_br", "maxus_eu"],
         dest="saic_preset",
         required=False,
         action=EnvDefault,
@@ -383,18 +379,6 @@ def __add_saic_api_argument_group(
         required=False,
         action=EnvDefault,
         envvar="BATTERY_CAPACITY_MAPPING",
-        type=str,
-    )
-    saic_api.add_argument(
-        "--power-tailgate-vins",
-        help="""VINs of the cars with a power tailgate, separated by comma.
-                Enables the doors/boot/powerTailgate/set command and its
-                Home Assistant cover for these cars only.
-                Example: LSJXXXX,LSJYYYY""",
-        dest="power_tailgate_vins",
-        required=False,
-        action=EnvDefault,
-        envvar="POWER_TAILGATE_VINS",
         type=str,
     )
     saic_api.add_argument(

@@ -15,7 +15,7 @@ classifiers = [
 
 requires-python = '>=3.12,<4.0'
 dependencies = [
-    "saic-ismart-client-ng (>=0.15.0,<0.16.0)",
+    "saic-ismart-client-ng (>=0.16.0,<0.17.0)",
     'httpx (>=0.28.1,<0.29.0)',
     'inflection (>=0.5.1,<0.6.0)',
     'apscheduler (>=3.11.0,<4.0.0)',
@@ -34,8 +34,8 @@ requires-poetry = '>=2.0,<3.0'
 [tool.poetry.group.dev.dependencies]
 pytest = ">=9.2.0,<10.0.0"
 mock = "^5.1.0"
-coverage = ">=7.17.1,<8.0.0"
-ruff = ">=0.17.3,<0.18.0"
+coverage = ">=7.17.2,<8.0.0"
+ruff = ">=0.17.4,<0.18.0"
 pytest-cov = ">=7.1.0,<8.0.0"
 pytest-asyncio = ">=1.4.1.post1,<2.0.0"
 pytest-mock = ">=3.16.0,<4.0.0"

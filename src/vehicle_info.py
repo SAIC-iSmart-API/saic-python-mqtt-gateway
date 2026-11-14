@@ -16,8 +16,6 @@ class VehicleInfo:
         self,
         vin_info: VinInfo,
         custom_battery_capacity: float | None,
-        *,
-        has_power_tailgate: bool = False,
     ) -> None:
         if not vin_info.vin:
             raise MqttGatewayException("Could not handle a car without a vin")
@@ -34,13 +32,7 @@ class VehicleInfo:
             self.__properties_from_configuration(self.configuration)
         )
         self.__custom_battery_capacity: float | None = custom_battery_capacity
-        # No model configuration flag tells us if the car has a power tailgate,
-        # so the user opts in per VIN (POWER_TAILGATE_VINS).
-        self.__has_power_tailgate: Final[bool] = has_power_tailgate
-
-    @property
-    def has_power_tailgate(self) -> bool:
-        return self.__has_power_tailgate
+        self.__urban_capacity_hint_logged = False
 
     @property
     def custom_battery_capacity(self) -> float | None:
@@ -154,6 +146,22 @@ class VehicleInfo:
         return self.__is_feature_enabled("INTEMP")
 
     @property
+    def has_power_tailgate(self) -> bool:
+        # Mirrors the iSmart app: CTRLBOOT=2 adds the power tailgate, CTRLBOOT=0
+        # removes it, and when the code is absent the car's series decides.
+        ctrl_boot = self.__get_property_by_code("CTRLBOOT")
+        if ctrl_boot is not None:
+            value = ctrl_boot.strip()
+            if value == "2":
+                return True
+            if value == "0":
+                return False
+        # Only the MG S6 EV (MIS3E) has one by default, not its long variant.
+        # The app strips " S" and treats any remaining "L" as the long variant.
+        normalized = self.series.replace(" S", "")
+        return "MIS3E" in normalized and "L" not in normalized
+
+    @property
     def has_on_off_heated_seats(self) -> bool:
         return self.__get_property_by_code("HeatedSeat") == "2"
 
@@ -212,8 +220,18 @@ class VehicleInfo:
 
     @property
     def __mg4_urban_real_battery_capacity(self) -> float | None:
-        # MG4 Urban: "L" suffix = low/standard trim (43kWh LFP, series AH4EM L)
-        # All other variants (e.g. AH4EM S) default to 54kWh LFP
+        # MG4 Urban is sold with a 43kWh and a 54kWh LFP pack, in several trims.
+        # The series alone does not tell them apart: "AH4EM L" was reported as
+        # 43kWh, while "AH4EM S" was reported both as 54kWh and as 43kWh.
+        # Keep the historical guess, and tell the owner how to override it.
+        if not self.__urban_capacity_hint_logged:
+            self.__urban_capacity_hint_logged = True
+            LOG.info(
+                f"MG4 Urban series='{self.series}' is sold with a 43kWh and a 54kWh "
+                "battery, and the series does not tell which one this car has. "
+                "If the capacity is wrong, set BATTERY_CAPACITY_MAPPING "
+                f"({self.vin}=43.0 or {self.vin}=54.0)"
+            )
         if self.series == "AH4EM L":
             return 43.0
         return 54.0

@@ -114,6 +114,25 @@ def test_process_command_line_sets_preset(
     assert config.saic_rest_uri is None
 
 
+def test_process_command_line_accepts_mg_br_preset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "prog",
+            "--saic-user",
+            "user@example.com",
+            "--saic-password",
+            "secret",
+            "--saic-preset",
+            "mg_br",
+        ],
+    )
+    config = process_command_line()
+    assert config.saic_preset == "mg_br"
+
+
 def test_process_command_line_rejects_unknown_preset(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -131,34 +150,3 @@ def test_process_command_line_rejects_unknown_preset(
     )
     with pytest.raises(SystemExit):
         process_command_line()
-
-
-def test_process_command_line_sets_power_tailgate_vins(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "prog",
-            "--saic-user",
-            "user@example.com",
-            "--saic-password",
-            "secret",
-            "--power-tailgate-vins",
-            "LSJAAAA, LSJBBBB,",
-        ],
-    )
-    config = process_command_line()
-    assert config.power_tailgate_vins == {"LSJAAAA", "LSJBBBB"}
-
-
-def test_process_command_line_defaults_power_tailgate_vins_to_empty(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.delenv("POWER_TAILGATE_VINS", raising=False)
-    monkeypatch.setattr(
-        "sys.argv",
-        ["prog", "--saic-user", "user@example.com", "--saic-password", "secret"],
-    )
-    config = process_command_line()
-    assert config.power_tailgate_vins == set()
