@@ -36,6 +36,9 @@
   app ID sent at login with `--saic-device-app-id` (`SAIC_DEVICE_APP_ID`)
   (#508, #509).
 
+* Add the `mg_br` API preset for MG i-SMART LATAM (Brazil), tested on an MG4
+  Urban. Requires client 0.16.0.
+
 * Open and close a power tailgate with `doors/boot/powerTailgate/set`
   (`open`/`close`), also available as a Home Assistant "Power Tailgate" cover
   that is disabled by default. The state comes from `doors/boot`. Nothing in

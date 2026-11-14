@@ -331,9 +331,9 @@ def __add_saic_api_argument_group(
     )
     saic_api.add_argument(
         "--saic-preset",
-        help="""The SAIC API preset: mg_eu, mg_au, mg_tr or maxus_eu.""",
+        help="""The SAIC API preset: mg_eu, mg_au, mg_tr, mg_br or maxus_eu.""",
         default="mg_eu",
-        choices=["mg_eu", "mg_au", "mg_tr", "maxus_eu"],
+        choices=["mg_eu", "mg_au", "mg_tr", "mg_br", "maxus_eu"],
         dest="saic_preset",
         required=False,
         action=EnvDefault,
