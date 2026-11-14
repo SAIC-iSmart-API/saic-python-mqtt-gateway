@@ -57,6 +57,7 @@ The following are the known available endpoints:
 | https://gateway-mg-au.soimt.com/api.app/v1/ | au          | This endpoint is not used by the iSmart app for Australia and New Zealand but has been tested and proven to work in these countries. |
 | https://gateway-mg-eu.soimt.com/api.app/v1/ | eu          |                                                                                                                                      |
 | https://gateway-mg-tr.soimt.com/api.app/v1/ | tr          | This endpoint is valid for the country of Türkiye.                                                                                   |
+| https://gateway-mg-br.soimt.com/api.app/v1/ | br          | Used by the "MG i-SMART LATAM" app (Brazil). Tested with the default tenant ID and a secondary account on an MG4 Urban.             |
 | https://gateway-maxus-eu.soimt.com/api.app/v1/ | eu       | MAXUS Europe app. Use SAIC_PRESET=maxus_eu. Values confirmed by capture.                                                                              |
 
 ### MQTT Broker
