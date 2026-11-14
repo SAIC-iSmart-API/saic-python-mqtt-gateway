@@ -15,14 +15,14 @@ from vehicle_info import VehicleInfo
 COVER_TOPIC = f"homeassistant/cover/{VIN}_mg/{VIN}_power_tailgate/config"
 
 
-def _publish_discovery() -> MessageCapturingConsolePublisher:
+def _publish_discovery(series: str = "EH32 S") -> MessageCapturingConsolePublisher:
     config = Configuration()
     config.anonymized_publishing = False
     config.ha_discovery_prefix = "homeassistant"
     publisher = MessageCapturingConsolePublisher(config)
     vin_info = VinInfo()
     vin_info.vin = VIN
-    vin_info.series = "EH32 S"
+    vin_info.series = series
     vin_info.modelName = "MG4 Electric"
     vin_info.modelYear = "2022"
     vehicle_info = VehicleInfo(vin_info, None)
@@ -55,6 +55,13 @@ def test_power_tailgate_cover_published_for_every_car() -> None:
     assert payload["state_closed"] == "False"
     assert payload["optimistic"] is False
     assert payload["enabled_by_default"] is False
+
+
+def test_power_tailgate_enabled_by_default_on_mg_s6() -> None:
+    publisher = _publish_discovery("MIS3E S")
+
+    payload = json.loads(publisher.map[COVER_TOPIC])
+    assert payload["enabled_by_default"] is True
 
 
 def test_boot_lock_unchanged() -> None:
