@@ -36,6 +36,14 @@ class HomeAssistantDiscoveryBase(metaclass=abc.ABCMeta):
     ) -> str:
         raise NotImplementedError
 
+    def _is_enabled_by_default(
+        self,
+        topic: str,  # noqa: ARG002
+        enabled: bool,
+    ) -> bool:
+        """Lets a subclass turn an entity off, e.g. for cars that lack it."""
+        return enabled
+
     def _publish_select(
         self,
         topic: str,
@@ -57,7 +65,7 @@ class HomeAssistantDiscoveryBase(metaclass=abc.ABCMeta):
             "command_template": command_template,
             "retain": retain,
             "options": options,
-            "enabled_by_default": enabled,
+            "enabled_by_default": self._is_enabled_by_default(topic, enabled),
         }
         if entity_category is not None:
             payload["entity_category"] = entity_category
@@ -88,7 +96,7 @@ class HomeAssistantDiscoveryBase(metaclass=abc.ABCMeta):
             "value_template": value_template,
             "command_template": command_template,
             "retain": retain,
-            "enabled_by_default": enabled,
+            "enabled_by_default": self._is_enabled_by_default(topic, enabled),
         }
         if min_value is not None:
             payload["min"] = min_value
@@ -120,7 +128,7 @@ class HomeAssistantDiscoveryBase(metaclass=abc.ABCMeta):
             "value_template": value_template,
             "payload_on": payload_on,
             "payload_off": payload_off,
-            "enabled_by_default": enabled,
+            "enabled_by_default": self._is_enabled_by_default(topic, enabled),
         }
         if device_class is not None:
             payload["device_class"] = device_class
@@ -158,7 +166,7 @@ class HomeAssistantDiscoveryBase(metaclass=abc.ABCMeta):
             "min": min_value,
             "max": max_value,
             "step": step,
-            "enabled_by_default": enabled,
+            "enabled_by_default": self._is_enabled_by_default(topic, enabled),
         }
         if entity_category is not None:
             payload["entity_category"] = entity_category
@@ -195,7 +203,7 @@ class HomeAssistantDiscoveryBase(metaclass=abc.ABCMeta):
             "payload_off": payload_off,
             "optimistic": False,
             "qos": 0,
-            "enabled_by_default": enabled,
+            "enabled_by_default": self._is_enabled_by_default(topic, enabled),
         }
         if icon is not None:
             payload["icon"] = icon
@@ -224,7 +232,7 @@ class HomeAssistantDiscoveryBase(metaclass=abc.ABCMeta):
             "state_unlocked": state_unlocked,
             "optimistic": False,
             "qos": 0,
-            "enabled_by_default": enabled,
+            "enabled_by_default": self._is_enabled_by_default(topic, enabled),
         }
         if icon is not None:
             payload["icon"] = icon
@@ -260,7 +268,7 @@ class HomeAssistantDiscoveryBase(metaclass=abc.ABCMeta):
             "state_closed": state_closed,
             "optimistic": False,
             "qos": 0,
-            "enabled_by_default": enabled,
+            "enabled_by_default": self._is_enabled_by_default(state_topic, enabled),
         }
         if device_class is not None:
             payload["device_class"] = device_class
@@ -285,7 +293,7 @@ class HomeAssistantDiscoveryBase(metaclass=abc.ABCMeta):
         payload: dict[str, Any] = {
             "state_topic": self._get_state_topic(topic),
             "event_types": event_types,
-            "enabled_by_default": enabled,
+            "enabled_by_default": self._is_enabled_by_default(topic, enabled),
         }
         if entity_category is not None:
             payload["entity_category"] = entity_category
@@ -315,7 +323,7 @@ class HomeAssistantDiscoveryBase(metaclass=abc.ABCMeta):
         payload = {
             "state_topic": self._get_state_topic(topic),
             "value_template": value_template,
-            "enabled_by_default": enabled,
+            "enabled_by_default": self._is_enabled_by_default(topic, enabled),
         }
         if entity_category is not None:
             payload["entity_category"] = entity_category
