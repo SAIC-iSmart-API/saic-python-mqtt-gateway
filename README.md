@@ -33,7 +33,7 @@ When using combinations of configuration methods, the order of precedence is as 
 | -u or --saic-user           | SAIC_USER                    | SAIC user name - **required**                                                                                                                                                       |
 | -p or --saic-password       | SAIC_PASSWORD                | SAIC password - **required**                                                                                                                                                        |
 | --saic-phone-country-code   | SAIC_PHONE_COUNTRY_CODE      | Phone country code, used if the username is not an email address                                                                                                                    |
-| --saic-preset               | SAIC_PRESET                  | Preset for the SAIC API: mg_eu (default), mg_au, mg_tr or maxus_eu. Sets the URI, region, tenant ID and app ID. The options below override single values.                         |
+| --saic-preset               | SAIC_PRESET                  | Preset for the SAIC API: mg_eu (default), mg_au, mg_tr, mg_br or maxus_eu. Sets the URI, region, tenant ID and app ID. The options below override single values.                         |
 | --saic-rest-uri             | SAIC_REST_URI                | SAIC API URI. Default comes from the preset (mg_eu: https://gateway-mg-eu.soimt.com/api.app/v1/)                                                                                  |
 | --saic-region               | SAIC_REGION                  | SAIC API region. Default comes from the preset.                                                                                                                                    |
 | --saic-tenant-id            | SAIC_TENANT_ID               | SAIC API tenant ID. Default comes from the preset (459771 for MG, 590224 for MAXUS).                                                                                              |
@@ -57,7 +57,7 @@ The following are the known available endpoints:
 | https://gateway-mg-au.soimt.com/api.app/v1/ | au          | This endpoint is not used by the iSmart app for Australia and New Zealand but has been tested and proven to work in these countries. |
 | https://gateway-mg-eu.soimt.com/api.app/v1/ | eu          |                                                                                                                                      |
 | https://gateway-mg-tr.soimt.com/api.app/v1/ | tr          | This endpoint is valid for the country of Türkiye.                                                                                   |
-| https://gateway-mg-br.soimt.com/api.app/v1/ | br          | Used by the "MG i-SMART LATAM" app (Brazil). Tested with the default tenant ID and a secondary account on an MG4 Urban.             |
+| https://gateway-mg-br.soimt.com/api.app/v1/ | br          | Used by the "MG i-SMART LATAM" app (Brazil). Use SAIC_PRESET=mg_br.                                                             |
 | https://gateway-maxus-eu.soimt.com/api.app/v1/ | eu       | MAXUS Europe app. Use SAIC_PRESET=maxus_eu. Values confirmed by capture.                                                                              |
 
 ### MQTT Broker
