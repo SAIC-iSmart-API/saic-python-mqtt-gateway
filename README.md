@@ -238,6 +238,63 @@ with the default vehicle prefix: `saic/<saic_user>/vehicles/<vehicle_id>`
 | /refresh/period/cachedStatus/set         | refresh interval (sec), 0 to disable                 | How often the gateway reads the vehicle status SAIC has cached. This does not wake the car, but the cache is only updated by the car on plug-in, charge start, switch-off and about every 4 hours while parked, so there is little point in going much below 15 minutes. Only done while the car is inactive. The default comes from `CACHED_STATUS_INTERVAL` (0 = disabled).                                            |
 | /location/findMyCar/set                  | [activate,lights_only,horn_only,stop]                | Activate 'find my car' with lights and horn (activate), with lights only (lights_only), with horn only (horn_only) or deactivate it (stop).                                                                                           |
 
+## Batch commands
+
+Publish a non-retained JSON message to
+`saic/<saic_user>/vehicles/<vehicle_id>/commands/batch/set` to execute existing
+vehicle commands sequentially, with one forced refresh requested at the end:
+
+```json
+{
+  "requestId": "warm-up-123",
+  "commands": [
+    {"topic": "climate/remoteClimateState/set", "payload": "on"},
+    {"topic": "climate/heatedSeatsFrontLeftLevel/set", "payload": "1"},
+    {"topic": "climate/heatedSeatsFrontRightLevel/set", "payload": "1"}
+  ]
+}
+```
+
+Topics are relative to the vehicle prefix and payloads are strings, using the
+same values as individual commands. JSON command payloads must also be encoded
+as strings. The optional `requestId` is echoed in the result; it does not provide
+deduplication. Batches allow 1–32 commands, a maximum message size of 64 KiB,
+and an execution timeout of five minutes (excluding time waiting for a running
+poll or command). Nested batches, unknown topics and `refresh/` configuration
+commands are rejected. The whole envelope is checked before execution; individual
+payload values are validated by the existing handlers when their turn arrives.
+Retained replays and empty cleanup messages are ignored.
+
+Normal vehicle polling, including cached status polling, and other commands for
+the same vehicle wait while the batch runs. Each command still makes its normal
+SAIC API calls. A batch does not bypass vehicle command limits, merge seat-control
+requests, or roll back commands that have already succeeded. Execution stops at
+the first failure. The final refresh is requested even after a partial failure;
+it runs asynchronously after the batch releases the vehicle lock.
+
+One non-retained JSON result is published to `commands/batch/result`, for example:
+
+```json
+{
+  "requestId": "warm-up-123",
+  "status": "failed",
+  "results": [
+    {"topic": "climate/remoteClimateState/set", "status": "success"},
+    {"topic": "climate/heatedSeatsFrontLeftLevel/set", "status": "failed", "error": "Vehicle busy"},
+    {"topic": "climate/heatedSeatsFrontRightLevel/set", "status": "skipped"}
+  ]
+}
+```
+
+Overall status is `success`, `failed` or `cancelled`. A timeout or cancellation
+marks the in-flight command `unknown`, because the vehicle may have received it.
+Remaining commands are `skipped`; do not blindly retry an ambiguous batch.
+Invalid envelopes return `{"status":"invalid","error":"...","results":[]}`
+without running commands or requesting a refresh. Success means the command
+handler completed, not that refreshed telemetry has confirmed the physical
+state. Individual command result topics are not published for batch entries.
+Only the batch command topic is cleared after execution.
+
 ## Charging type values
 
 The `/drivetrain/chargingType` topic publishes the raw `chargingType` value reported by the SAIC API. The API does not
