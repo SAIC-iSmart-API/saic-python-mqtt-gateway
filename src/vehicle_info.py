@@ -32,6 +32,7 @@ class VehicleInfo:
             self.__properties_from_configuration(self.configuration)
         )
         self.__custom_battery_capacity: float | None = custom_battery_capacity
+        self.__urban_capacity_hint_logged = False
 
     @property
     def custom_battery_capacity(self) -> float | None:
@@ -165,8 +166,18 @@ class VehicleInfo:
 
     @property
     def __mg4_urban_real_battery_capacity(self) -> float | None:
-        # MG4 Urban: "L" suffix = low/standard trim (43kWh LFP, series AH4EM L)
-        # All other variants (e.g. AH4EM S) default to 54kWh LFP
+        # MG4 Urban is sold with a 43kWh and a 54kWh LFP pack, in several trims.
+        # The series alone does not tell them apart: "AH4EM L" was reported as
+        # 43kWh, while "AH4EM S" was reported both as 54kWh and as 43kWh.
+        # Keep the historical guess, and tell the owner how to override it.
+        if not self.__urban_capacity_hint_logged:
+            self.__urban_capacity_hint_logged = True
+            LOG.info(
+                f"MG4 Urban series='{self.series}' is sold with a 43kWh and a 54kWh "
+                "battery, and the series does not tell which one this car has. "
+                "If the capacity is wrong, set BATTERY_CAPACITY_MAPPING "
+                f"({self.vin}=43.0 or {self.vin}=54.0)"
+            )
         if self.series == "AH4EM L":
             return 43.0
         return 54.0
