@@ -92,12 +92,19 @@ class VehicleInfo:
 
     @property
     def has_power_tailgate(self) -> bool:
-        # CTRLBOOT is a tri-state: absent or 0 means no power tailgate.
+        # Mirrors the iSmart app: CTRLBOOT=2 adds the power tailgate, CTRLBOOT=0
+        # removes it, and when the code is absent the car's series decides.
         ctrl_boot = self.__get_property_by_code("CTRLBOOT")
-        if ctrl_boot is not None and ctrl_boot.strip() not in ("", "0"):
-            return True
-        # The MG S6 EV (MIS3E) has one but reports no CTRLBOOT code
-        return self.series.startswith("MIS3E")
+        if ctrl_boot is not None:
+            value = ctrl_boot.strip()
+            if value == "2":
+                return True
+            if value == "0":
+                return False
+        # Only the MG S6 EV (MIS3E) has one by default, not its long variant.
+        # The app strips " S" and treats any remaining "L" as the long variant.
+        normalized = self.series.replace(" S", "")
+        return "MIS3E" in normalized and "L" not in normalized
 
     @property
     def has_on_off_heated_seats(self) -> bool:

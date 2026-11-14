@@ -77,9 +77,17 @@ class TestPowerTailgate:
     def test_other_series_has_no_power_tailgate(self) -> None:
         assert not self._info("EH32 S").has_power_tailgate
 
-    def test_ctrlboot_absent_or_zero_means_no_power_tailgate(self) -> None:
-        assert not self._info("EH32 S", "0").has_power_tailgate
+    def test_mg_s6_long_variant_has_no_power_tailgate(self) -> None:
+        assert not self._info("MIS3E L").has_power_tailgate
 
-    def test_ctrlboot_non_zero_means_power_tailgate(self) -> None:
-        assert self._info("EH32 S", "1").has_power_tailgate
+    def test_ctrlboot_zero_removes_power_tailgate(self) -> None:
+        assert not self._info("EH32 S", "0").has_power_tailgate
+        assert not self._info("MIS3E S", "0").has_power_tailgate
+
+    def test_ctrlboot_two_adds_power_tailgate(self) -> None:
         assert self._info("EH32 S", "2").has_power_tailgate
+        assert self._info("MIS3E L", "2").has_power_tailgate
+
+    def test_ctrlboot_one_falls_back_to_series(self) -> None:
+        assert not self._info("EH32 S", "1").has_power_tailgate
+        assert self._info("MIS3E S", "1").has_power_tailgate
