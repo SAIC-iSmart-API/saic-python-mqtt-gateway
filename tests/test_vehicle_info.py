@@ -55,3 +55,20 @@ class TestMg4UrbanRealBatteryCapacity:
             "AH4EM L", model="MG4 EV URBAN", custom_battery_capacity=54.0
         )
         assert vi.real_battery_capacity == 54.0
+
+
+class TestPowerTailgate:
+    @staticmethod
+    def _info(series: str) -> VehicleInfo:
+        vin_info = VinInfo()
+        vin_info.vin = VIN
+        vin_info.series = series
+        vin_info.modelName = "x"
+        vin_info.modelYear = "2025"
+        return VehicleInfo(vin_info, None)
+
+    def test_mg_s6_has_power_tailgate(self) -> None:
+        assert self._info("MIS3E S").has_power_tailgate
+
+    def test_other_series_has_no_power_tailgate(self) -> None:
+        assert not self._info("EH32 S").has_power_tailgate

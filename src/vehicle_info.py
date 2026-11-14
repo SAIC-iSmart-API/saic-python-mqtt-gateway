@@ -91,6 +91,12 @@ class VehicleInfo:
         return self.__get_property_by_code("S35") != "0"
 
     @property
+    def has_power_tailgate(self) -> bool:
+        # Nothing in the model configuration tells which cars have a power
+        # tailgate, so it is known by series. MIS3E is the MG S6 EV.
+        return self.series.startswith("MIS3E")
+
+    @property
     def has_on_off_heated_seats(self) -> bool:
         return self.__get_property_by_code("HeatedSeat") == "2"
 
