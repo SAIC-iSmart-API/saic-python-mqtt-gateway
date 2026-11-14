@@ -49,14 +49,14 @@ UNGATED_ENTITIES = [
 ]
 
 
-def _publish_discovery(codes: dict[str, str]) -> dict[str, str]:
+def _publish_discovery(codes: dict[str, str], series: str = "EH32 S") -> dict[str, str]:
     config = Configuration()
     config.anonymized_publishing = False
     config.ha_discovery_prefix = "homeassistant"
     publisher = MessageCapturingConsolePublisher(config)
     vin_info = VinInfo()
     vin_info.vin = VIN
-    vin_info.series = "EH32 S"
+    vin_info.series = series
     vin_info.vehicleModelConfiguration = [
         VehicleModelConfiguration(itemCode=code, itemName=code, itemValue=value)
         for code, value in codes.items()
@@ -122,3 +122,19 @@ def test_door_mask_gates_single_entities() -> None:
     assert _enabled(published, "binary_sensor", "door_passenger")
     assert not _enabled(published, "binary_sensor", "door_rear_left")
     assert not _enabled(published, "binary_sensor", "door_rear_right")
+
+
+def _soc_enabled(series: str) -> bool:
+    published = _publish_discovery({}, series=series)
+    payload = json.loads(published[_topic("sensor", "soc")])
+    enabled: bool = payload["enabled_by_default"]
+    return enabled
+
+
+@pytest.mark.parametrize("series", ["ZP22 EU", "ZS32 EU"])
+def test_battery_entities_disabled_by_default_on_hybrids(series: str) -> None:
+    assert not _soc_enabled(series)
+
+
+def test_battery_entities_enabled_on_ev() -> None:
+    assert _soc_enabled("EH32 S")

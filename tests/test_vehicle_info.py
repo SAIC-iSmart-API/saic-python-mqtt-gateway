@@ -126,3 +126,35 @@ class TestMg4UrbanCapacityHint:
         assert not [
             r for r in caplog.records if "BATTERY_CAPACITY_MAPPING" in r.message
         ]
+
+
+class TestZs32Hybrid:
+    @staticmethod
+    def _info(series: str) -> VehicleInfo:
+        vin_info = VinInfo()
+        vin_info.vin = VIN
+        vin_info.series = series
+        vin_info.modelName = "ZS"
+        vin_info.modelYear = "2024"
+        return VehicleInfo(vin_info, None)
+
+    def test_zs32_is_not_an_ev(self) -> None:
+        assert not self._info("ZS32 EU").is_ev
+        assert self._info("ZS32 EU").has_fossil_fuel
+
+    def test_zs32_ac_range_and_index_follow_the_app(self) -> None:
+        info = self._info("ZS32 EU")
+        assert (info.min_ac_temperature, info.max_ac_temperature) == (17, 33)
+        # The app sends temperature - 14
+        assert info.get_ac_temperature_idx(22) == 22 - 14
+        assert info.get_ac_temperature_idx(33) == 33 - 14
+
+    def test_other_series_ac_values_unchanged(self) -> None:
+        for series, low, high in (
+            ("EH32 S", 17, 31),
+            ("MZS3E", 16, 31),
+            ("AH4EM L", 16, 28),
+        ):
+            info = self._info(series)
+            assert (info.min_ac_temperature, info.max_ac_temperature) == (low, high)
+            assert info.get_ac_temperature_idx(22) == 22 - 14
