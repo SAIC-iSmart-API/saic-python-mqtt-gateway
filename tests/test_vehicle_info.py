@@ -59,12 +59,16 @@ class TestMg4UrbanRealBatteryCapacity:
 
 class TestPowerTailgate:
     @staticmethod
-    def _info(series: str) -> VehicleInfo:
+    def _info(series: str, ctrl_boot: str | None = None) -> VehicleInfo:
         vin_info = VinInfo()
         vin_info.vin = VIN
         vin_info.series = series
         vin_info.modelName = "x"
         vin_info.modelYear = "2025"
+        if ctrl_boot is not None:
+            vin_info.vehicleModelConfiguration = [
+                VehicleModelConfiguration("CTRLBOOT", "CTRLBOOT", ctrl_boot)
+            ]
         return VehicleInfo(vin_info, None)
 
     def test_mg_s6_has_power_tailgate(self) -> None:
@@ -72,3 +76,10 @@ class TestPowerTailgate:
 
     def test_other_series_has_no_power_tailgate(self) -> None:
         assert not self._info("EH32 S").has_power_tailgate
+
+    def test_ctrlboot_absent_or_zero_means_no_power_tailgate(self) -> None:
+        assert not self._info("EH32 S", "0").has_power_tailgate
+
+    def test_ctrlboot_non_zero_means_power_tailgate(self) -> None:
+        assert self._info("EH32 S", "1").has_power_tailgate
+        assert self._info("EH32 S", "2").has_power_tailgate

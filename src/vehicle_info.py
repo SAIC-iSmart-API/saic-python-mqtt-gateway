@@ -92,8 +92,11 @@ class VehicleInfo:
 
     @property
     def has_power_tailgate(self) -> bool:
-        # Nothing in the model configuration tells which cars have a power
-        # tailgate, so it is known by series. MIS3E is the MG S6 EV.
+        # CTRLBOOT is a tri-state: absent or 0 means no power tailgate.
+        ctrl_boot = self.__get_property_by_code("CTRLBOOT")
+        if ctrl_boot is not None and ctrl_boot.strip() not in ("", "0"):
+            return True
+        # The MG S6 EV (MIS3E) has one but reports no CTRLBOOT code
         return self.series.startswith("MIS3E")
 
     @property
