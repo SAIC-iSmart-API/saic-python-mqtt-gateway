@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from apscheduler.schedulers.blocking import BlockingScheduler
 import pytest
 from saic_ismart_client_ng.api.vehicle.schema import (
@@ -77,24 +79,33 @@ def _topic(component: str, name: str) -> str:
     return f"homeassistant/{component}/{VIN}_mg/{VIN}_{name}/config"
 
 
+def _enabled(published: dict[str, str], component: str, name: str) -> bool:
+    payload = published[_topic(component, name)]
+    assert payload != ""
+    enabled: bool = json.loads(payload)["enabled_by_default"]
+    return enabled
+
+
 @pytest.mark.parametrize(("component", "name"), GATED_ENTITIES)
 def test_entity_published_when_supported(component: str, name: str) -> None:
     published = _publish_discovery(ALL_FEATURES)
-    assert published[_topic(component, name)] != ""
+    assert _enabled(published, component, name)
 
 
 @pytest.mark.parametrize(("component", "name"), GATED_ENTITIES)
 def test_entity_published_when_code_absent(component: str, name: str) -> None:
     published = _publish_discovery({})
-    assert published[_topic(component, name)] != ""
+    assert _enabled(published, component, name)
 
 
 @pytest.mark.parametrize(("component", "name"), GATED_ENTITIES)
-def test_entity_unpublished_when_code_disabled(component: str, name: str) -> None:
+def test_entity_disabled_by_default_when_code_disabled(
+    component: str, name: str
+) -> None:
     published = _publish_discovery(
         {"DOOR": "0000", "BOOT": "0", "J17": "0", "INTEMP": "0"}
     )
-    assert published[_topic(component, name)] == ""
+    assert not _enabled(published, component, name)
 
 
 @pytest.mark.parametrize(("component", "name"), UNGATED_ENTITIES)
@@ -107,7 +118,7 @@ def test_entity_published_even_when_code_disabled(component: str, name: str) -> 
 
 def test_door_mask_gates_single_entities() -> None:
     published = _publish_discovery({"DOOR": "1100"})
-    assert published[_topic("binary_sensor", "door_driver")] != ""
-    assert published[_topic("binary_sensor", "door_passenger")] != ""
-    assert published[_topic("binary_sensor", "door_rear_left")] == ""
-    assert published[_topic("binary_sensor", "door_rear_right")] == ""
+    assert _enabled(published, "binary_sensor", "door_driver")
+    assert _enabled(published, "binary_sensor", "door_passenger")
+    assert not _enabled(published, "binary_sensor", "door_rear_left")
+    assert not _enabled(published, "binary_sensor", "door_rear_right")

@@ -531,12 +531,12 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             "Window rear right",
             device_class="window",
         )
-        if self.__vin_info.has_sunroof:
-            self._publish_binary_sensor(
-                mqtt_topics.WINDOWS_SUN_ROOF, "Sun roof", device_class="window"
-            )
-        else:
-            self.__unpublish_ha_discovery_message("binary_sensor", "Sun roof")
+        self._publish_binary_sensor(
+            mqtt_topics.WINDOWS_SUN_ROOF,
+            "Sun roof",
+            device_class="window",
+            enabled=self.__vin_info.has_sunroof,
+        )
 
     def __publish_ccu_sensors(self) -> None:
         self._publish_sensor(
@@ -618,16 +618,14 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             (mqtt_topics.TYRES_REAR_RIGHT_PRESSURE, "Tyres rear right pressure"),
         ]
         for topic, name in tyres:
-            if self.__vin_info.has_tyre_pressure:
-                self._publish_sensor(
-                    topic,
-                    name,
-                    device_class="pressure",
-                    unit_of_measurement="bar",
-                    icon="mdi:tire",
-                )
-            else:
-                self.__unpublish_ha_discovery_message("sensor", name)
+            self._publish_sensor(
+                topic,
+                name,
+                device_class="pressure",
+                unit_of_measurement="bar",
+                icon="mdi:tire",
+                enabled=self.__vin_info.has_tyre_pressure,
+            )
 
     def __publish_body_sensors(self) -> None:
         self.__publish_windows_sensors()
@@ -666,12 +664,13 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             (mqtt_topics.DOORS_BOOT, "Boot", self.__vin_info.has_boot_status),
         ]
         for topic, name, supported in doors:
-            if supported:
-                self._publish_binary_sensor(
-                    topic, name, device_class="door", icon="mdi:car-door"
-                )
-            else:
-                self.__unpublish_ha_discovery_message("binary_sensor", name)
+            self._publish_binary_sensor(
+                topic,
+                name,
+                device_class="door",
+                icon="mdi:car-door",
+                enabled=supported,
+            )
 
     def __publish_power_tailgate(self) -> None:
         # Nothing in the vehicle data tells which cars have a power tailgate,
@@ -832,16 +831,14 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
         self.__publish_heated_seats()
         self.__publish_back_window_heat()
         self.__publish_steering_wheel_heat()
-        if self.__vin_info.has_interior_temperature:
-            self._publish_sensor(
-                mqtt_topics.CLIMATE_INTERIOR_TEMPERATURE,
-                "Interior temperature",
-                device_class="temperature",
-                state_class="measurement",
-                unit_of_measurement="°C",
-            )
-        else:
-            self.__unpublish_ha_discovery_message("sensor", "Interior temperature")
+        self._publish_sensor(
+            mqtt_topics.CLIMATE_INTERIOR_TEMPERATURE,
+            "Interior temperature",
+            device_class="temperature",
+            state_class="measurement",
+            unit_of_measurement="°C",
+            enabled=self.__vin_info.has_interior_temperature,
+        )
         self._publish_sensor(
             mqtt_topics.CLIMATE_EXTERIOR_TEMPERATURE,
             "Exterior temperature",

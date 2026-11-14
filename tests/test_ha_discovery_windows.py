@@ -102,15 +102,14 @@ class TestHaDiscoveryWindows(unittest.TestCase):
         assert "command_topic" not in payload
         assert payload["device_class"] == "window"
 
-    def test_sunroof_unpublished_when_not_supported(self) -> None:
+    def test_sunroof_disabled_by_default_when_not_supported(self) -> None:
         discovery, publisher = self._make_discovery(has_sunroof=False)
         discovery.publish_ha_discovery_messages()
 
         sunroof_binary = f"homeassistant/binary_sensor/{VIN}_mg/{VIN}_sun_roof/config"
-        assert sunroof_binary in publisher.map, (
-            "Expected unpublish message for binary_sensor Sun roof"
-        )
-        assert publisher.map[sunroof_binary] == ""
+        assert sunroof_binary in publisher.map
+        payload = json.loads(publisher.map[sunroof_binary])
+        assert payload["enabled_by_default"] is False
 
 
 class TestHaDiscoveryChargingAvailability(unittest.TestCase):
