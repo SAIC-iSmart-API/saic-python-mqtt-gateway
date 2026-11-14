@@ -507,6 +507,9 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
         )
 
     def __publish_windows_sensors(self) -> None:
+        # Window sensors are always published. The WINDOW model configuration code
+        # cannot be used to gate them: e.g. the MG4 reports WINDOW=0000 while sending
+        # state for all 4 windows.
         self.__unpublish_ha_discovery_message("switch", "Window driver")
         self.__unpublish_ha_discovery_message("switch", "Window passenger")
         self.__unpublish_ha_discovery_message("switch", "Window rear left")
@@ -528,12 +531,12 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             "Window rear right",
             device_class="window",
         )
-        if self.__vin_info.has_sunroof:
-            self._publish_binary_sensor(
-                mqtt_topics.WINDOWS_SUN_ROOF, "Sun roof", device_class="window"
-            )
-        else:
-            self.__unpublish_ha_discovery_message("binary_sensor", "Sun roof")
+        self._publish_binary_sensor(
+            mqtt_topics.WINDOWS_SUN_ROOF,
+            "Sun roof",
+            device_class="window",
+            enabled=self.__vin_info.has_sunroof,
+        )
 
     def __publish_ccu_sensors(self) -> None:
         self._publish_sensor(
@@ -608,34 +611,21 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
         )
 
     def __publish_tyres_sensors(self) -> None:
-        self._publish_sensor(
-            mqtt_topics.TYRES_FRONT_LEFT_PRESSURE,
-            "Tyres front left pressure",
-            device_class="pressure",
-            unit_of_measurement="bar",
-            icon="mdi:tire",
-        )
-        self._publish_sensor(
-            mqtt_topics.TYRES_FRONT_RIGHT_PRESSURE,
-            "Tyres front right pressure",
-            device_class="pressure",
-            unit_of_measurement="bar",
-            icon="mdi:tire",
-        )
-        self._publish_sensor(
-            mqtt_topics.TYRES_REAR_LEFT_PRESSURE,
-            "Tyres rear left pressure",
-            device_class="pressure",
-            unit_of_measurement="bar",
-            icon="mdi:tire",
-        )
-        self._publish_sensor(
-            mqtt_topics.TYRES_REAR_RIGHT_PRESSURE,
-            "Tyres rear right pressure",
-            device_class="pressure",
-            unit_of_measurement="bar",
-            icon="mdi:tire",
-        )
+        tyres = [
+            (mqtt_topics.TYRES_FRONT_LEFT_PRESSURE, "Tyres front left pressure"),
+            (mqtt_topics.TYRES_FRONT_RIGHT_PRESSURE, "Tyres front right pressure"),
+            (mqtt_topics.TYRES_REAR_LEFT_PRESSURE, "Tyres rear left pressure"),
+            (mqtt_topics.TYRES_REAR_RIGHT_PRESSURE, "Tyres rear right pressure"),
+        ]
+        for topic, name in tyres:
+            self._publish_sensor(
+                topic,
+                name,
+                device_class="pressure",
+                unit_of_measurement="bar",
+                icon="mdi:tire",
+                enabled=self.__vin_info.has_tyre_pressure,
+            )
 
     def __publish_body_sensors(self) -> None:
         self.__publish_windows_sensors()
@@ -653,36 +643,34 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             state_locked="False",
             state_unlocked="True",
         )
-        self._publish_binary_sensor(
-            mqtt_topics.DOORS_DRIVER,
-            "Door driver",
-            device_class="door",
-            icon="mdi:car-door",
-        )
-        self._publish_binary_sensor(
-            mqtt_topics.DOORS_PASSENGER,
-            "Door passenger",
-            device_class="door",
-            icon="mdi:car-door",
-        )
-        self._publish_binary_sensor(
-            mqtt_topics.DOORS_REAR_LEFT,
-            "Door rear left",
-            device_class="door",
-            icon="mdi:car-door",
-        )
-        self._publish_binary_sensor(
-            mqtt_topics.DOORS_REAR_RIGHT,
-            "Door rear right",
-            device_class="door",
-            icon="mdi:car-door",
-        )
-        self._publish_binary_sensor(
-            mqtt_topics.DOORS_BONNET, "Bonnet", device_class="door", icon="mdi:car-door"
-        )
-        self._publish_binary_sensor(
-            mqtt_topics.DOORS_BOOT, "Boot", device_class="door", icon="mdi:car-door"
-        )
+        doors = [
+            (mqtt_topics.DOORS_DRIVER, "Door driver", self.__vin_info.has_driver_door),
+            (
+                mqtt_topics.DOORS_PASSENGER,
+                "Door passenger",
+                self.__vin_info.has_passenger_door,
+            ),
+            (
+                mqtt_topics.DOORS_REAR_LEFT,
+                "Door rear left",
+                self.__vin_info.has_rear_left_door,
+            ),
+            (
+                mqtt_topics.DOORS_REAR_RIGHT,
+                "Door rear right",
+                self.__vin_info.has_rear_right_door,
+            ),
+            (mqtt_topics.DOORS_BONNET, "Bonnet", True),
+            (mqtt_topics.DOORS_BOOT, "Boot", self.__vin_info.has_boot_status),
+        ]
+        for topic, name, supported in doors:
+            self._publish_binary_sensor(
+                topic,
+                name,
+                device_class="door",
+                icon="mdi:car-door",
+                enabled=supported,
+            )
 
     def __publish_power_tailgate(self) -> None:
         # Nothing in the vehicle data tells which cars have a power tailgate,
@@ -849,6 +837,7 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
             device_class="temperature",
             state_class="measurement",
             unit_of_measurement="°C",
+            enabled=self.__vin_info.has_interior_temperature,
         )
         self._publish_sensor(
             mqtt_topics.CLIMATE_EXTERIOR_TEMPERATURE,

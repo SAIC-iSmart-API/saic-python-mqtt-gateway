@@ -79,6 +79,27 @@ class VehicleInfo:
         normalized_property_name = str(property_name).strip().upper()
         return self.__properties_by_code.get(normalized_property_name)
 
+    def __get_int_property_by_code(self, property_name: str) -> int | None:
+        # None means the code is absent or not numeric, i.e. unknown
+        try:
+            return int(self.__get_property_by_code(property_name) or "")
+        except ValueError:
+            return None
+
+    def __is_feature_enabled(self, property_name: str) -> bool:
+        # Only a code that is present and 0 means "not available". An unknown
+        # code keeps the feature: some vehicles omit codes but send the data.
+        value = self.__get_int_property_by_code(property_name)
+        return value is None or value != 0
+
+    def __get_mask_by_code(self, property_name: str, index: int) -> bool:
+        # 4-char positional mask: driver, passenger, rear left, rear right.
+        # A missing or malformed mask is unknown and keeps the feature.
+        mask = self.__get_property_by_code(property_name) or ""
+        if len(mask) != 4 or set(mask) - {"0", "1"}:
+            return True
+        return mask[index] == "1"
+
     @property
     def is_ev(self) -> bool:
         return not self.series.startswith("ZP22")
@@ -89,7 +110,40 @@ class VehicleInfo:
 
     @property
     def has_sunroof(self) -> bool:
-        return self.__get_property_by_code("S35") != "0"
+        # The value 2 alone does not denote a sunroof
+        value = self.__get_int_property_by_code("S35")
+        return value is None or value & ~2 != 0
+
+    @property
+    def has_driver_door(self) -> bool:
+        return self.__get_mask_by_code("DOOR", 0)
+
+    @property
+    def has_passenger_door(self) -> bool:
+        return self.__get_mask_by_code("DOOR", 1)
+
+    @property
+    def has_rear_left_door(self) -> bool:
+        return self.__get_mask_by_code("DOOR", 2)
+
+    @property
+    def has_rear_right_door(self) -> bool:
+        return self.__get_mask_by_code("DOOR", 3)
+
+    # WINDOW, BONNUT, BATTERY and EXTEMP are deliberately not used: real vehicles
+    # report 0 for them while still sending the data (e.g. WINDOW=0000 on the MG4)
+
+    @property
+    def has_boot_status(self) -> bool:
+        return self.__is_feature_enabled("BOOT")
+
+    @property
+    def has_tyre_pressure(self) -> bool:
+        return self.__is_feature_enabled("J17")
+
+    @property
+    def has_interior_temperature(self) -> bool:
+        return self.__is_feature_enabled("INTEMP")
 
     @property
     def has_power_tailgate(self) -> bool:
