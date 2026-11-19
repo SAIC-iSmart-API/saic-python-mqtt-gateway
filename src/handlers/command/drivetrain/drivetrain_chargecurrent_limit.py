@@ -46,6 +46,10 @@ class DrivetrainChargeCurrentLimitCommand(
 
     @property
     def __desired_target_soc(self) -> TargetBatteryCode:
+        # Vehicles without target SoC support (e.g. LFP) must not receive a
+        # target SoC in the charging settings request, or the vehicle rejects it.
+        if not self.vehicle_state.vehicle.supports_target_soc:
+            return TargetBatteryCode.P_IGNORE
         if (target_soc := self.vehicle_state.target_soc) is not None:
             return target_soc
         return TargetBatteryCode.P_IGNORE
