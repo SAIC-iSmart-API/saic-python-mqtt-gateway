@@ -6,10 +6,17 @@ from typing import TYPE_CHECKING
 
 from saic_ismart_client_ng.exceptions import SaicApiException, SaicLogoutException
 
-from utils import ensure_datetime_aware, is_transient_api_error, log_transient_api_error
+from utils import (
+    DEFAULT_MESSAGE_TIMEZONE,
+    is_transient_api_error,
+    log_transient_api_error,
+    message_time_utc,
+)
 from vehicle import RefreshMode
 
 if TYPE_CHECKING:
+    from zoneinfo import ZoneInfo
+
     from saic_ismart_client_ng import SaicApi
     from saic_ismart_client_ng.api.message.schema import MessageEntity
 
@@ -25,10 +32,12 @@ class MessageHandler:
         gateway: VehicleHandlerLocator,
         relogin_handler: ReloginHandler,
         saicapi: SaicApi,
+        message_timezone: ZoneInfo = DEFAULT_MESSAGE_TIMEZONE,
     ) -> None:
         self.gateway = gateway
         self.saicapi = saicapi
         self.relogin_handler = relogin_handler
+        self.message_timezone = message_timezone
         self.last_message_ts = datetime.datetime.min.replace(tzinfo=datetime.UTC)
         self.last_message_id: str | int | None = None
 
@@ -50,24 +59,20 @@ class MessageHandler:
                 LOG.info(message.details)
                 await self.__read_message(message)
 
-            latest_message = self.__get_latest_message(all_messages)
-            if (
-                latest_message is not None
-                and latest_message.messageId != self.last_message_id
-                and ensure_datetime_aware(latest_message.message_time)
-                > self.last_message_ts
-            ):
-                self.last_message_id = latest_message.messageId
-                self.last_message_ts = ensure_datetime_aware(
-                    latest_message.message_time
-                )
-                LOG.info(
-                    f"{latest_message.title} detected at {latest_message.message_time}"
-                )
-                if (vin := latest_message.vin) and (
-                    vehicle_handler := self.gateway.get_vehicle_handler(vin)
+            latest = self.__get_latest_message(all_messages)
+            if latest is not None:
+                latest_message, latest_time = latest
+                if (
+                    latest_message.messageId != self.last_message_id
+                    and latest_time > self.last_message_ts
                 ):
-                    vehicle_handler.vehicle_state.notify_message(latest_message)
+                    self.last_message_id = latest_message.messageId
+                    self.last_message_ts = latest_time
+                    LOG.info(f"{latest_message.title} detected at {latest_time}")
+                    if (vin := latest_message.vin) and (
+                        vehicle_handler := self.gateway.get_vehicle_handler(vin)
+                    ):
+                        vehicle_handler.vehicle_state.notify_message(latest_message)
 
             # Delete vehicle start messages unless they are the latest
             vehicle_start_messages = [
@@ -112,12 +117,8 @@ class MessageHandler:
                     all_messages.extend(message_list.messages)
                 else:
                     return all_messages
-                oldest_message = self.__get_oldest_message(all_messages)
-                if (
-                    oldest_message is not None
-                    and ensure_datetime_aware(oldest_message.message_time)
-                    < self.last_message_ts
-                ):
+                oldest_time = self.__get_oldest_message_time(all_messages)
+                if oldest_time is not None and oldest_time < self.last_message_ts:
                     return all_messages
             except SaicLogoutException:
                 raise
@@ -179,22 +180,31 @@ class MessageHandler:
             return False
         return True
 
-    @staticmethod
-    def __get_latest_message(
-        vehicle_start_messages: list[MessageEntity],
-    ) -> MessageEntity | None:
-        if len(vehicle_start_messages) == 0:
-            return None
-        return max(
-            vehicle_start_messages, key=lambda m: ensure_datetime_aware(m.message_time)
-        )
+    def __timed_messages(
+        self, messages: list[MessageEntity]
+    ) -> list[tuple[MessageEntity, datetime.datetime]]:
+        """Messages paired with their UTC time, leaving out those without one."""
+        timed = []
+        for message in messages:
+            message_time = message_time_utc(message, self.message_timezone)
+            if message_time is None:
+                LOG.debug("Message %s has no usable time", message.messageId)
+            else:
+                timed.append((message, message_time))
+        return timed
 
-    @staticmethod
-    def __get_oldest_message(
-        vehicle_start_messages: list[MessageEntity],
-    ) -> MessageEntity | None:
-        if len(vehicle_start_messages) == 0:
+    def __get_latest_message(
+        self, messages: list[MessageEntity]
+    ) -> tuple[MessageEntity, datetime.datetime] | None:
+        timed = self.__timed_messages(messages)
+        if len(timed) == 0:
             return None
-        return min(
-            vehicle_start_messages, key=lambda m: ensure_datetime_aware(m.message_time)
-        )
+        return max(timed, key=lambda t: t[1])
+
+    def __get_oldest_message_time(
+        self, messages: list[MessageEntity]
+    ) -> datetime.datetime | None:
+        timed = self.__timed_messages(messages)
+        if len(timed) == 0:
+            return None
+        return min(t[1] for t in timed)

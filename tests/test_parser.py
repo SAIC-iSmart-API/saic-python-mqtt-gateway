@@ -63,6 +63,36 @@ def test_process_command_line_defaults_forced_timezone_to_none(
     assert config.saic_user_timezone is None
 
 
+def test_process_command_line_defaults_message_timezone_to_rome(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "sys.argv",
+        ["prog", "--saic-user", "user@example.com", "--saic-password", "secret"],
+    )
+    config = process_command_line()
+    assert config.saic_message_timezone == ZoneInfo("Europe/Rome")
+
+
+def test_process_command_line_sets_message_timezone(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "prog",
+            "--saic-user",
+            "user@example.com",
+            "--saic-password",
+            "secret",
+            "--saic-message-timezone",
+            "Australia/Sydney",
+        ],
+    )
+    config = process_command_line()
+    assert config.saic_message_timezone == ZoneInfo("Australia/Sydney")
+
+
 def test_process_command_line_sets_device_app_id(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
