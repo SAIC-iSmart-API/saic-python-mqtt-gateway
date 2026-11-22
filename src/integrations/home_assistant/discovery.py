@@ -30,6 +30,40 @@ if TYPE_CHECKING:
 LOG = logging.getLogger(__name__)
 
 
+# Entities that only make sense on a car with a plug and a traction battery.
+# They stay published for the other cars but are disabled by default.
+EV_ONLY_TOPICS: frozenset[str] = frozenset(
+    {
+        mqtt_topics.DRIVETRAIN_CHARGER_CONNECTED,
+        mqtt_topics.DRIVETRAIN_CHARGING,
+        mqtt_topics.DRIVETRAIN_CHARGING_STOP_REASON,
+        mqtt_topics.DRIVETRAIN_CHARGING_LAST_START,
+        mqtt_topics.DRIVETRAIN_CHARGING_LAST_END,
+        mqtt_topics.DRIVETRAIN_CHARGING_SCHEDULE,
+        mqtt_topics.DRIVETRAIN_CHARGING_TYPE,
+        mqtt_topics.DRIVETRAIN_CHARGING_CABLE_LOCK,
+        mqtt_topics.DRIVETRAIN_CHARGECURRENT_LIMIT,
+        mqtt_topics.DRIVETRAIN_BATTERY_HEATING,
+        mqtt_topics.DRIVETRAIN_BATTERY_HEATING_STOP_REASON,
+        mqtt_topics.DRIVETRAIN_BATTERY_HEATING_SCHEDULE,
+        mqtt_topics.DRIVETRAIN_HV_BATTERY_ACTIVE,
+        mqtt_topics.DRIVETRAIN_CURRENT,
+        mqtt_topics.DRIVETRAIN_VOLTAGE,
+        mqtt_topics.DRIVETRAIN_POWER,
+        mqtt_topics.DRIVETRAIN_POWER_USAGE_OF_DAY,
+        mqtt_topics.DRIVETRAIN_POWER_USAGE_SINCE_LAST_CHARGE,
+        mqtt_topics.DRIVETRAIN_MILEAGE_SINCE_LAST_CHARGE,
+        mqtt_topics.DRIVETRAIN_REMAINING_CHARGING_TIME,
+        mqtt_topics.DRIVETRAIN_LAST_CHARGE_ENDING_POWER,
+        mqtt_topics.DRIVETRAIN_RANGE,
+        mqtt_topics.DRIVETRAIN_SOC,
+        mqtt_topics.DRIVETRAIN_SOC_KWH,
+        mqtt_topics.DRIVETRAIN_SOC_TARGET,
+        mqtt_topics.DRIVETRAIN_TOTAL_BATTERY_CAPACITY,
+    }
+)
+
+
 class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
     def __init__(
         self,
@@ -999,6 +1033,12 @@ class HomeAssistantDiscovery(HomeAssistantDiscoveryBase):
         if isinstance(publisher, MqttPublisher):
             return publisher.get_topic(topic, no_prefix=False)
         return topic
+
+    @override
+    def _is_enabled_by_default(self, topic: str, enabled: bool) -> bool:
+        if topic in EV_ONLY_TOPICS and not self.__vin_info.is_ev:
+            return False
+        return enabled
 
     @override
     def _get_state_topic(self, raw_topic: str) -> str:

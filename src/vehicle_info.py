@@ -57,21 +57,25 @@ class VehicleInfo:
         return properties
 
     def get_ac_temperature_idx(self, remote_ac_temperature: int) -> int:
-        if self.series.startswith("EH32"):
+        # The app sends temperature - 14. The offset below matches that for the
+        # minimum temperature of each series.
+        if self.series.startswith(("EH32", "ZS32")):
             return 3 + remote_ac_temperature - self.min_ac_temperature
         return 2 + remote_ac_temperature - self.min_ac_temperature
 
     @property
     def min_ac_temperature(self) -> int:
-        if self.series.startswith("EH32"):
+        if self.series.startswith(("EH32", "ZS32")):
             return 17
-        if self.series.startswith("MZS3E"):
-            return 16
         return 16
 
     @property
     def max_ac_temperature(self) -> int:
-        if self.series.startswith("EH32") or self.series.startswith("MZS3E"):
+        if self.series.startswith("ZS32"):
+            # The app caps this series at 31 or 33 depending on its region. The car
+            # panel of the reported ZS Hybrid+ goes up to 32 and then "HI".
+            return 33
+        if self.series.startswith(("EH32", "MZS3E")):
             return 31
         return 28
 
@@ -102,7 +106,8 @@ class VehicleInfo:
 
     @property
     def is_ev(self) -> bool:
-        return not self.series.startswith("ZP22")
+        # Hybrids without a plug: the charge management data is not available
+        return not self.series.startswith(("ZP22", "ZS32"))
 
     @property
     def has_fossil_fuel(self) -> bool:
