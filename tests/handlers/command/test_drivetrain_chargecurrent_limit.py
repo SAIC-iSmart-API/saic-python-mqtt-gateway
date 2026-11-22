@@ -11,7 +11,6 @@ from handlers.command.drivetrain.drivetrain_chargecurrent_limit import (
 )
 from tests.handlers.command.test_drivetrain_soc_guards import _make_vehicle_state
 
-
 EXPECTED_LIMIT = DrivetrainChargeCurrentLimitCommand.convert_payload("16A")
 
 
