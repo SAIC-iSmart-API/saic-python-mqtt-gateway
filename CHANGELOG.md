@@ -66,6 +66,17 @@
   the last charging interval and woke the car all day, draining the 12V battery
   (#510).
 
+* Treat the MG ZS Hybrid+ (`ZS32`) as a non-EV. The gateway no longer polls
+  charge data for it, which stops the `Error updating charge status` message
+  every minute. Its A/C range is now 17 to 33 °C, taken from the iSmart app and
+  not yet tested on a car. Battery and charging entities are published but
+  disabled by default on non-EV cars (#528, #536).
+
+* Do not send a target SoC when setting the charge current limit on cars that
+  do not support one (LFP battery). The car may have rejected the command with
+  "remote control instruction failed". This is not confirmed on a car yet
+  (#467, #537).
+
 ## 0.13.0
 
 ### Added
