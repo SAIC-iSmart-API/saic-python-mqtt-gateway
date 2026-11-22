@@ -1,15 +1,22 @@
 from __future__ import annotations
 
 import time
+from unittest.mock import MagicMock
 
 from saic_ismart_client_ng.api.schema import GpsPosition, GpsStatus
 from saic_ismart_client_ng.api.vehicle import VehicleStatusResp
-from saic_ismart_client_ng.api.vehicle.schema import BasicVehicleStatus
+from saic_ismart_client_ng.api.vehicle.schema import (
+    BasicVehicleStatus,
+    VehicleModelConfiguration,
+    VinInfo,
+)
 from saic_ismart_client_ng.api.vehicle_charging import ChrgMgmtDataResp
 from saic_ismart_client_ng.api.vehicle_charging.schema import (
     ChrgMgmtData,
     RvsChargeStatus,
 )
+
+from vehicle_info import VehicleInfo
 
 VIN = "vin10000000000000"
 
@@ -166,3 +173,23 @@ def get_mock_charge_management_data_resp(
             fuelRangeElec=int(DRIVETRAIN_RANGE_BMS * 10.0),
         ),
     )
+
+
+def make_vehicle_state_with_target_soc_support(
+    *, supports_target_soc: bool
+) -> MagicMock:
+    """Create a minimal mock VehicleState with the desired supports_target_soc flag."""
+    configurations = []
+    if supports_target_soc:
+        configurations.append(
+            VehicleModelConfiguration(itemCode="BType", itemValue="1")
+        )
+    vin_info = VinInfo()
+    vin_info.vin = "vin_test_000000000"
+    vin_info.vehicleModelConfiguration = configurations
+    vehicle_info = VehicleInfo(vin_info, None)
+
+    vehicle_state = MagicMock()
+    vehicle_state.vehicle = vehicle_info
+    vehicle_state.vin = vehicle_info.vin
+    return vehicle_state
