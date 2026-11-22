@@ -9,14 +9,16 @@ from handlers.command.base import RESULT_REFRESH_ONLY
 from handlers.command.drivetrain.drivetrain_chargecurrent_limit import (
     DrivetrainChargeCurrentLimitCommand,
 )
-from tests.handlers.command.test_drivetrain_soc_guards import _make_vehicle_state
+from tests.common_mocks import make_vehicle_state_with_target_soc_support
 
 EXPECTED_LIMIT = DrivetrainChargeCurrentLimitCommand.convert_payload("16A")
 
 
 class TestDrivetrainChargeCurrentLimitTargetSoc(unittest.IsolatedAsyncioTestCase):
     async def test_lfp_vehicle_sends_ignore_target_soc(self) -> None:
-        vehicle_state = _make_vehicle_state(supports_target_soc=False)
+        vehicle_state = make_vehicle_state_with_target_soc_support(
+            supports_target_soc=False
+        )
         vehicle_state.target_soc = TargetBatteryCode.P_80
         saic_api = AsyncMock()
         handler = DrivetrainChargeCurrentLimitCommand(saic_api, vehicle_state)
@@ -31,7 +33,9 @@ class TestDrivetrainChargeCurrentLimitTargetSoc(unittest.IsolatedAsyncioTestCase
         )
 
     async def test_nmc_vehicle_keeps_known_target_soc(self) -> None:
-        vehicle_state = _make_vehicle_state(supports_target_soc=True)
+        vehicle_state = make_vehicle_state_with_target_soc_support(
+            supports_target_soc=True
+        )
         vehicle_state.target_soc = TargetBatteryCode.P_80
         saic_api = AsyncMock()
         handler = DrivetrainChargeCurrentLimitCommand(saic_api, vehicle_state)
