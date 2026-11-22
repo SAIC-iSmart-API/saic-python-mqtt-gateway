@@ -37,26 +37,45 @@
   (#508, #509).
 
 * Add the `mg_br` API preset for MG i-SMART LATAM (Brazil), tested on an MG4
-  Urban. Requires client 0.16.0.
+  Urban. Requires client 0.16.0 (#533).
 
 * Open and close a power tailgate with `doors/boot/powerTailgate/set`
   (`open`/`close`), also available as a Home Assistant "Power Tailgate" cover
-  that is disabled by default. The state comes from `doors/boot`. Nothing in
-  the vehicle data tells which cars have a power tailgate, so the command is
-  offered to every car; cars without one are expected to refuse it. Only
-  tested on an MG S6 EV. `doors/boot/set` still only unlocks the boot
-  (#523, #524).
+  that is disabled by default, except on the MG S6 EV, where it is enabled. The
+  state comes from `doors/boot`. The model configuration code `CTRLBOOT` decides
+  whether a car has one (`2` adds it, `0` removes it). When the code is absent,
+  the series decides, and the long variant of the MG S6 EV (`MIS3E L`) has no
+  power tailgate. The command is offered to every car; cars without one are
+  expected to refuse it. Only tested on an MG S6 EV. `doors/boot/set` still
+  only unlocks the boot (#523, #524, #534).
 
 ### Changed
 
-* Require `saic-ismart-client-ng` 0.15.0 (#506, #515, #523).
+* Require `saic-ismart-client-ng` 0.16.0 (#506, #515, #523, #533).
+
+* Publish the door, boot, tyre pressure and interior temperature entities, and
+  detect the sunroof, from the vehicle model configuration (`DOOR`, `BOOT`,
+  `J17`, `INTEMP`, `S35`). This removes the rear door entities on 2-door cars
+  such as the MG Cyberster. An entity the configuration does not declare is
+  still published but disabled by default, so you can enable it, and existing
+  installs keep the entities they already use. A missing configuration code
+  keeps the feature (#499).
+
+* Link the car's Home Assistant device to the gateway device, which carries the
+  gateway version (#525).
+
+* Log a one-time hint for the MG4 Urban `AH4EM` series, which is sold with 43 kWh
+  and 54 kWh packs that the series cannot tell apart. The default stays 54 kWh
+  except for `AH4EM L`. Set `BATTERY_CAPACITY_MAPPING` to override it (#526,
+  #535).
 
 * Run the full CI on the monthly lock file update PR, and run the updated
   dependencies with a read-only token (#503, #521).
 
 * Update certifi, coverage, ruff and tzlocal (#507).
 
-* Update the development dependencies (#514).
+* Update the development dependencies and the GitHub Actions (#514, #529,
+  #530, #531, #532, #538).
 
 ### Fixed
 
